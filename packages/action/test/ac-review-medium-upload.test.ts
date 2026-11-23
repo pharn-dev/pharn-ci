@@ -1,3 +1,4 @@
+import type { Report } from "@pharn-ci/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { APP_RETRY_WAIT_MS, APP_TIMEOUT_MS } from "../src/app-client.js";
@@ -48,12 +49,6 @@ const META_CONTEXT = {
   },
 };
 
-type Report = { verdict: string; messages: unknown[]; meta?: Record<string, unknown> };
-interface Outcome {
-  status: string;
-  reason?: string;
-  runUrl?: string;
-}
 type Kind = "upload-url" | "put" | "runs" | "other";
 
 /** How the fake app answers one request, given the timeout its attempt was started with. */
@@ -219,9 +214,7 @@ async function directUpload(
   behaviours: Partial<Record<Exclude<Kind, "other">, readonly Behaviour[]>>,
   extra: { uploadDeadlineMs?: number } = {},
 ) {
-  const { runUpload } = (await import("../src/upload.js")) as unknown as {
-    runUpload(deps: unknown, input: unknown): Promise<Outcome>;
-  };
+  const { runUpload } = await import("../src/upload.js");
   const report = await metaReport();
   const app = recorder(behaviours);
   const warnings: string[] = [];

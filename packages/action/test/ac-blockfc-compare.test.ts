@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { fixture, harness } from "./harness.js";
 
@@ -9,12 +10,6 @@ import { fixture, harness } from "./harness.js";
 
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const TEST_FILE = "src/math.test.ts";
-
-interface Message {
-  code: string;
-  level: string;
-  text: string;
-}
 
 /** The golden PR diff plus a `--unified=0` hunk that adds one assertion to the existing test file. */
 const DIFF = `${fixture("golden/pr.diff")}${[

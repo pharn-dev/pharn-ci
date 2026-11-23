@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT, WORKSPACE } from "./harness.js";
@@ -11,9 +12,6 @@ import { harness, PR_CONTEXT, WORKSPACE } from "./harness.js";
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 const NOW = new Date("2026-10-26T12:00:00.000Z");
-
-type Message = { level: string; code: string; text: string };
-type Report = { messages: Message[]; diffCoverage: { files: { path: string }[] } | null };
 
 async function orderedRun(inputs: Record<string, string>, files: Record<string, string>, envelope: string) {
   const { run } = await import("../src/run.js");

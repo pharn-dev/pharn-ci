@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
@@ -16,7 +17,6 @@ const LABEL = "pharn/accepted";
 const AUTHOR = { login: "octo-author", type: "User" };
 
 type Page = { events: unknown; hasNext: boolean };
-type Message = { level: string; code: string; text: string };
 
 /** One pull_request Action run (PR #7) in mode block on the block diff, against the fake API. */
 async function signoffRun(events: unknown[]) {

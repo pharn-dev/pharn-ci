@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
@@ -17,7 +18,6 @@ const BOT_AUTHOR = { login: "claude[bot]", type: "Bot" };
 
 type Kind = "pull_request" | "push" | "merge_group";
 type Page = { events: unknown; hasNext: boolean };
-type Message = { level: string; code: string; text: string };
 
 interface SignoffOptions {
   kind?: Kind;

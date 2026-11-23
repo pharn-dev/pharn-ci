@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // run() is loaded inside each test body, like the other AC tests: they are written before the build.
 // PR-number mode: the event has no pull_request payload and the pr-number input names the PR. The GitHub API serves
@@ -45,13 +46,6 @@ function contextFor(eventName: string) {
   };
 }
 
-type Report = {
-  verdict: string;
-  diffCoverage: { percent: number | null; coveredLines: number; coverableLines: number } | null;
-  agentSetup: { files: { path: string; kind: string }[] };
-  messages: { code: string; level: string; text: string }[];
-};
-
 interface RunOptions {
   eventName?: string;
   inputs: Record<string, string>;
@@ -74,7 +68,7 @@ async function runPrNumberMode({ eventName = "workflow_run", inputs, truncated =
   };
   const files = new Map([[resolve(WORKSPACE, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => allInputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: contextFor(eventName),
     workspace: WORKSPACE,

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { harness } from "./harness.js";
 
@@ -33,8 +34,6 @@ const AGENT_TOOLS = [
   "roo",
   "zed",
 ];
-
-type Report = { agentSetup: Record<string, unknown> & { missing?: unknown } };
 
 async function runAction(input: string) {
   const { run } = await import("../src/run.js");

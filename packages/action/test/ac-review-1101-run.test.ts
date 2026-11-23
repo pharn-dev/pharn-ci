@@ -189,6 +189,7 @@ describe("review 47: API calls a run does not need", () => {
     }));
     const octokit = { rest: { pulls: { get: pullsGet } } };
     const opts = { token: "t", repo: () => ({ owner: "acme", repo: "widgets" }), getOctokit: () => octokit };
+    // The fake Octokit is deliberately partial (pulls.get only), so it is cast.
     const api = createGitHubApi(opts as unknown as GitHubApiOptions);
     expect(await api.getPullRequest(42)).toEqual({ baseSha: BASE, headSha: HEAD });
     expect((await api.getPullRequestSignoff(42)).commits).toBe(1);
@@ -206,6 +207,7 @@ describe("review 47: API calls a run does not need", () => {
       .mockResolvedValue({ data: { base: { sha: BASE }, head: { sha: HEAD }, user: null, labels: [], commits: 0 } });
     const octokit = { rest: { pulls: { get: pullsGet } } };
     const opts = { token: "t", repo: () => ({ owner: "acme", repo: "widgets" }), getOctokit: () => octokit };
+    // The fake Octokit is deliberately partial (pulls.get only), so it is cast.
     const api = createGitHubApi(opts as unknown as GitHubApiOptions);
     await expect(api.getPullRequestSignoff(42)).rejects.toThrow("Bad Gateway");
     expect(await api.getPullRequest(42)).toEqual({ baseSha: BASE, headSha: HEAD });

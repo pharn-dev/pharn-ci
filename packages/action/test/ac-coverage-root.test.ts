@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // run() and the fixtures are loaded inside each test body: the AC tests are written before the coverage root and
 // fixtures/coverage-paths/ exist, so nothing that depends on them may run while the file loads. The Action runs
@@ -22,12 +23,6 @@ const INPUT_DEFAULTS: Record<string, string> = {
   config: "",
 };
 
-type Report = {
-  verdict: string;
-  diffCoverage: { files: { path: string; coveredLines: number; coverableLines: number }[] } | null;
-  messages: { code: string; level: string }[];
-};
-
 async function runAction(coverageRoot: string, config: string | null) {
   const { run } = await import("../src/run.js");
   const failed: string[] = [];
@@ -46,7 +41,7 @@ async function runAction(coverageRoot: string, config: string | null) {
     "coverage-root": coverageRoot,
   };
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

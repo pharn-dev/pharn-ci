@@ -1,3 +1,4 @@
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { run } from "../src/run.js";
@@ -24,9 +25,6 @@ const META_CONTEXT = {
   actor: "octocat",
   payload: { ...PR_CONTEXT.payload, repository: { full_name: "acme/widgets", id: 42 } },
 };
-
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; meta?: { upload?: { status: string } } };
 
 /** How the fake getIDToken answers. */
 type TokenAnswer = "token" | "throws" | "hangs" | "empty";

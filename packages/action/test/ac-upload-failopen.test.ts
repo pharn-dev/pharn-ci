@@ -1,3 +1,4 @@
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness } from "./harness.js";
@@ -27,8 +28,6 @@ const META_CONTEXT = {
     pull_request: { number: 7, base: { sha: "a".repeat(40) }, head: { sha: "b".repeat(40) } },
   },
 };
-
-type Report = { verdict: string; meta?: Record<string, unknown> };
 
 const respond = (status: number, body: unknown): Response =>
   new Response(body === null ? null : JSON.stringify(body), {

@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
@@ -17,16 +18,6 @@ const GOLDEN_ROOT = "/home/runner/work/demo/demo";
 const POLICY_PATH = ".pharn/policy.json";
 const TOKEN = "tok-SECRET-123"; // gitleaks:allow (a fake OIDC token)
 const NOW = new Date("2026-10-26T12:00:00.000Z");
-
-type Violation = { id: string; path: string | null };
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  meta?: Record<string, unknown>;
-  policy?: { violations: Violation[] };
-  testIntegrity: { accepted?: unknown };
-};
 
 async function realReadFile(path: string): Promise<string | null> {
   try {
@@ -208,9 +199,10 @@ describe("action: Enterprise Managed User logins", { timeout: 120_000 }, () => {
         getPullRequestSignoff: async () => ({
           author: { login: "mona-lisa_acme", type: "User" },
           labels: [{ name: LABEL, color: "0e8a16" }],
+          commits: undefined,
         }),
         listIssueEvents: async () => ({ events, hasNext: false }),
-      } as typeof h.deps.api;
+      };
       await run(h.deps);
       const report = JSON.parse(h.written[h.outputs["report-path"] ?? ""] as string) as Report;
       expectValidReport(report);

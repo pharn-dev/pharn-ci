@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { withoutFix } from "../../core/test/v090-codes.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // run() is loaded inside each test body, like the other action tests. The action runs against in-memory deps for a
 // pull_request event whose diff comes from the compare API; `git ls-tree` answers with sizes or fails.
@@ -33,7 +33,7 @@ async function runAction(lsTree: "sizes" | "fails") {
   const files = new Map([[resolve(WORKSPACE, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const inputs: Record<string, string> = { "coverage-file": "coverage/lcov.info" };
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

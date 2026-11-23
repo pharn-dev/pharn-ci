@@ -1,4 +1,5 @@
 import { gunzipSync } from "node:zlib";
+import type { UploadOutcome as Outcome, Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
 import { expectValidReport } from "../../core/test/schema.js";
@@ -37,14 +38,6 @@ const META_CONTEXT = {
     pull_request: { number: 7, base: { sha: "a".repeat(40) }, head: { sha: "b".repeat(40) } },
   },
 };
-
-type Report = { verdict: string; meta?: Record<string, unknown> };
-interface Outcome {
-  status: string;
-  reason?: string;
-  maxBytes?: number | null;
-  runUrl?: string;
-}
 
 interface FetchCall {
   url: string;
@@ -177,9 +170,7 @@ function metaReport(): Promise<Report> {
 }
 
 async function directUpload(answers: Answers, options: { timeoutMs?: number } = {}) {
-  const { runUpload } = (await import("../src/upload.js")) as unknown as {
-    runUpload(deps: unknown, input: unknown): Promise<Outcome>;
-  };
+  const { runUpload } = await import("../src/upload.js");
   const report = await metaReport();
   const app = fakeApp(answers);
   const deps = {
@@ -222,11 +213,6 @@ function untar(bytes: Uint8Array): Array<{ name: string; text: string }> {
   return entries;
 }
 
-interface BundleCore {
-  buildUploadMeta(report: unknown, extra: { version: string; createdAt: string; commentUrl: string | null }): unknown;
-  buildUploadBundle(report: unknown, meta: unknown): { reportJson: string; metaJson: string };
-}
-
 // The first test of a file loads run() cold, which can take seconds on a loaded host.
 describe("the signed PUT", { timeout: 60_000 }, () => {
   it("AC-23: the PUT goes to the served URL with exactly two headers, no redirect, a signal, the URL masked first, sizes matching its body, and a gzip tar of report.json then meta.json", async () => {
@@ -258,9 +244,10 @@ describe("the signed PUT", { timeout: 60_000 }, () => {
     expect(entries.map((e) => e.name)).toEqual(["report.json", "meta.json"]);
 
     // The bundle texts of this run's report: the written report.json carries the same report with meta.upload ok.
-    const { buildUploadBundle, buildUploadMeta } = (await import("@pharn-ci/core")) as unknown as BundleCore;
+    const { buildUploadBundle, buildUploadMeta } = await import("@pharn-ci/core");
     const meta = buildUploadMeta(r.report, { version: VERSION, createdAt: NOW.toISOString(), commentUrl: null });
-    const bundle = buildUploadBundle(r.report, meta);
+    // This run's report carries run metadata, so its upload metadata is not null.
+    const bundle = buildUploadBundle(r.report, meta as NonNullable<typeof meta>);
     expect(entries[0]?.text).toBe(bundle.reportJson);
     expect(entries[1]?.text).toBe(bundle.metaJson);
   });

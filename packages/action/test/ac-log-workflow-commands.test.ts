@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { getOctokit } from "@actions/github";
+import type { DirEntry } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 import { createGitHubApi } from "../src/api.js";
 import { withRequestPolicy } from "../src/request-policy.js";
 import { run } from "../src/run.js";
@@ -18,8 +19,6 @@ const fixture = (path: string) => readFileSync(new URL(path, FIXTURES), "utf8");
 const WORKSPACE = "/home/runner/work/demo/demo";
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const HEAD_SHA = "2222222222222222222222222222222222222222";
-
-type DirEntry = { name: string; kind: "file" | "directory" | "symlink" | "other" };
 
 function fakeAction(files: Record<string, string>) {
   const info: string[] = [];
@@ -41,7 +40,7 @@ function fakeAction(files: Record<string, string>) {
   }
   const tracked = [...Object.keys(files), ...fixture("golden/files.txt").trim().split("\n")];
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => ({ comment: "false" })[name] ?? "",
     context: {
       eventName: "pull_request",

@@ -1,4 +1,5 @@
 import { gunzipSync } from "node:zlib";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { fixture, harness, WORKSPACE } from "./harness.js";
@@ -35,19 +36,6 @@ const envelope = (settings: { uploadJunit: boolean }, policy: Record<string, unk
   quarantine: ["api.users::creates a user"],
   settings: { uploadJunit: settings.uploadJunit, redactMessages: true, messageMaxBytes: 2048 },
 });
-
-type Report = {
-  verdict: string;
-  messages: { level: string; code: string; text: string }[];
-  flaky?: {
-    uploaded: boolean;
-    testCount: number;
-    failed: number;
-    quarantined: string[];
-    quarantinedFailures: number;
-    unquarantinedFailures: number;
-  };
-};
 
 interface Call {
   url: string;

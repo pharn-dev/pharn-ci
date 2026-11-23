@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import type { DirEntry } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // run() is loaded inside each test body: the AC tests are written before coverage discovery exists. The Action runs
 // against in-memory deps for a pull_request event in a workspace whose git returns the golden diff and files list,
@@ -19,9 +21,6 @@ const INPUT_DEFAULTS: Record<string, string> = {
   comment: "false",
   config: "",
 };
-
-type DirEntry = { name: string; kind: "file" | "directory" | "symlink" | "other" };
-type Message = { code: string; level: string; text: string };
 
 function fakeAction(inputs: Record<string, string>, files: Record<string, string>) {
   const info: string[] = [];
@@ -46,7 +45,7 @@ function fakeAction(inputs: Record<string, string>, files: Record<string, string
   }
 
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

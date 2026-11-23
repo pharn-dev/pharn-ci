@@ -49,18 +49,7 @@ const hang: Answer = (call) =>
 const ok: Answer = () =>
   new Response(JSON.stringify({ hello: "world" }), { status: 200, headers: { "content-type": "application/json" } });
 
-interface AppClient {
-  appRequest(
-    deps: unknown,
-    request: { url: URL; token: string; method?: "GET" | "POST"; body?: string; timeoutMs?: number },
-  ): Promise<unknown>;
-  requestAppToken(
-    deps: unknown,
-    noTokenLine?: string,
-  ): Promise<{ kind: "token"; token: string } | { kind: "not-offered" } | { kind: "failed"; errorClass: string }>;
-}
-
-const load = async () => (await import("../src/app-client.js")) as unknown as AppClient;
+const load = async () => await import("../src/app-client.js");
 
 function clientDeps(answer: Answer, extra: Record<string, unknown> = {}) {
   const calls: FetchCall[] = [];

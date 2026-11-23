@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
+import type { Report } from "@pharn-ci/core";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { harness } from "./harness.js";
@@ -83,8 +84,6 @@ beforeAll(() => {
 afterAll(() => {
   rmSync(dir, { recursive: true, force: true });
 });
-
-type Report = { verdict: string; meta?: Record<string, unknown> };
 
 interface FetchCall {
   url: string;
@@ -196,8 +195,8 @@ describe("meta.json records the merge base of the base and the pull request's he
       ...h.deps.api,
       listPullRequestCommits: async () => ({ commits: [], hasNext: false }),
     } as typeof h.deps.api;
-    const io = createNodeIo(dir) as unknown as Record<string, unknown>;
-    const deps = h.deps as unknown as Record<string, unknown>;
+    const io = createNodeIo(dir);
+    const deps = h.deps;
     deps.workspace = dir;
     deps.git = io.git;
     deps.gitStream = io.gitStream;

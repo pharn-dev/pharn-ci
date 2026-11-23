@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT, WORKSPACE } from "./harness.js";
 
@@ -21,7 +22,6 @@ const UNCOVERED = "TN:\nSF:src/a.ts\nDA:12,0\nend_of_record\n";
 
 type Page = { events: unknown; hasNext: boolean };
 type Event = { event: string; actor: unknown; label?: { name: string } };
-type Message = { level: string; code: string; text: string };
 
 interface SignoffOptions {
   inputs?: Record<string, string>;

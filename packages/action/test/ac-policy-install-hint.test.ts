@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness } from "./harness.js";
@@ -33,7 +34,6 @@ const META_CONTEXT = {
   },
 };
 
-type Report = { verdict: string; messages: Array<{ code: string }>; meta?: Record<string, unknown> };
 type Answer = () => Response;
 interface Call {
   method: string;

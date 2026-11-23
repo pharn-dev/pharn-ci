@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { requiredDeps } from "../../node-io/test/required-deps.js";
-import { type ActionContext, type ActionDeps, commentScopeLine, type IssueComment } from "../src/run.js";
+import {
+  type ActionContext,
+  type ActionDeps,
+  commentScopeLine,
+  type GitHubApi,
+  type IssueComment,
+} from "../src/run.js";
 
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);
 export const fixture = (p: string) => readFileSync(new URL(p, FIXTURES), "utf8");
@@ -14,6 +20,12 @@ export const PR_CONTEXT: ActionContext = {
   sha: "merge000",
   payload: { pull_request: { number: 7, base: { sha: "a".repeat(40) }, head: { sha: "b".repeat(40) } } },
 };
+
+/**
+ * A fake GitHub API that is deliberately partial: the calls it lacks are absent (calling one fails as not a function),
+ * and a test that needs one adds it. The cast is the one place a partial API becomes a GitHubApi.
+ */
+export const partialApi = (api: Partial<GitHubApi>) => api as GitHubApi;
 
 export interface Harness {
   deps: ActionDeps;
@@ -92,7 +104,7 @@ export function harness(opts: HarnessOptions = {}): Harness {
     context: opts.context ?? PR_CONTEXT,
     workspace: WORKSPACE,
     tempDir: "/tmp/runner",
-    api: {
+    api: partialApi({
       async compareDiff(basehead) {
         h.apiCalls.push(`compare ${basehead}`);
         if (opts.compareError) throw opts.compareError;
@@ -123,7 +135,7 @@ export function harness(opts: HarnessOptions = {}): Harness {
         if (opts.deleteError) throw opts.deleteError;
         h.comments = h.comments.filter((x) => x.id !== id);
       },
-    },
+    }),
     async git(args) {
       h.gitCalls.push(args);
       if (args[0] === "ls-files") {
@@ -141,6 +153,9 @@ export function harness(opts: HarnessOptions = {}): Harness {
       throw new Error(`unexpected git ${args.join(" ")}`);
     },
     readFile: async (p) => files[p] ?? null,
+    listDir: async () => {
+      throw new Error("no directory listing in this harness");
+    },
     ...requiredDeps(() => h.deps),
     async writeFile(p, text) {
       h.written[p] = text;

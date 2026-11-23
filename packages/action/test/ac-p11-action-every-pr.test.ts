@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness } from "./harness.js";
@@ -17,9 +18,6 @@ const GOLDEN_ROOT = "/home/runner/work/demo/demo";
 const POLICY_PATH = ".pharn/policy.json";
 const FIXED_LINE =
   "pharn-ci: agent PR detection could not read all of the pull request's evidence (commits-unreadable), so it counts as an agent PR";
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Report = { verdict: string; meta?: Record<string, unknown>; policy?: { violations: Violation[] } };
 
 async function realReadFile(path: string): Promise<string | null> {
   try {

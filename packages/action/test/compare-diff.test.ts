@@ -86,6 +86,9 @@ describe("run() with a compare API that answers JSON (F-14)", () => {
       },
       readFile: async (path) =>
         path === resolve(workspace, "coverage/lcov.info") ? fixture("golden/coverage.info") : null,
+      listDir: async () => {
+        throw new Error("no directory listing in this test");
+      },
       writeFile: async () => {},
       resolvePath: (...segments) => resolve(...segments),
       info: () => {},

@@ -47,7 +47,7 @@ afterAll(() => {
 
 describe("action: the log line when no Python interpreter was found for a modified Python test file", () => {
   it("AC-20: the info log holds one line naming python-not-found that says TI02 and TI05 did not run, and no line saying only .py test files are not compared", async () => {
-    const { run } = (await import("../src/run.js")) as unknown as { run(deps: never): Promise<unknown> };
+    const { run } = await import("../src/run.js");
     const { createNodeIo } = await import("../src/node-io.js");
     const h = harness({
       inputs: { "test-integrity": "block" },
@@ -57,8 +57,8 @@ describe("action: the log line when no Python interpreter was found for a modifi
         payload: { pull_request: { number: 7, base: { sha: baseId }, head: { sha: headId } } },
       },
     });
-    const io = createNodeIo(dir) as unknown as Record<string, unknown>;
-    const deps = h.deps as unknown as Record<string, unknown>;
+    const io = createNodeIo(dir);
+    const deps = h.deps;
     deps.workspace = dir;
     deps.git = io.git;
     deps.gitStream = io.gitStream;

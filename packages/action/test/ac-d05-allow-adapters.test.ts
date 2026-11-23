@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sideFiles } from "../../core/test/dependencies-helpers.js";
 import { expectValidReport } from "../../core/test/schema.js";
@@ -17,12 +18,6 @@ import { harness, PR_CONTEXT, WORKSPACE } from "./harness.js";
 const CASE = new URL("../../../fixtures/dependencies/d05-lockfile/", import.meta.url).pathname;
 const HOST = "npm.corp.example";
 const PRIVATE_URL = `https://${HOST}/api/npm/npm/left-pad/-/left-pad-1.3.0.tgz`;
-
-type Report = {
-  verdict: string;
-  messages: { level: string; code: string; text: string }[];
-  dependencies?: { signals: { id: string; name?: string; path: string; line: number | null }[] };
-};
 
 let dir: string;
 let baseSha: string;
@@ -112,7 +107,7 @@ describe("an allowed private registry host through the adapters", { timeout: 120
   it("AC-1: one CLI --dependency-allowed-host flag lets the same entry pass, and the JSON report never names the host", async () => {
     const { main } = await import("../../cli/src/main.js");
     const { nodeDeps } = await import("../../cli/src/nodeDeps.js");
-    const deps = nodeDeps(dir) as unknown as { stdout(text: string): void; stderr(text: string): void };
+    const deps = nodeDeps(dir);
     let out = "";
     let err = "";
     deps.stdout = (text) => {

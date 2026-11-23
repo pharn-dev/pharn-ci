@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { withoutFix } from "../../core/test/v090-codes.js";
 import { harness, PR_CONTEXT, WORKSPACE } from "./harness.js";
@@ -20,14 +22,6 @@ const NOW = new Date("2026-10-26T12:00:00.000Z");
 const CAP = 1_048_576;
 const CHUNK = 64 * 1024;
 const BODY_MARKER = "BODY-MARKER-7f3a";
-
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  diffCoverage: { threshold: number | null; files: { path: string }[]; excludedFiles?: string[] } | null;
-  testIntegrity: { mode: string; source: string };
-};
 
 interface FetchCall {
   url: string;

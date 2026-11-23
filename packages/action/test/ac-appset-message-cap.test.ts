@@ -1,5 +1,7 @@
 import { gunzipSync } from "node:zlib";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness } from "./harness.js";
 
@@ -52,9 +54,6 @@ const META_CONTEXT = {
 
 /** A coverage file path that does not exist; "Coverage file not found: <path>" is 1000 bytes. */
 const LONG_PATH = `reports/${"m".repeat(962)}.info`;
-
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; meta?: Record<string, unknown> };
 
 interface FetchCall {
   url: string;
@@ -140,9 +139,7 @@ describe("the app's settings.messageMaxBytes lowers the upload's message cap", (
     timeout: 120_000,
   }, async () => {
     const { run } = await import("../src/run.js");
-    const { truncateUtf8 } = (await import("../../core/src/secrets/redact.js")) as unknown as {
-      truncateUtf8(text: string, maxBytes: number): string;
-    };
+    const { truncateUtf8 } = await import("../../core/src/secrets/redact.js");
     const h = harness({
       inputs: { policy: "auto", "coverage-file": LONG_PATH },
       context: META_CONTEXT as never,

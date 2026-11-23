@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { coverage, fakeDeps } from "../../cli/test/fake-deps.js";
 import { VERSION } from "../../core/src/version.js";
@@ -28,8 +29,6 @@ function cut(n: number, seed: number): string {
 }
 
 const ROOT = new URL("../../../", import.meta.url);
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[] } & Record<string, unknown>;
 
 /** fixtures/golden/report.json as the CLI and the Action report it (they report the package VERSION). */
 function goldenReport(): Report {
@@ -67,7 +66,7 @@ const catFile = (calls: string[][]) => calls.filter((args) => args[0] === "cat-f
 async function cliRun(withBatch: boolean) {
   const { main } = await import("../../cli/src/main.js");
   const fake = fakeDeps(coverage);
-  if (withBatch) (fake as unknown as Record<string, unknown>).gitBatch = servingMcpJson;
+  if (withBatch) fake.gitBatch = servingMcpJson;
   const code = await main(["check", "--coverage", "lcov.info", "--threshold", "80", "--format", "json"], fake);
   return { code, fake, report: JSON.parse(fake.out) as Report };
 }
@@ -75,7 +74,7 @@ async function cliRun(withBatch: boolean) {
 async function actionRun(withBatch: boolean) {
   const { run } = await import("../src/run.js");
   const h = harness({ inputs: { threshold: "80" } });
-  if (withBatch) (h.deps as unknown as Record<string, unknown>).gitBatch = servingMcpJson;
+  if (withBatch) h.deps.gitBatch = servingMcpJson;
   await run(h.deps);
   const text = h.written[h.outputs["report-path"] ?? ""];
   expect(text, "report.json was written").toBeDefined();

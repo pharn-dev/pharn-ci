@@ -2,9 +2,11 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { runGitBatch } from "../../node-io/src/io.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 import { harness } from "./harness.js";
 
 // run() is loaded inside each run: the test is written before the Action gathers agent config sources, so nothing that
@@ -27,8 +29,6 @@ function cut(n: number, seed: number): string {
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);
 const fixture = (path: string) => readFileSync(new URL(path, FIXTURES), "utf8");
 
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[] };
 type Run = (deps: never) => Promise<unknown>;
 
 const SECRET = "ghp" + "_" + cut(36, 17);
@@ -65,7 +65,7 @@ function recordingBatch() {
 }
 
 async function loadRun(): Promise<Run> {
-  return ((await import("../src/run.js")) as unknown as { run: Run }).run;
+  return (await import("../src/run.js")).run;
 }
 
 /** The report a run wrote, else the one it returned. */
@@ -84,7 +84,7 @@ async function harnessRun(opts: Parameters<typeof harness>[0]) {
   const run = await loadRun();
   const h = harness(opts);
   const batch = recordingBatch();
-  (h.deps as unknown as Record<string, unknown>).gitBatch = batch.gitBatch;
+  h.deps.gitBatch = batch.gitBatch;
   const returned = await run(h.deps as never);
   return { h, batch, report: reportOf(h.written, returned) };
 }
@@ -124,7 +124,7 @@ async function prNumberRun() {
   const files = new Map([[resolve(WORKSPACE, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const batch = recordingBatch();
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "workflow_run",

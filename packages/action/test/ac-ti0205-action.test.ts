@@ -2,7 +2,9 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { PythonSourceFile as PyFile, Report, TestIndexResult } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { TestBlock } from "../../core/src/testIndex/types.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
@@ -78,9 +80,9 @@ function fnv1a(text: string): string {
 }
 
 /** A plain-data index of the top-level `def test_*` functions of a Python text. */
-function scanPython(text: string) {
+function scanPython(text: string): TestIndexResult {
   const lines = text.split("\n");
-  const tests = lines.flatMap((line, i) => {
+  const tests: TestBlock[] = lines.flatMap((line, i) => {
     const match = /^def (test_\w+)\(/.exec(line);
     if (match === null) return [];
     const bodyLines: { text: string; line: number }[] = [];
@@ -116,10 +118,8 @@ function scanPython(text: string) {
   return { parsed: true, syntaxErrors: 0, tests, mocks: [] };
 }
 
-type PyFile = { path: string; text: string };
-
 async function actionRun(repo: Repo, inputs: Record<string, string>) {
-  const { run } = (await import("../src/run.js")) as unknown as { run(deps: never): Promise<unknown> };
+  const { run } = await import("../src/run.js");
   const { createNodeIo } = await import("../src/node-io.js");
   const lcov = `SF:${repo.dir}/src/math.ts\nDA:1,1\nDA:2,1\nend_of_record\n`;
   const h = harness({
@@ -130,8 +130,8 @@ async function actionRun(repo: Repo, inputs: Record<string, string>) {
       payload: { pull_request: { number: 7, base: { sha: repo.baseId }, head: { sha: repo.headId } } },
     },
   });
-  const io = createNodeIo(repo.dir) as unknown as Record<string, unknown>;
-  const deps = h.deps as unknown as Record<string, unknown>;
+  const io = createNodeIo(repo.dir);
+  const deps = h.deps;
   deps.workspace = repo.dir;
   deps.git = io.git;
   deps.gitStream = io.gitStream;
@@ -145,9 +145,7 @@ async function actionRun(repo: Repo, inputs: Record<string, string>) {
   await run(h.deps as never);
   const reportText = h.written[h.outputs["report-path"] as string];
   expect(reportText, "the Action wrote report.json").toBeDefined();
-  const report = JSON.parse(reportText as string) as {
-    testIntegrity: { signals: { id: string; severity: string; path: string; line: number | null; detail: string }[] };
-  };
+  const report = JSON.parse(reportText as string) as Report;
   expectValidReport(report);
   return { calls, report };
 }

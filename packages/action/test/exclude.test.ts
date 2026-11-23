@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { requiredDeps } from "../../node-io/test/required-deps.js";
-import type { ActionContext, ActionDeps } from "../src/run.js";
+import type { ActionContext, ActionDeps, GitHubApi } from "../src/run.js";
 
 // run() is imported inside each test body, like the other AC tests written before the build.
 
@@ -42,13 +42,15 @@ function harness(inputs: Record<string, string>, files: Record<string, string> =
     context: PR_CONTEXT,
     workspace: WORKSPACE,
     tempDir: "/tmp/runner",
+    // Deliberately partial, like harness.ts's partialApi (not imported: it would load run() with the file): a call this
+    // fake lacks fails as not a function.
     api: {
       compareDiff: async () => fixture("golden/pr.diff"),
       viewerLogin: async () => "github-actions[bot]",
       listComments: async () => [],
-      createComment: async () => {},
+      createComment: async () => null,
       updateComment: async () => {},
-    },
+    } as Partial<GitHubApi> as GitHubApi,
     async git(args) {
       if (args[0] === "ls-files") return `${fixture("golden/files.txt").trim().split("\n").join("\0")}\0`;
       if (args[0] === "rev-parse" && args[1] === "HEAD") return `${"c".repeat(40)}\n`;
@@ -57,6 +59,9 @@ function harness(inputs: Record<string, string>, files: Record<string, string> =
       throw new Error(`unexpected git ${args.join(" ")}`);
     },
     readFile: async (p) => allFiles[p] ?? null,
+    listDir: async () => {
+      throw new Error("no directory listing in this test");
+    },
     async writeFile(p, text) {
       h.written[p] = text;
     },

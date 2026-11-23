@@ -1,3 +1,4 @@
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import type { ActionContext } from "../src/run.js";
@@ -12,12 +13,6 @@ import type { ActionContext } from "../src/run.js";
 const HEAD_OID = "c".repeat(40);
 const OTHER_OID = "d".repeat(40);
 const PR_BASE = "a".repeat(40);
-
-type Report = {
-  verdict: string;
-  diffCoverage: unknown;
-  messages: { code: string; level: string; text: string }[];
-};
 
 const codes = (report: Report | undefined) => (report?.messages ?? []).map((m) => m.code);
 

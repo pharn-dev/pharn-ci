@@ -2,11 +2,12 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sideFiles } from "../../core/test/dependencies-helpers.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { runGit, runGitBatch } from "../../node-io/src/io.js";
-import { REGISTRY_USER_AGENT, registryGet } from "../src/registry-lookup.js";
+import { REGISTRY_USER_AGENT, type RegistryDeps, registryGet } from "../src/registry-lookup.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
 // A13 (dependency safety) in the Action. A real temporary repository commits the lookups fixture case
@@ -18,16 +19,6 @@ const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 const CASE = new URL("fixtures/dependencies/lookups/", ROOT).pathname;
 const HEAD_DATE = "2026-11-08T00:00:00Z";
-
-type Report = {
-  verdict: string;
-  messages: { level: string; code: string; text: string }[];
-  dependencies?: {
-    checked: number;
-    lookups: string;
-    signals: { id: string; severity: string; name?: string; path: string; line: number | null }[];
-  };
-};
 
 let dir: string;
 let baseSha: string;
@@ -201,7 +192,9 @@ describe("registryGet", () => {
       status: 200,
       tooLarge: true,
     });
-    expect(await registryGet({}, "https://registry.npmjs.org/left-pad")).toEqual({ kind: "network" });
+    // Deliberately invalid deps with no fetch at all, which the type no longer allows: the call still fails as a network
+    // error.
+    expect(await registryGet({} as RegistryDeps, "https://registry.npmjs.org/left-pad")).toEqual({ kind: "network" });
   });
 
   it("times out a slow registry", async () => {

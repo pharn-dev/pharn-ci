@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // AC test for pr-comment-redesign-2 (AC-6). run() and the renderer are imported inside the test body. The Action
 // runs against in-memory deps for a pull_request event with comment "true"; the body handed to createComment is
@@ -30,7 +30,7 @@ function fakeAction() {
   const tracked = [...fixture("golden/files.txt").trim().split("\n"), ...LONG_SKILLS];
   const contents = new Map([[resolve(WORKSPACE, "coverage.info"), fixture("golden/coverage.info")]]);
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => INPUTS[name] ?? "",
     context: {
       eventName: "pull_request",

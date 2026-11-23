@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { CheckInput, Report, TestSourceSide } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
@@ -20,10 +21,9 @@ const ROOT = new URL("../../../", import.meta.url);
 const p13 = (name: string) => readFileSync(new URL(`fixtures/policy-rules/p13/${name}`, ROOT), "utf8");
 const POLICY_PATH = ".pharn/policy.json";
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Report = { verdict: string; messages: { code: string; level: string }[]; policy?: { violations: Violation[] } };
-type Side = { unavailable?: string; files?: { path: string; text: string }[]; dropped?: unknown[] };
-type Input = Record<string, unknown> & { selfModificationSources?: { base: Side; head: Side } };
+/** A side of the sources as the assertions read it: either variant of core's TestSourceSide, its fields optional. */
+type Side = Partial<Extract<TestSourceSide, { files: unknown }>> & { unavailable?: string };
+type Input = Omit<CheckInput, "selfModificationSources"> & { selfModificationSources?: { base: Side; head: Side } };
 
 let dir: string;
 let mainId: string;
@@ -91,8 +91,8 @@ async function actionRun(author: { login: string; type: string }, inputs: Record
       },
     },
   });
-  const io = createNodeIo(dir) as unknown as Record<string, unknown>;
-  const deps = h.deps as unknown as Record<string, unknown>;
+  const io = createNodeIo(dir);
+  const deps = h.deps;
   Object.assign(deps, {
     workspace: dir,
     readFile: realReadFile,

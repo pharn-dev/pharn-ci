@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
+import type { Report } from "@pharn-ci/core";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { afterAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
@@ -61,8 +62,6 @@ const envelope = (messageMaxBytes: number) => ({
 const LONG_PATH = `reports/${"m".repeat(2062)}.info`;
 const LONG_TEXT = `Coverage file not found: ${LONG_PATH}`;
 
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; meta?: Record<string, unknown> };
 interface FetchCall {
   url: string;
   method: string;

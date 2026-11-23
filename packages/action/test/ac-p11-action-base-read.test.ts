@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
@@ -20,14 +21,6 @@ const LOCAL_BASE = "a".repeat(40);
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const HEAD_SHA = "2222222222222222222222222222222222222222";
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  meta?: Record<string, unknown>;
-  policy?: { violations: Violation[] };
-};
 type BatchCall = { args: string[]; input: string };
 
 async function realReadFile(path: string): Promise<string | null> {

@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { runGitBatch } from "../../node-io/src/io.js";
@@ -25,9 +26,6 @@ const BASE_SHA = "1111111111111111111111111111111111111111";
 const HEAD_SHA = "2222222222222222222222222222222222222222";
 const LOG_PREFIX = "pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ";
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 type BatchCall = { args: string[]; input: string };
 
 let dir: string;

@@ -39,6 +39,7 @@ function options(token: string) {
   const octokit = fakeOctokit();
   const getOctokit = vi.fn(() => octokit);
   const repo = vi.fn(() => REPO);
+  // The fake Octokit is deliberately partial (only the calls createGitHubApi makes), so it is cast.
   const opts = { token, repo, getOctokit } as unknown as GitHubApiOptions;
   return { opts, octokit, getOctokit, repo };
 }

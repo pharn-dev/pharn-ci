@@ -1,3 +1,4 @@
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness } from "./harness.js";
@@ -32,11 +33,6 @@ const PR_META_CONTEXT = {
 };
 const TARGET_CONTEXT = { ...PR_META_CONTEXT, eventName: "pull_request_target" };
 
-type Report = {
-  verdict: string;
-  messages: Array<{ code: string; level: string; text: string }>;
-  meta?: Record<string, unknown>;
-};
 interface Call {
   method: string;
   url: string;

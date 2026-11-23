@@ -1,4 +1,5 @@
 import { gunzipSync } from "node:zlib";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { commentScopeLine } from "../src/run.js";
@@ -50,8 +51,6 @@ const PUSH_CONTEXT = {
   actor: "octocat",
   payload: { repository: { full_name: "acme/widgets", id: 42 }, before: "a".repeat(40) },
 };
-
-type Report = { verdict: string; meta?: Record<string, unknown> };
 
 interface FetchCall {
   url: string;

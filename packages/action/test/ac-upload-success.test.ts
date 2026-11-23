@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { commentScopeLine } from "../src/run.js";
@@ -40,8 +41,6 @@ const META_CONTEXT = {
     pull_request: { number: 7, base: { sha: "a".repeat(40) }, head: { sha: "b".repeat(40) } },
   },
 };
-
-type Report = { verdict: string; meta?: Record<string, unknown> };
 
 interface FetchCall {
   url: string;

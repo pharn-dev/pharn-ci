@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
@@ -14,9 +15,6 @@ const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 const TOKEN = "tok-SECRET-123"; // gitleaks:allow (a fake OIDC token the test proves is never printed)
 const NOW = new Date("2026-10-26T12:00:00.000Z");
 const ABSENT = Symbol("absent");
-
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[] };
 
 interface TokenRunOptions {
   policy: string;

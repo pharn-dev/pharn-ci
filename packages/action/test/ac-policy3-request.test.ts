@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { VERSION } from "../../core/src/version.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
@@ -18,11 +20,6 @@ const TOKEN = "tok-SECRET-123"; // gitleaks:allow (a fake OIDC token the test pr
 const REPO = "acme/widgets";
 const NOW = new Date("2026-10-26T12:00:00.000Z");
 const EVIL = "https://evil.example/";
-
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; diffCoverage: { threshold: number | null } | null } & {
-  testIntegrity: { mode: string; source: string };
-};
 
 interface FetchCall {
   url: string;
@@ -64,7 +61,7 @@ function fakeFetch(answers: readonly Answer[]) {
 
 /** A fresh response per call: JSON content type when there is a body. */
 const respond =
-  (status: number, body: string | null = null, headers: Record<string, string> = {}): Answer =>
+  (status: number, body: string | null = null, headers: Record<string, string> = {}): Exclude<Answer, Error> =>
   () =>
     new Response(body, {
       status,

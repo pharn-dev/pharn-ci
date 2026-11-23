@@ -48,7 +48,7 @@ async function apiOver(tree: { entries: TreeEntry[]; truncated: boolean }) {
       return fake.octokit;
     }) as never,
   });
-  return { api: api as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>, ...fake };
+  return { api, ...fake };
 }
 
 const ENTRIES: TreeEntry[] = [

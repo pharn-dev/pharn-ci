@@ -39,7 +39,7 @@ async function apiOver(responses: { listCommits?: Response[]; get?: Response }) 
     repo: () => REPO,
     getOctokit: (() => fake.octokit) as never,
   });
-  return { api: api as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>, ...fake };
+  return { api, ...fake };
 }
 
 const COMMITS = [

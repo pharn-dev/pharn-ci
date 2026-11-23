@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT, WORKSPACE } from "./harness.js";
@@ -14,15 +15,6 @@ const newer = (name: string) => read(`fixtures/policy-api/newer/${name}`);
 
 const REPO = "acme/widgets";
 const POLICY_PATH = ".pharn/policy.json";
-
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  diffCoverage: { threshold: number | null; excludedFiles?: string[] } | null;
-  testIntegrity: { mode: string; source: string };
-  policy?: { source: string; violations: { id: string; path: string | null }[] };
-};
 
 /** A change adding two covered lines to src/a.ts (a protected path) and two uncovered lines to gen/b.ts (excluded). */
 const DIFF = [

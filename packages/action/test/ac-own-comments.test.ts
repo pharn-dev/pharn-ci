@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { AgentPrFacts } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 import { commentScopeLine, type IssueComment, ownComments, prWriterLogins, run } from "../src/run.js";
 
 // CORE-120: with an unknown viewer (the default GITHUB_TOKEN or an App token), pharn-ci does not adopt a marker comment
@@ -138,7 +138,7 @@ async function runOnce(store: IssueComment[], opts: RunOptions): Promise<Calls> 
   const inputs: Record<string, string> = { "coverage-file": "coverage/lcov.info", comment: "true", config: "" };
   const files: Record<string, string> = { [`${WORKSPACE}/coverage/lcov.info`]: fixture("golden/coverage.info") };
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? "",
     context: {
       eventName: "pull_request",
@@ -209,7 +209,7 @@ async function runOnce(store: IssueComment[], opts: RunOptions): Promise<Calls> 
 const AGENT_AUTHOR = { login: AGENT_BOT, type: "Bot" };
 const HUMAN_AUTHOR = { login: PERSON, type: "User" };
 const AGENT_COMMITS = [{ author: { login: COMMIT_BOT }, committer: { login: "web-flow" } }];
-const thisRun = (body: string | undefined) => (body ?? "").startsWith(`${MARKER}\n${SCOPE}\n`);
+const thisRun = (body: string | null | undefined) => (body ?? "").startsWith(`${MARKER}\n${SCOPE}\n`);
 
 describe("CORE-120: the action does not adopt the agent's comment", () => {
   it("unknown viewer: a marker comment by the PR author's bot is not adopted; pharn-ci posts its own", async () => {

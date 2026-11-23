@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // AC test for f16-comment-truncation (AC-2). run() is imported inside the test body. The Action runs against
 // in-memory deps for a pull_request event with comment "true"; the body handed to createComment is captured.
@@ -33,7 +33,7 @@ function fakeAction(inputs: Record<string, string>, extraTracked: string[]) {
   const tracked = [...fixture("golden/files.txt").trim().split("\n"), ...extraTracked];
   const contents = new Map([[resolve(WORKSPACE, "coverage.info"), fixture("golden/coverage.info")]]);
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

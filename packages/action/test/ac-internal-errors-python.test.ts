@@ -2,7 +2,9 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { PythonSourceFile as PyFile, PythonSpawnResult as SpawnResult } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import type { PythonSpawn as Spawn } from "../../node-io/src/index.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
 // run(), main(), createNodeIo(), nodeDeps() and indexPythonTests() are loaded inside the test body: the AC test is
@@ -38,16 +40,7 @@ const PY_BASE = "def test_adds():\n    assert 1 + 1 == 2\n\n\ndef test_subtracts
 const PY_HEAD = "def test_adds():\n    assert 1 + 1 == 2\n";
 const UNAVAILABLE = /Python test index is unavailable/;
 
-type SpawnResult = {
-  errorCode: string | null;
-  timedOut: boolean;
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-};
-type Spawn = (command: string, args: readonly string[], options: unknown, stdin: string) => Promise<SpawnResult>;
-type PyFile = { path: string; text: string };
-type IndexPythonTests = (files: readonly PyFile[], deps: { spawn: Spawn }) => Promise<unknown>;
+type IndexPythonTests = typeof import("../../node-io/src/index.js").indexPythonTests;
 
 const outcome = (fields: Partial<SpawnResult>): SpawnResult => ({
   errorCode: null,
@@ -123,13 +116,13 @@ afterAll(() => {
 });
 
 async function loadIndex(): Promise<IndexPythonTests> {
-  const io = (await import("../../node-io/src/index.js")) as unknown as { indexPythonTests: IndexPythonTests };
+  const io = await import("../../node-io/src/index.js");
   return io.indexPythonTests;
 }
 
 /** The Action over the repository, test-integrity block, with the Python index run through the given fake spawn. */
 async function actionRun(spawn: Spawn) {
-  const { run } = (await import("../src/run.js")) as unknown as { run(deps: never): Promise<unknown> };
+  const { run } = await import("../src/run.js");
   const { createNodeIo } = await import("../src/node-io.js");
   const indexPythonTests = await loadIndex();
   const h = harness({
@@ -140,8 +133,8 @@ async function actionRun(spawn: Spawn) {
       payload: { pull_request: { number: 7, base: { sha: baseId }, head: { sha: headId } } },
     },
   });
-  const io = createNodeIo(dir) as unknown as Record<string, unknown>;
-  const deps = h.deps as unknown as Record<string, unknown>;
+  const io = createNodeIo(dir);
+  const deps = h.deps;
   deps.workspace = dir;
   deps.git = io.git;
   deps.gitStream = io.gitStream;
@@ -165,10 +158,7 @@ async function cliRun(spawn: Spawn) {
   const { main } = await import("../../cli/src/main.js");
   const { nodeDeps } = await import("../../cli/src/nodeDeps.js");
   const indexPythonTests = await loadIndex();
-  const deps = nodeDeps(dir) as unknown as Record<string, unknown> & {
-    stdout(text: string): void;
-    stderr(text: string): void;
-  };
+  const deps = nodeDeps(dir);
   let stdout = "";
   let stderr = "";
   deps.stdout = (text) => {

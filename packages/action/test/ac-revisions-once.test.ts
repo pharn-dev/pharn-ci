@@ -146,6 +146,7 @@ async function actionRun(base: string): Promise<string[][]> {
     readFileStream: (path) => io.readFileStream(path),
     listDir: (path) => io.listDir(path),
     lstat: io.lstatPath,
+    fetch: refuse,
     writeFile: async () => {},
     resolvePath: (...segments) => resolve(...segments),
     info: () => {},

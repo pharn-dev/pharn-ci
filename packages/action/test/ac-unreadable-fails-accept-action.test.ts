@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
@@ -62,15 +63,9 @@ afterAll(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-type Message = { level: string; code: string; text: string };
-interface Report {
-  verdict: string;
-  messages: Message[];
-}
-
 /** One pull_request Action run in mode block whose accept label's newest `labeled` event was made by `actor`. */
 async function labelledRun(actor: { login: string; type: string }) {
-  const { run } = (await import("../src/run.js")) as unknown as { run(deps: never): Promise<unknown> };
+  const { run } = await import("../src/run.js");
   const { createNodeIo } = await import("../src/node-io.js");
   const h = harness({
     inputs: { "test-integrity": "block" },
@@ -80,8 +75,8 @@ async function labelledRun(actor: { login: string; type: string }) {
       payload: { pull_request: { number: 7, base: { sha: baseId }, head: { sha: headId } } },
     },
   });
-  const io = createNodeIo(dir) as unknown as Record<string, unknown>;
-  const deps = h.deps as unknown as Record<string, unknown>;
+  const io = createNodeIo(dir);
+  const deps = h.deps;
   deps.workspace = dir;
   deps.git = io.git;
   deps.gitStream = io.gitStream;
@@ -100,7 +95,7 @@ async function labelledRun(actor: { login: string; type: string }) {
   deps.api = {
     ...h.deps.api,
     async getPullRequestSignoff(_pullNumber: number) {
-      return { author: AUTHOR, labels: [{ name: LABEL, color: "0e8a16" }] };
+      return { author: AUTHOR, labels: [{ name: LABEL, color: "0e8a16" }], commits: undefined };
     },
     async listIssueEvents(_issueNumber: number, page: number) {
       eventCalls.push(page);

@@ -3,8 +3,10 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import type { TextCheckInput } from "../../core/test/text-coverage.js";
 import { runGitBatch } from "../../node-io/src/io.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
@@ -36,15 +38,7 @@ const CLAUDE = `# Claude\n\nRun \`npm install\`.\n\nThe token is ${TOKEN} for th
 const MCP = '{\n  "mcpServers": {}\n}\n';
 const TRACKED = ["AGENTS.md", "CLAUDE.md", ".mcp.json", POLICY_PATH, "README.md", "src/math.ts"];
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 type BatchCall = { args: string[]; input: string };
-interface Core {
-  check(input: unknown): unknown;
-  agentConfigSecretPaths(inventory: unknown): string[];
-  scanAgentSetup(paths: readonly string[]): unknown;
-}
 
 let dir: string;
 
@@ -85,7 +79,7 @@ const a7 = (report: Report) => report.messages.filter((m) => m.code.startsWith("
 const p07 = (report: Report) => (report.policy?.violations ?? []).filter((v) => v.id === "P07");
 const linesOf = (call: BatchCall) => call.input.split("\n").filter((l) => l.length > 0);
 
-function checkInput(configText: string) {
+function checkInput(configText: string): TextCheckInput {
   return {
     version: "0.1.0",
     coverage: { text: read("fixtures/golden/coverage.info"), format: "lcov" },
@@ -110,7 +104,7 @@ describe("P07's instruction text never reaches check A7's secret scan", { timeou
     const core = {
       ...(await import("@pharn-ci/core")),
       check: (await import("../../core/test/text-coverage.js")).check,
-    } as unknown as Core;
+    };
     const selected = core.agentConfigSecretPaths(core.scanAgentSetup(TRACKED));
     expect(selected).toEqual([".mcp.json"]);
 

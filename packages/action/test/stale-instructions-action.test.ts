@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { withoutFix } from "../../core/test/v090-codes.js";
@@ -20,13 +21,6 @@ const AGENTS = "# Agents\n\nThe old helpers are in `src/legacy.ts`; read [the ol
 const TRACKED = ["AGENTS.md", "README.md", "src/math.ts", "src/new.ts", "src/utils/new-name.ts"];
 const LOG_PREFIX =
   "pharn-ci: could not read the agent instruction files from git, so stale instructions are not checked: ";
-
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  setupHealth?: { stale: { id: string; path: string; line: number; kind: string; token?: string }[] };
-};
 
 let dir: string;
 

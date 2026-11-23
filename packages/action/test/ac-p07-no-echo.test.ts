@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { runGitBatch } from "../../node-io/src/io.js";
@@ -60,14 +61,6 @@ function strayWords(text: string): string[] {
   return stray;
 }
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & { messages: Message[]; policy?: { violations: Violation[] } };
-interface Core {
-  check(input: unknown): Report;
-  renderMarkdown(report: Report): string;
-}
-
 async function realReadFile(path: string): Promise<string | null> {
   try {
     return await readFile(path, "utf8");
@@ -110,7 +103,7 @@ describe("P07 never echoes instruction file text", { timeout: 180_000 }, () => {
     const core = {
       ...(await import("@pharn-ci/core")),
       check: (await import("../../core/test/text-coverage.js")).check,
-    } as unknown as Core;
+    };
     const report = core.check({
       version: "0.1.0",
       coverage: { text: read("fixtures/golden/coverage.info"), format: "lcov" },

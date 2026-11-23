@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // check(), run() and the fixtures are loaded inside each test body: the AC tests are written before the tracked
 // coverage file warning and fixtures/gate-tamper/ exist, so nothing that depends on them may run while the file loads.
@@ -15,9 +16,6 @@ const lines = (path: string) => fixture(path).trim().split("\n");
 const WORKSPACE = "/home/runner/work/demo/demo";
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const HEAD_SHA = "2222222222222222222222222222222222222222";
-
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[] };
 
 const withCode = (report: Report, code: string) => report.messages.filter((message) => message.code === code);
 
@@ -35,7 +33,7 @@ async function runCheck(file: string | undefined, tracked: string): Promise<Repo
     threshold: 80,
     repoFiles: lines(`gate-tamper/${tracked}`),
   };
-  return check(input as Parameters<typeof check>[0]) as unknown as Report;
+  return check(input);
 }
 
 // What the runner passes when an input is not set: the action.yml default, else "".
@@ -54,7 +52,7 @@ async function runAction(inputs: Record<string, string>) {
   const diff = fixture("gate-tamper/untouched.diff");
   const tracked = lines("gate-tamper/files-with-coverage.txt");
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

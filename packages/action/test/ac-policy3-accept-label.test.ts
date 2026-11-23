@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
@@ -20,14 +21,6 @@ const APP_LABEL = "org/ok";
 const INPUT_LABEL = "team/ok";
 const GOLDEN_ROOT = "/home/runner/work/demo/demo";
 const NOW = new Date("2026-10-26T12:00:00.000Z");
-
-type Signal = { id: string; severity: string };
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  testIntegrity: { signals: Signal[]; accepted?: { label: string; by: string | null } | null; acceptLabel?: string };
-};
 
 async function realReadFile(path: string): Promise<string | null> {
   try {
@@ -66,12 +59,16 @@ async function labelRun(dir: string, policy: string, envelope?: string) {
       return diff;
     },
     async getPullRequestSignoff() {
-      return { author: { login: "claude[bot]", type: "Bot" }, labels: [{ name: APP_LABEL, color: "0e8a16" }] };
+      return {
+        author: { login: "claude[bot]", type: "Bot" },
+        labels: [{ name: APP_LABEL, color: "0e8a16" }],
+        commits: undefined,
+      };
     },
     async listIssueEvents(_issue: number, page: number) {
       return { events: page === 1 ? EVENTS : [], hasNext: false };
     },
-  } as typeof h.deps.api;
+  };
   const calls: string[] = [];
   Object.assign(h.deps, {
     workspace: dir,

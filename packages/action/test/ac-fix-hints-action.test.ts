@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
 import { expectValidReport } from "../../core/test/schema.js";
@@ -16,9 +17,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const HEAD_SHA = "2222222222222222222222222222222222222222";
 const COVERAGE = "coverage/lcov.info";
-
-type Fix = { kind: string; target?: string; hint: string };
-type Report = { tool: { name: string; version: string }; messages: { code: string; fix?: Fix }[] };
 
 /** fixtures/golden/report.json as this build reports it: the CLI and the Action report the package VERSION. */
 const goldenReport = () => {
@@ -142,9 +140,7 @@ describe("the Action and the CLI write fix hints", { timeout: 120_000 }, () => {
     expect(cli.streamCalls.length, "the CLI streamed its diff").toBeGreaterThan(0);
     expect(cli.report).toEqual(goldenReport());
 
-    const core = (await import("../../core/src/fix/table.js")) as unknown as {
-      MESSAGE_FIXES?: Record<string, { kind: string; hint: string }>;
-    };
+    const core = await import("../../core/src/fix/table.js");
     expect(core.MESSAGE_FIXES, "MESSAGE_FIXES is exported").toBeDefined();
     for (const [who, report] of [
       ["Action", action.report],

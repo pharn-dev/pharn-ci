@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { UploadOutcome as Outcome, Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { withoutFix } from "../../core/test/v090-codes.js";
@@ -45,15 +46,6 @@ const META_CONTEXT = {
     pull_request: { number: 7, base: { sha: "a".repeat(40) }, head: { sha: "b".repeat(40) } },
   },
 };
-
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; meta?: Record<string, unknown> };
-interface Outcome {
-  status: string;
-  reason?: string;
-  maxBytes?: number | null;
-  runUrl?: string;
-}
 
 interface FetchCall {
   url: string;
@@ -205,9 +197,7 @@ function metaReport(): Promise<Report> {
 }
 
 async function directUpload(answers: Answers, options: { timeoutMs?: number } = {}) {
-  const { runUpload } = (await import("../src/upload.js")) as unknown as {
-    runUpload(deps: unknown, input: unknown): Promise<Outcome>;
-  };
+  const { runUpload } = await import("../src/upload.js");
   const report = await metaReport();
   const app = fakeApp(answers);
   const infos: string[] = [];
@@ -301,7 +291,7 @@ describe("upload-url failures", { timeout: 120_000 }, () => {
   });
 
   it("AC-20: each malformed upload-url 200 answer ends failed/upload-url:malformed with no PUT, and a valid answer with extra keys ends ok", async () => {
-    const { APP_MAX_BODY_BYTES } = (await import("../src/app-client.js")) as unknown as { APP_MAX_BODY_BYTES: number };
+    const { APP_MAX_BODY_BYTES } = await import("../src/app-client.js");
     expect(APP_MAX_BODY_BYTES, "control: the read cap").toBeGreaterThan(0);
     const valid = (patch: Record<string, unknown>) => json(200, { ...UPLOAD_URL_OK, ...patch });
     const cases: Array<[string, Answer]> = [

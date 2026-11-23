@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit && node ../../scripts/bundle.mjs src/index.ts dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json"
   },
   "dependencies": {
     "@actions/core": "^3.0.1",

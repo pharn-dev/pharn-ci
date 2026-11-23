@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { Message, TestIntegritySignal as Signal } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
@@ -20,8 +21,6 @@ const BOT_AUTHOR = { login: "claude[bot]", type: "Bot" };
 
 type Kind = "pull_request" | "pr-number";
 type Page = { events: unknown; hasNext: boolean };
-type Signal = { id: string; severity: string; path: string; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
 
 interface SignoffOptions {
   kind?: Kind;

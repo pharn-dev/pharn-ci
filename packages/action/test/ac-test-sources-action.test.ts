@@ -2,9 +2,10 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import type { CheckInput, TestSourceSide } from "@pharn-ci/core";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
 // check() is observed, not replaced: the mock calls the real check() and records the input the Action built, which
@@ -29,9 +30,9 @@ function expectValid(report: unknown, label: string) {
   expect(validate(report), `${label}: ${JSON.stringify(validate.errors)}`).toBe(true);
 }
 
-type SourceFile = { path: string; text: string };
-type Side = { unavailable?: string; files?: SourceFile[]; dropped?: unknown[] };
-type Input = Record<string, unknown> & { testSources?: { base: Side; head: Side } };
+/** A side of the sources as the assertions read it: either variant of core's TestSourceSide, its fields optional. */
+type Side = Partial<Extract<TestSourceSide, { files: unknown }>> & { unavailable?: string };
+type Input = Omit<CheckInput, "testSources"> & { testSources?: { base: Side; head: Side } };
 type Run = (deps: never) => Promise<unknown>;
 
 const MAIN_TEXT = 'import { it } from "vitest";\nit("adds", () => {});\n';
@@ -69,7 +70,7 @@ afterAll(() => {
 });
 
 async function load() {
-  const { run } = (await import("../src/run.js")) as unknown as { run: Run };
+  const { run } = await import("../src/run.js");
   const { createNodeIo } = await import("../src/node-io.js");
   const core = await import("@pharn-ci/core");
   return { run, createNodeIo, spy: vi.mocked(core.check) };
@@ -114,14 +115,14 @@ describe("action: test sources", () => {
           payload: { pull_request: { number: 7, base: { sha: mainId }, head: { sha: headId } } },
         },
       });
-      const io = createNodeIo(dir) as unknown as Record<string, (...args: never[]) => unknown>;
+      const io = createNodeIo(dir);
       const calls: string[][] = [];
       const rec = recorder(calls);
-      const deps = h.deps as unknown as Record<string, unknown>;
+      const deps = h.deps;
       deps.workspace = dir;
-      deps.git = rec.wrap(io.git as (args: string[]) => Promise<string>);
-      deps.gitStream = rec.wrap(io.gitStream as (args: string[]) => AsyncIterable<string>);
-      if (io.gitBatch) deps.gitBatch = rec.wrap(io.gitBatch as (args: string[], input: string) => Promise<Uint8Array>);
+      deps.git = rec.wrap(io.git);
+      deps.gitStream = rec.wrap(io.gitStream);
+      if (io.gitBatch) deps.gitBatch = rec.wrap(io.gitBatch);
       deps.listDir = io.listDir;
       spy.mockClear();
       await run(h.deps as never);
@@ -149,7 +150,7 @@ describe("action: test sources", () => {
     async function compareRun(inputs: Record<string, string>) {
       const h = harness({ localGit: false, inputs });
       const batchCalls: string[][] = [];
-      (h.deps as unknown as Record<string, unknown>).gitBatch = async (args: string[]) => {
+      h.deps.gitBatch = async (args: string[]) => {
         batchCalls.push([...args]);
         return new Uint8Array();
       };
@@ -207,7 +208,7 @@ async function prNumberRun(run: Run, extraInputs: Record<string, string>) {
   const written = new Map<string, string>();
   const files = new Map([[resolve(WORKSPACE, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "workflow_run",

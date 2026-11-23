@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // run() is loaded inside each test body, like the other AC tests: they are written before the build.
 // The Action runs against in-memory deps for a pull_request_target event. Its git answers `rev-parse HEAD` with the
@@ -25,11 +26,6 @@ const INPUT_DEFAULTS: Record<string, string> = {
   config: "",
 };
 
-type Report = {
-  verdict: string;
-  messages: { code: string; level: string; text: string }[];
-};
-
 async function runOnPullRequestTarget(localHead: string) {
   const { run } = await import("../src/run.js");
   const inputs: Record<string, string> = { "coverage-file": "coverage/lcov.info", threshold: "80" };
@@ -39,7 +35,7 @@ async function runOnPullRequestTarget(localHead: string) {
   const gitCalls: string[][] = [];
   const files = new Map([[resolve(WORKSPACE, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request_target",
