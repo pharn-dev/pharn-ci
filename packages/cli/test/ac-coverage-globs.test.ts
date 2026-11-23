@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import type { DirEntry, Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // main() and the fixtures are loaded inside each test body: the AC tests are written before coverage globs and
 // fixtures/golden-multi/ and fixtures/coverage-multi/ exist, so nothing that depends on them may run while the file
@@ -13,8 +14,6 @@ const fixture = (path: string) => readFileSync(new URL(path, FIXTURES), "utf8");
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const SHA = "1111111111111111111111111111111111111111";
-
-type DirEntry = { name: string; kind: "file" | "directory" | "symlink" | "other" };
 
 interface RepoOptions {
   /** Repo-relative path -> file content. Directories are implied by the paths. */
@@ -50,7 +49,7 @@ function fakeRepo(options: RepoOptions) {
   }
 
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: options.cwd ?? REPO_ROOT,
     git: async (args: string[]) => {
       if (args.includes("ls-files")) {
@@ -102,16 +101,6 @@ async function runCli(argv: string[], options: RepoOptions) {
   const code = await main(argv, repo.deps as never);
   return { code, ...repo };
 }
-
-type Report = {
-  verdict: string;
-  diffCoverage: {
-    coveredLines: number;
-    coverableLines: number;
-    files: { path: string; coveredLines: number; coverableLines: number }[];
-  } | null;
-  messages: { level: string; code: string; text: string }[];
-};
 
 const measured = (report: Report) =>
   report.diffCoverage?.files.map(({ path, coveredLines, coverableLines }) => ({ path, coveredLines, coverableLines }));

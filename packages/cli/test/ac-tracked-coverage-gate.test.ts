@@ -1,8 +1,9 @@
 import { resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { fixture } from "../../core/test/helpers.js";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // CORE-92 (R3.1), through the CLI and the Action: a coverage report the pull request commits at the path the gate
 // reads fails a run with a threshold. main() and run() are loaded inside each test body: the tests are written before
@@ -13,9 +14,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const HEAD_SHA = "2222222222222222222222222222222222222222";
 const COVERAGE = "coverage/lcov.info";
-
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[] };
 
 const tracked = (report: Report) => report.messages.filter((message) => message.code === "COVERAGE_FILE_TRACKED");
 
@@ -38,10 +36,11 @@ async function runCli(threshold: number | null, diff: string): Promise<{ code: n
   const out: string[] = [];
   const files = contents();
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: REPO_ROOT,
     git: fakeGit(diff),
     readFile: async (path: string) => files.get(path) ?? null,
+    listDir: () => Promise.reject(new Error("unexpected listDir")),
     resolvePath: (...segments: string[]) => resolve(...segments),
     stdout: (text: string) => {
       out.push(text);
@@ -77,7 +76,7 @@ async function runAction(threshold: number | null, diff: string): Promise<{ fail
     ...(threshold === null ? {} : { threshold: String(threshold) }),
   };
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 import { fakeConfigGit } from "./config-git-fake.js";
 
 // check(), main(), run() and the fixtures are loaded inside each test body: the AC tests are written before the
@@ -17,9 +18,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const HEAD_SHA = "2222222222222222222222222222222222222222";
 
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[] };
-
 const withCode = (report: Report, code: string) => report.messages.filter((message) => message.code === code);
 
 async function runCheck(diff: string, configPath?: string): Promise<Report> {
@@ -33,7 +31,7 @@ async function runCheck(diff: string, configPath?: string): Promise<Report> {
     repoFiles: lines("gate-tamper/files.txt"),
     ...(configPath === undefined ? {} : { configPath }),
   };
-  return check(input as Parameters<typeof check>[0]) as unknown as Report;
+  return check(input);
 }
 
 function fakeGit(diff: string) {
@@ -52,10 +50,11 @@ async function runCli(argv: string[], files: Record<string, string>, diff: strin
   const err: string[] = [];
   const contents = new Map(Object.entries(files).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: REPO_ROOT,
     git: fakeGit(diff),
     readFile: async (path: string) => contents.get(path) ?? null,
+    listDir: () => Promise.reject(new Error("unexpected listDir")),
     resolvePath: (...segments: string[]) => resolve(...segments),
     stdout: (text: string) => {
       out.push(text);
@@ -91,7 +90,7 @@ async function runAction(
   const written = new Map<string, string>();
   const contents = new Map(Object.entries(files).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

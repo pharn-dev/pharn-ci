@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -78,14 +79,6 @@ afterAll(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-
 describe("pharn-ci check: TI06 and TI12 from base and head text", () => {
   it(`AC-16: --test-integrity block reports one warn TI06 and one warn TI12 for ${TEST}, a valid report, and exits 0`, async () => {
     const changed = execFileSync("git", ["diff", "--name-only", baseId, "HEAD"], { cwd: dir, encoding: "utf8" });
@@ -93,7 +86,7 @@ describe("pharn-ci check: TI06 and TI12 from base and head text", () => {
 
     const { main } = await import("../src/main.js");
     const { nodeDeps } = await import("../src/nodeDeps.js");
-    const deps = nodeDeps(dir) as unknown as { stdout(text: string): void; stderr(text: string): void };
+    const deps = nodeDeps(dir);
     let out = "";
     deps.stdout = (text) => {
       out += text;
@@ -102,9 +95,9 @@ describe("pharn-ci check: TI06 and TI12 from base and head text", () => {
 
     const code = await main(
       ["check", "--format", "json", "--test-integrity", "block", "--base", baseId, "--coverage", "coverage/lcov.info"],
-      deps as never,
+      deps,
     );
-    const report = JSON.parse(out) as { testIntegrity: { signals: Signal[] } };
+    const report = JSON.parse(out) as Report;
     expectValidReport(report);
 
     const of = (id: string) => report.testIntegrity.signals.filter((s) => String(s.id) === id);

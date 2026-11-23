@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { EXIT_FAIL, EXIT_OK, main } from "../src/main.js";
@@ -10,12 +11,6 @@ import { coverage, fakeDeps, fixture } from "./fake-deps.js";
 
 // Review finding 13: a --base that resolves to HEAD (or to a commit after it) gives an empty base...HEAD diff, which
 // used to pass as NO_COVERABLE_CHANGES while measuring nothing. It is now DIFF_UNAVAILABLE: a fail with a threshold.
-
-type Report = {
-  verdict: string;
-  diffCoverage: unknown;
-  messages: { code: string; level: string; text: string }[];
-};
 
 const codes = (report: Report) => report.messages.map((m) => m.code);
 

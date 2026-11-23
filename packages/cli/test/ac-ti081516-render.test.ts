@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // check(), renderMarkdown() and main() are loaded inside the test body: the AC tests are written before TI08, TI15
 // and TI16 exist, so nothing the build adds may run while the file loads.
@@ -70,7 +71,7 @@ function fakeRepo(diff: string) {
   const err: string[] = [];
   const contents = new Map([[resolve(REPO_ROOT, "coverage/lcov.info"), fixture("test-files-deleted/coverage.info")]]);
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: REPO_ROOT,
     git: async (args: string[]) => {
       if (args.includes("ls-files")) {
@@ -149,16 +150,17 @@ describe("TI08, TI15 and TI16 in the PR comment and the CLI", () => {
 
     // A report carrying the three messages and no signal renders each code in Messages with its hint, and no hint
     // names an accept label.
-    const messaged = {
+    const messaged: typeof whole = {
       ...whole,
       testIntegrity: { ...whole.testIntegrity, signals: [] },
+      // The codes are built from parts (see `code`), so to the compiler they are strings and not message codes.
       messages: [
         ...whole.messages.filter((m) => !IDS.map(code).includes(String(m.code))),
         { level: "warn", code: code(TI08), text: "message-ti08" },
         { level: "warn", code: code(TI15), text: "message-ti15" },
         { level: "info", code: code(TI16), text: "message-ti16" },
-      ],
-    } as unknown as typeof whole;
+      ] as Message[],
+    };
     expectValidReport(messaged);
     const all = renderMarkdown(messaged).split("\n");
     for (const id of IDS) {

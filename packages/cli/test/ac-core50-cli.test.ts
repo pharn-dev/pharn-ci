@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -59,10 +60,6 @@ afterAll(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-interface Report {
-  testIntegrity: { signals: { id: string; severity: string; path: string; line: number | null; detail: string }[] };
-}
-
 describe("pharn-ci check: a test file deleted under a `-diff` attribute is not hidden", () => {
   it("AC-15: the built CLI on a temporary repository whose head adds `*.test.ts -diff` and deletes src/cart.test.ts exits 1 with the TI01 block in block, and exits 0 with a TI01 warn in warn", async () => {
     expect(
@@ -73,7 +70,7 @@ describe("pharn-ci check: a test file deleted under a `-diff` attribute is not h
     const { main } = await import("../src/main.js");
     const { nodeDeps } = await import("../src/nodeDeps.js");
     const runMode = async (mode: "block" | "warn") => {
-      const deps = nodeDeps(dir) as unknown as { stdout(text: string): void; stderr(text: string): void };
+      const deps = nodeDeps(dir);
       let out = "";
       deps.stdout = (text) => {
         out += text;
@@ -81,7 +78,7 @@ describe("pharn-ci check: a test file deleted under a `-diff` attribute is not h
       deps.stderr = () => {};
       const code = await main(
         ["check", "--format", "json", "--test-integrity", mode, "--base", baseId, "--coverage", "coverage/lcov.info"],
-        deps as never,
+        deps,
       );
       const report = JSON.parse(out) as Report;
       expectValidReport(report);

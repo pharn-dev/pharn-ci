@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { Message } from "../../core/src/report.js";
 import { VERSION } from "../../core/src/version.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { requiredDeps } from "../../node-io/test/required-deps.js";
@@ -230,8 +231,6 @@ async function runAction(inputs: Record<string, string>, fakes: Fakes & { compar
     },
   };
 }
-
-type Message = { level: string; code: string; text: string };
 
 describe("streamed inputs in the CLI and the Action: early stops and failures", () => {
   it("AC-9: a never-ending coverage stream under auto is read only as far as format detection needs", async () => {

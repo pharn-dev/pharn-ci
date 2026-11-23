@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sideFiles } from "../../core/test/dependencies-helpers.js";
 import { expectValidReport } from "../../core/test/schema.js";
@@ -10,16 +11,6 @@ import { expectValidReport } from "../../core/test/schema.js";
 // branch is the d04-lock-untouched fixture case (a dependency added to package.json, pnpm-lock.yaml left alone) plus a
 // git dependency (D05). The CLI runs D04 and D05 from committed objects and never makes a network call, so `lookup`
 // runs as `auto` and says so on stderr.
-
-interface Deps {
-  stdout(text: string): void;
-  stderr(text: string): void;
-}
-type Report = Record<string, unknown> & {
-  verdict: string;
-  messages: { level: string; code: string; text: string }[];
-  dependencies?: { checked: number; lookups: string; signals: { id: string; path: string; line: number | null }[] };
-};
 
 const CASE = new URL("../../../fixtures/dependencies/d04-lock-untouched/", import.meta.url).pathname;
 let dir: string;
@@ -66,7 +57,7 @@ afterAll(() => {
 async function runCli(extra: string[] = []) {
   const { main } = await import("../src/main.js");
   const { nodeDeps } = await import("../src/nodeDeps.js");
-  const deps = nodeDeps(dir) as unknown as Deps;
+  const deps = nodeDeps(dir);
   let out = "";
   let err = "";
   deps.stdout = (text) => {
@@ -77,7 +68,7 @@ async function runCli(extra: string[] = []) {
   };
   const code = await main(
     ["check", "--base", "main", "--coverage", "coverage/lcov.info", "--format", "json", ...extra],
-    deps as never,
+    deps,
   );
   if (out === "") return { code, report: undefined, err };
   const report = JSON.parse(out) as Report;

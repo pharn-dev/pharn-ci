@@ -6,15 +6,6 @@ import { describe, expect, it } from "vitest";
 // runner is a fake that serves `cat-file --batch-check` and `cat-file --batch` from a map of committed blobs and
 // records every call.
 
-type Sources =
-  | { unavailable: string }
-  | { files: { path: string; text: string }[]; dropped: { path: string; reason: string }[] };
-type Reader = (
-  deps: { gitBatch(args: string[], input: string): Promise<Uint8Array> },
-  paths: readonly string[],
-  symlinks: ReadonlySet<string> | null,
-) => Promise<Sources>;
-
 const REGULAR = ".claude/settings.json";
 const LINK = "a/.claude/settings.json";
 const BIG = "b/.claude/settings.json";
@@ -56,7 +47,7 @@ function fakeGit(blobs: Record<string, string>) {
 
 describe("readPolicySettingsSources", () => {
   it("AC-26: no symlink set is unavailable with no git call; with one, symlinks are dropped and never requested, the rest go through one batch-check and one batch with the caps, and dropped is sorted by path", async () => {
-    const nodeIo = (await import("../../node-io/src/index.js")) as unknown as { readPolicySettingsSources: Reader };
+    const nodeIo = await import("../../node-io/src/index.js");
     expect(typeof nodeIo.readPolicySettingsSources, "readPolicySettingsSources is exported").toBe("function");
     const read = nodeIo.readPolicySettingsSources;
     const blobs = { [REGULAR]: REGULAR_TEXT, [LINK]: "../../elsewhere/settings.json", [BIG]: BIG_TEXT };

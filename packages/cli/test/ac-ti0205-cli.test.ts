@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -114,20 +115,12 @@ afterAll(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-
 describe("pharn-ci check: TI02 and TI05 from base and head text, with the Python index", () => {
   it(`AC-14: --test-integrity block reports TI02 and TI05 for ${JS_PATH}, a TI02 for ${PY_PATH} and languages ["py", "ts"], and exits 1`, async () => {
     requirePython();
     const { main } = await import("../src/main.js");
     const { nodeDeps } = await import("../src/nodeDeps.js");
-    const deps = nodeDeps(dir) as unknown as { stdout(text: string): void; stderr(text: string): void };
+    const deps = nodeDeps(dir);
     let out = "";
     deps.stdout = (text) => {
       out += text;
@@ -136,12 +129,9 @@ describe("pharn-ci check: TI02 and TI05 from base and head text, with the Python
 
     const code = await main(
       ["check", "--format", "json", "--test-integrity", "block", "--base", baseId, "--coverage", "coverage/lcov.info"],
-      deps as never,
+      deps,
     );
-    const report = JSON.parse(out) as {
-      testIntegrity: { signals: Signal[]; languages: string[] };
-      messages: { code: string; level: string; text: string }[];
-    };
+    const report = JSON.parse(out) as Report;
     expectValidReport(report);
 
     const removedLine = JS_BASE.findIndex((l) => l.includes('it("rejects a negative price"')) + 1;

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, describe, expect, it } from "vitest";
 
 // main() and nodeDeps() are loaded inside the test body: the test is written before the CLI gathers agent config
@@ -20,14 +21,6 @@ function cut(n: number, seed: number): string {
   for (let i = 0; i < n; i++) s += ALPHABET[(seed + i * 7) % ALPHABET.length];
   return s;
 }
-
-interface Deps {
-  git(args: string[]): Promise<string>;
-  gitBatch?(args: string[], input: string): Promise<Uint8Array>;
-  stdout(text: string): void;
-  stderr(text: string): void;
-}
-type Report = { verdict: string; messages: { level: string; code: string; text: string }[] };
 
 const dirs: string[] = [];
 afterAll(() => {
@@ -64,7 +57,7 @@ function repo(files: Record<string, string>): string {
 async function runCli(dir: string, format: string[]) {
   const { main } = await import("../src/main.js");
   const { nodeDeps } = await import("../src/nodeDeps.js");
-  const deps = nodeDeps(dir) as unknown as Deps;
+  const deps = nodeDeps(dir);
   const calls: string[][] = [];
   const realGit = deps.git;
   deps.git = (args) => {
@@ -83,7 +76,7 @@ async function runCli(dir: string, format: string[]) {
     out += text;
   };
   deps.stderr = () => {};
-  const code = await main(["check", "--base", "main", "--coverage", "coverage/lcov.info", ...format], deps as never);
+  const code = await main(["check", "--base", "main", "--coverage", "coverage/lcov.info", ...format], deps);
   return { code, out, calls };
 }
 

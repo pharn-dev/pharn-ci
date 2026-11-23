@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // check(), renderMarkdown(), readDiffChunks() and main() are loaded inside the test body: the AC tests are written
 // before TI10 and TI13 exist, so nothing the build adds may run while the file loads.
@@ -52,7 +52,7 @@ function fakeRepo(diff: string) {
   const err: string[] = [];
   const contents = new Map([[resolve(REPO_ROOT, "coverage/lcov.info"), fixture("test-files-deleted/coverage.info")]]);
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: REPO_ROOT,
     git: async (args: string[]) => {
       // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.

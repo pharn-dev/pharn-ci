@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // main() and the fixtures are loaded inside each test body: the AC tests are written before --expect-agent-setup and
 // fixtures/setup-expect/ exist, so nothing that depends on them may run while the file loads. The CLI runs against
@@ -47,7 +48,7 @@ async function runCli(flags: string[], config?: string) {
   let out = "";
   let err = "";
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: "/repo/sub",
     async git(args: string[]) {
       gitCalls.push(args);
@@ -72,8 +73,6 @@ async function runCli(flags: string[], config?: string) {
   const code = await main(["check", "--coverage", "lcov.info", "--format", "json", ...flags], deps as never);
   return { code, stdout: out, stderr: err, gitCalls };
 }
-
-type Report = { verdict: string; agentSetup: { missing?: string[] } };
 
 describe("pharn-ci check --expect-agent-setup", () => {
   it("AC-8: names the expected tools with no setup file in the JSON report and exits 0, adding to setup.expect", async () => {

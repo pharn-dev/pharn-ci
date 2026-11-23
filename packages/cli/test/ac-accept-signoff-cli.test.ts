@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // main() and the core functions are loaded inside the test body, and the fixtures under fixtures/accept-label/ are read
 // there too: the AC tests are written before the accept label exists, so nothing the build adds may run while the
@@ -20,7 +20,7 @@ function fakeRepo(diff: string, files: string[]) {
   const err: string[] = [];
   const contents = new Map([[resolve(REPO_ROOT, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: REPO_ROOT,
     git: async (args: string[]) => {
       // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 const ROOT = new URL("../../../", import.meta.url);
 const readRoot = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
@@ -16,7 +16,7 @@ function fakeRepo(files: Record<string, string>) {
   const err: string[] = [];
   const contents = new Map(Object.entries(files).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: REPO_ROOT,
     git: async (args: string[]) => {
       // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.

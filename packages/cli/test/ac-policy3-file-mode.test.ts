@@ -2,10 +2,11 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { harness, PR_CONTEXT } from "../../action/test/harness.js";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // run(), main(), readPolicyFile() and the fixtures under fixtures/policy-api/ and fixtures/policy-precedence/ are
 // loaded inside each test body: the AC tests are written before the file: policy mode exists, so nothing the build
@@ -20,13 +21,6 @@ const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 const TOKEN = "tok-SECRET-123"; // gitleaks:allow (a fake OIDC token the test proves is never printed)
 const NOW = new Date("2026-10-26T12:00:00.000Z");
 const GOLDEN_ROOT = "/home/runner/work/demo/demo";
-
-type Message = { level: string; code: string; text: string };
-type Report = {
-  messages: Message[];
-  diffCoverage: { threshold: number | null; excludedFiles?: string[] } | null;
-  testIntegrity: { mode: string; source: string };
-};
 
 async function realReadFile(path: string): Promise<string | null> {
   try {
@@ -85,7 +79,7 @@ async function cliRun(dir: string, extra: string[]) {
   const err: string[] = [];
   const tracked = read("fixtures/golden/files.txt").trim().split("\n");
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: dir,
     git: async (args: string[]) => {
       if (args.includes("ls-files")) return args.includes("-z") ? `${tracked.join("\0")}\0` : `${tracked.join("\n")}\n`;
@@ -158,14 +152,11 @@ describe("the file: policy mode", () => {
       expect(cliReport.testIntegrity.source).toBe("policy");
       expect(policyMessages(cliReport)).toEqual(policyMessages(fileReport));
 
-      const nodeIo = (await import("../../node-io/src/index.js")) as unknown as {
-        readPolicyFile: (deps: unknown, options: { root: string; path: string; label: string }) => Promise<unknown>;
-        lstatPath: unknown;
-      };
-      const resolved = (await nodeIo.readPolicyFile(
+      const nodeIo = await import("../../node-io/src/index.js");
+      const resolved = await nodeIo.readPolicyFile(
         { readFile: realReadFile, resolvePath: resolve, lstat: nodeIo.lstatPath },
         { root: dir, path: "policy/org.json", label: "the policy input" },
-      )) as Record<string, unknown>;
+      );
       expect(resolved.source).toBe("file");
       expect(resolved.version).toBeNull();
       expect(resolved.path).toBe("policy/org.json");

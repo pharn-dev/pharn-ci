@@ -16,7 +16,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit && node ../../scripts/bundle.mjs src/index.ts dist/index.js --shebang",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json"
   },
   "devDependencies": {
     "@pharn-ci/core": "workspace:*",

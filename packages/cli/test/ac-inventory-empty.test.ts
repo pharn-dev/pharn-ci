@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { withoutFix } from "../../core/test/v090-codes.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // F-10, inventory quality: an empty agent setup file. main() is loaded inside each test body: the AC tests are written
 // before the build, so nothing that depends on the new `git ls-tree` wiring may run while the file loads. The CLI runs
@@ -47,22 +48,17 @@ function fakeGit(lsTree: "sizes" | "fails") {
   };
 }
 
-type Report = {
-  verdict: string;
-  messages: { code: string; level: string; text: string }[];
-  agentSetup: { files: { path: string }[] };
-};
-
 async function runCli(lsTree: "sizes" | "fails") {
   const { main } = await import("../src/main.js");
   const out: string[] = [];
   const err: string[] = [];
   const contents = new Map([[resolve(REPO_ROOT, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: REPO_ROOT,
     git: fakeGit(lsTree),
     readFile: async (path: string) => contents.get(path) ?? null,
+    listDir: () => Promise.reject(new Error("unexpected listDir")),
     resolvePath: (...segments: string[]) => resolve(...segments),
     stdout: (text: string) => {
       out.push(text);

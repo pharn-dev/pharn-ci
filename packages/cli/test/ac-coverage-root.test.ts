@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 
 // main(), nodeDeps() and the fixtures are loaded inside each test body: the AC tests are written before the coverage
@@ -12,13 +13,6 @@ const FIXTURES = new URL("../../../fixtures/", import.meta.url);
 const fixture = (path: string) => readFileSync(new URL(path, FIXTURES), "utf8");
 
 const TIMEOUT_MS = 120_000;
-
-type Report = {
-  verdict: string;
-  diffCoverage: { files: { path: string; coveredLines: number; coverableLines: number }[] } | null;
-  agentSetup: unknown;
-  messages: { code: string; level: string }[];
-};
 
 /**
  * A monorepo whose base commit tracks AGENTS.md, README.md and packages/core/{package.json,src/b.ts}, and whose

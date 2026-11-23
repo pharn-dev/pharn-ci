@@ -29,9 +29,9 @@ type Result = { ok: boolean; errors?: Array<{ input: string; message: string }>;
 function resolveHosts(hosts: string[], label: string): Result {
   return resolveInputs(
     {},
-    { coverageFile: "coverage/lcov.info", dependencyAllowedHosts: hosts } as never,
-    { ...TEXT, dependencyAllowedHosts: label } as never,
-  ) as unknown as Result;
+    { coverageFile: "coverage/lcov.info", dependencyAllowedHosts: hosts },
+    { ...TEXT, dependencyAllowedHosts: label },
+  );
 }
 
 describe("the allowed-hosts input", () => {

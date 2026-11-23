@@ -2,23 +2,15 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../../core/src/policy/types.js";
 import { expectValidReport } from "../../core/test/schema.js";
 
 // E3 item 23 (policy settings), AC-19. check(), renderMarkdown(), main() and nodeDeps() are loaded inside the test
 // body: the AC test is written before the build adds policy mode, so nothing the build adds may run while this file
 // loads. Every piece of file text that causes a violation or a problem carries a plain lower-case marker word; none
 // may reach the report, the comment or the CLI's output, while the policy's own patterns do.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
-interface Deps {
-  git(args: string[]): Promise<string>;
-  gitBatch?(args: string[], input: string): Promise<Uint8Array>;
-  stdout(text: string): void;
-  stderr(text: string): void;
-}
 
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
@@ -41,7 +33,7 @@ const MARKERS = [
   "envserver",
 ];
 
-const POLICY = {
+const POLICY: PolicyDocument = {
   version: 1,
   setup: {
     forbidden_permissions: ["Bash(curl:*)"],
@@ -136,7 +128,7 @@ function repo(): string {
 async function runCli(dir: string, format: string[]) {
   const { main } = await import("../src/main.js");
   const { nodeDeps } = await import("../src/nodeDeps.js");
-  const deps = nodeDeps(dir) as unknown as Deps;
+  const deps = nodeDeps(dir);
   let out = "";
   let err = "";
   deps.stdout = (text) => {
@@ -146,7 +138,7 @@ async function runCli(dir: string, format: string[]) {
     err += text;
   };
   const args = ["check", "--base", "main", "--coverage", "coverage/lcov.info", "--policy-file", "policy/org.json"];
-  const code = await main([...args, ...format], deps as never);
+  const code = await main([...args, ...format], deps);
   return { code, out, err };
 }
 
@@ -155,9 +147,6 @@ describe("policy mode never echoes file text", () => {
     const core = {
       ...(await import("@pharn-ci/core")),
       check: (await import("../../core/test/text-coverage.js")).check,
-    } as unknown as {
-      check(input: unknown): Report;
-      renderMarkdown(report: unknown): string;
     };
     const report = core.check({
       version: "0.1.0",

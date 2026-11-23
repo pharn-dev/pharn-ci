@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // fix-hints (H6), AC-9. main(), the renderer and the core's fix table are loaded inside the test body: the AC test is
 // written before the build adds the `fix` objects and regenerates the golden report.json files. The CLI runs against
@@ -14,9 +15,6 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const fixture = (path: string) => readFileSync(`${ROOT}fixtures/${path}`, "utf8");
 
-type Fix = { kind: string; target?: string; hint: string };
-type Report = { tool: { name: string; version: string }; messages: { code: string; fix?: Fix }[] };
-
 async function runCli(dir: string, argv: string[], files: Record<string, string>) {
   const { main } = await import("../src/main.js");
   const out: string[] = [];
@@ -24,7 +22,7 @@ async function runCli(dir: string, argv: string[], files: Record<string, string>
   const at = new Map(Object.entries(files).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const tracked = fixture(`${dir}/files.txt`).trim().split("\n");
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: REPO_ROOT,
     git: async (args: string[]) => {
       // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.
@@ -84,9 +82,6 @@ describe("the goldens with fix hints", { timeout: 120_000 }, () => {
     const core = {
       ...(await import("../../core/src/fix/table.js")),
       ...(await import("../../core/src/render/markdown.js")),
-    } as unknown as {
-      renderMarkdown(report: unknown): string;
-      MESSAGE_FIXES?: Record<string, { kind: string; hint: string }>;
     };
     const messages: Array<[string, Report["messages"][number]]> = [];
     for (const { dir, argv, files } of GOLDENS) {

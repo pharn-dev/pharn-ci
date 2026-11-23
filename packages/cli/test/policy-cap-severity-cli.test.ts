@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -10,14 +11,6 @@ import { expectValidReport } from "../../core/test/schema.js";
 // decoy settings files whose paths sort first. Before the fix the per-rule cap kept the 50 decoys' warnings, dropped
 // the block, and the run exited 0. The decoy trees are built in temporary git repositories from the committed
 // fixtures in fixtures/policy-settings/cap-severity/, so this repository holds no decoy `.claude/settings.json` files.
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
-interface Deps {
-  stdout(text: string): void;
-  stderr(text: string): void;
-}
 
 const FIXTURES = fileURLToPath(new URL("../../../fixtures/policy-settings/cap-severity/", import.meta.url));
 const read = (name: string) => readFileSync(join(FIXTURES, name), "utf8");
@@ -64,7 +57,7 @@ function repo(base: Record<string, string>, feature: Record<string, string>): st
 async function runCli(dir: string): Promise<{ code: number; report: Report }> {
   const { main } = await import("../src/main.js");
   const { nodeDeps } = await import("../src/nodeDeps.js");
-  const deps = nodeDeps(dir) as unknown as Deps;
+  const deps = nodeDeps(dir);
   let out = "";
   let err = "";
   deps.stdout = (text) => {
@@ -74,7 +67,7 @@ async function runCli(dir: string): Promise<{ code: number; report: Report }> {
     err += text;
   };
   const args = ["check", "--base", "main", "--coverage", "coverage/lcov.info", "--format", "json"];
-  const code = await main([...args, "--policy-file", "policy/org.json"], deps as never);
+  const code = await main([...args, "--policy-file", "policy/org.json"], deps);
   expect(code, err).not.toBe(2);
   const report = JSON.parse(out) as Report;
   expectValidReport(report);

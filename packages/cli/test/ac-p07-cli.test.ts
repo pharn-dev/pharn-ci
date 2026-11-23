@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -10,15 +11,6 @@ import { expectValidReport } from "../../core/test/schema.js";
 // real Node deps on a temporary git repository, as packages/cli/test/ac-secrets-cli.test.ts does, and observes every
 // git batch call by wrapping gitBatch (which can also be made to fail for the instruction call).
 
-interface Deps {
-  git(args: string[]): Promise<string>;
-  gitBatch?(args: string[], input: string): Promise<Uint8Array>;
-  stdout(text: string): void;
-  stderr(text: string): void;
-}
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & { messages: Message[]; policy?: { violations: Violation[] } };
 type BatchCall = { args: string[]; input: string };
 
 const POLICY_PATH = "policy/org.json";
@@ -56,7 +48,7 @@ afterAll(() => {
 async function runCli(extra: string[], failInstructions = false) {
   const { main } = await import("../src/main.js");
   const { nodeDeps } = await import("../src/nodeDeps.js");
-  const deps = nodeDeps(dir) as unknown as Deps;
+  const deps = nodeDeps(dir);
   const calls: BatchCall[] = [];
   const realBatch = deps.gitBatch;
   expect(realBatch, "the CLI's deps carry a batch git runner").toBeDefined();
@@ -65,7 +57,7 @@ async function runCli(extra: string[], failInstructions = false) {
     if (failInstructions && input.includes("HEAD:AGENTS.md")) {
       return Promise.reject(new Error("fatal: simulated failure"));
     }
-    return (realBatch as NonNullable<Deps["gitBatch"]>)(args, input);
+    return realBatch(args, input);
   };
   let out = "";
   let err = "";
@@ -77,7 +69,7 @@ async function runCli(extra: string[], failInstructions = false) {
   };
   const code = await main(
     ["check", "--base", "main", "--coverage", "coverage/lcov.info", ...extra, "--format", "json"],
-    deps as never,
+    deps,
   );
   expect(out, `exit ${code}, stderr: ${err}`).not.toBe("");
   const report = JSON.parse(out) as Report;

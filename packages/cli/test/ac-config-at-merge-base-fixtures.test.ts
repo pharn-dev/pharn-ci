@@ -11,10 +11,11 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { listDir, readFile, runGit, runGitBatch } from "../../node-io/src/index.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // CORE-95, the fixture cases, each in a real temporary git repository (the base commit on `main`, the pull request's
 // commit on `feature`) through the Action's run() and the CLI's main() with --base, with real git and the real
@@ -23,13 +24,6 @@ import { requiredDeps } from "../../node-io/test/required-deps.js";
 const FIXTURES = new URL("../../../fixtures/config-at-merge-base/", import.meta.url);
 const fixture = (path: string) => readFileSync(new URL(path, FIXTURES), "utf8");
 const CONFIG = ".pharn/ci.yml";
-
-type Message = { level: string; code: string; text: string };
-type Report = {
-  verdict: string;
-  messages: Message[];
-  diffCoverage: { percent: number | null; threshold: number | null } | null;
-};
 
 /** A file of the tree: its text, a symbolic link, or null to delete it. */
 type Entry = string | { symlink: string } | null;
@@ -97,7 +91,7 @@ async function actionRun(repo: { dir: string; baseSha: string; headSha: string }
   const failed: string[] = [];
   const fetched: string[] = [];
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? "",
     context: {
       eventName: "pull_request",

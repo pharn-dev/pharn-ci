@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // main(), run() and the fixtures are loaded inside each test body: the AC tests are written before the agent setup
 // requirement and fixtures/require-agent-setup/ exist, so nothing that depends on them may run while the file loads.
@@ -36,8 +37,6 @@ function fakeGit() {
   };
 }
 
-type Report = { verdict: string; messages: { code: string; level: string }[] };
-
 const setupLevels = (report: Report) =>
   report.messages.filter((message) => message.code === "NO_AGENT_SETUP_FILES").map((message) => message.level);
 
@@ -47,10 +46,11 @@ async function runCli(config: Config, flag: boolean) {
   const err: string[] = [];
   const contents = new Map(Object.entries(repoFiles(config)).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     cwd: REPO_ROOT,
     git: fakeGit(),
     readFile: async (path: string) => contents.get(path) ?? null,
+    listDir: () => Promise.reject(new Error("unexpected listDir")),
     resolvePath: (...segments: string[]) => resolve(...segments),
     stdout: (text: string) => {
       out.push(text);
@@ -78,7 +78,7 @@ async function runAction(input: string, config: Config) {
   const inputs: Record<string, string> = { "coverage-file": "coverage/lcov.info", "require-agent-setup": input };
   const contents = new Map(Object.entries(repoFiles(config)).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const deps = {
-    ...requiredDeps(() => deps),
+    ...requiredDeps((): StreamedFake => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

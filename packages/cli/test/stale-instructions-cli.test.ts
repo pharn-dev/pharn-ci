@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { withoutFix } from "../../core/test/v090-codes.js";
@@ -9,18 +10,6 @@ import { withoutFix } from "../../core/test/v090-codes.js";
 // Stale instructions (Horizon 2 item H3) in the CLI: `pharn-ci check` with its real Node deps on a temporary repository
 // whose feature branch edits CLAUDE.md. Without a policy the instruction files are read and the stale tokens reported;
 // a failing instruction read writes one stderr line and reports nothing.
-
-interface Deps {
-  gitBatch?(args: string[], input: string): Promise<Uint8Array>;
-  stdout(text: string): void;
-  stderr(text: string): void;
-}
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & {
-  verdict: string;
-  messages: Message[];
-  setupHealth?: { stale: { id: string; path: string; line: number; kind: string; token?: string }[] };
-};
 
 const LOG_PREFIX =
   "pharn-ci: could not read the agent instruction files from git, so stale instructions are not checked: ";
@@ -58,8 +47,8 @@ afterAll(() => {
 async function runCli(failInstructions = false) {
   const { main } = await import("../src/main.js");
   const { nodeDeps } = await import("../src/nodeDeps.js");
-  const deps = nodeDeps(dir) as unknown as Deps;
-  const realBatch = deps.gitBatch as NonNullable<Deps["gitBatch"]>;
+  const deps = nodeDeps(dir);
+  const realBatch = deps.gitBatch;
   deps.gitBatch = (args, input) =>
     failInstructions && input.includes("HEAD:CLAUDE.md")
       ? Promise.reject(new Error("fatal: simulated failure"))
@@ -72,10 +61,7 @@ async function runCli(failInstructions = false) {
   deps.stderr = (text) => {
     err += text;
   };
-  const code = await main(
-    ["check", "--base", "main", "--coverage", "coverage/lcov.info", "--format", "json"],
-    deps as never,
-  );
+  const code = await main(["check", "--base", "main", "--coverage", "coverage/lcov.info", "--format", "json"], deps);
   const report = JSON.parse(out) as Report;
   expectValidReport(report);
   return { code, report, err };

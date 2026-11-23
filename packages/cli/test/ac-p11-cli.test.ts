@@ -2,9 +2,11 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../../core/src/policy/types.js";
 import { expectValidReport } from "../../core/test/schema.js";
-import { requiredDeps } from "../../node-io/test/required-deps.js";
+import { requiredDeps, type StreamedFake } from "../../node-io/test/required-deps.js";
 
 // E3 item 24a part B (P11), AC-18. main() and check() are loaded inside the test body: the AC test is written before
 // the build adds rule P11, so nothing the build adds may run while this file loads. The CLI reads a real temporary
@@ -16,7 +18,7 @@ const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 const GOLDEN_ROOT = "/home/runner/work/demo/demo";
 const POLICY_PATH = "policy/org.json";
-const POLICY = {
+const POLICY: PolicyDocument = {
   version: 1,
   agents: { labels: ["bot-pr"], extra_logins: ["acme-agent"], protected_paths: ["src/**"] },
 };
@@ -29,14 +31,6 @@ const DIFF = [
   "+x",
   "",
 ].join("\n");
-
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = Record<string, unknown> & {
-  messages: Message[];
-  policy?: { violations: Violation[] };
-  meta?: Record<string, unknown>;
-};
 
 async function realReadFile(path: string): Promise<string | null> {
   try {
@@ -63,7 +57,7 @@ describe("the CLI never sets the agent flag", { timeout: 60_000 }, () => {
       repoFiles: ["AGENTS.md", "src/a.ts"],
       policy: { source: "file", version: null, path: POLICY_PATH, document: POLICY },
       agentPrFacts: { pr: { author: { login: "acme-agent", type: "User" }, labels: [], commits: [] } },
-    } as never) as unknown as Report;
+    });
     expect(p11(control).map((v) => v.path)).toEqual(["src/a.ts"]);
 
     const dir = realpathSync(mkdtempSync(join(tmpdir(), "pharn-ci-p11-cli-")));
@@ -81,7 +75,7 @@ describe("the CLI never sets the agent flag", { timeout: 60_000 }, () => {
       const err: string[] = [];
       const tracked = ["AGENTS.md", POLICY_PATH, "src/a.ts"];
       const deps = {
-        ...requiredDeps(() => deps),
+        ...requiredDeps((): StreamedFake => deps),
         cwd: dir,
         git: async (args: string[]) => {
           if (args.includes("ls-files"))
@@ -92,6 +86,7 @@ describe("the CLI never sets the agent flag", { timeout: 60_000 }, () => {
           return "1111111111111111111111111111111111111111\n";
         },
         readFile: realReadFile,
+        listDir: () => Promise.reject(new Error("unexpected listDir")),
         resolvePath: (...segments: string[]) => resolve(...segments),
         stdout: (text: string) => {
           out.push(text);
@@ -100,10 +95,7 @@ describe("the CLI never sets the agent flag", { timeout: 60_000 }, () => {
           err.push(text);
         },
       };
-      await main(
-        ["check", "--coverage", "coverage/lcov.info", "--policy-file", POLICY_PATH, "--format", "json"],
-        deps as never,
-      );
+      await main(["check", "--coverage", "coverage/lcov.info", "--policy-file", POLICY_PATH, "--format", "json"], deps);
       const stdout = out.join("");
       expect(stdout, `stderr: ${err.join("")}`).not.toBe("");
       const report = JSON.parse(stdout) as Report;

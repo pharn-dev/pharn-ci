@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { Report } from "@pharn-ci/core";
 import { afterAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { withoutFix } from "../../core/test/v090-codes.js";
@@ -11,15 +12,6 @@ import { withoutFix } from "../../core/test/v090-codes.js";
 // runs the CLI with its real Node deps on temporary git repositories and observes every git call by wrapping git and
 // gitBatch, as packages/cli/test/ac-secrets-cli.test.ts does.
 
-type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
-type Message = { level: string; code: string; text: string };
-type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
-interface Deps {
-  git(args: string[]): Promise<string>;
-  gitBatch?(args: string[], input: string): Promise<Uint8Array>;
-  stdout(text: string): void;
-  stderr(text: string): void;
-}
 type Call = { args: string[]; input?: string };
 
 const NEW_CODES = ["POLICY_P02", "POLICY_P03", "POLICY_P04", "POLICY_P05", "POLICY_P06", "POLICY_SETTINGS_INVALID"];
@@ -77,7 +69,7 @@ function repo(files: Record<string, string>): { dir: string; put: (path: string,
 async function runCli(dir: string, policy: boolean, failLsTree = false) {
   const { main } = await import("../src/main.js");
   const { nodeDeps } = await import("../src/nodeDeps.js");
-  const deps = nodeDeps(dir) as unknown as Deps;
+  const deps = nodeDeps(dir);
   const calls: Call[] = [];
   const realGit = deps.git;
   deps.git = (args) => {
@@ -101,7 +93,7 @@ async function runCli(dir: string, policy: boolean, failLsTree = false) {
     err += text;
   };
   const args = ["check", "--base", "main", "--coverage", "coverage/lcov.info", "--format", "json"];
-  const code = await main([...args, ...(policy ? ["--policy-file", "policy/org.json"] : [])], deps as never);
+  const code = await main([...args, ...(policy ? ["--policy-file", "policy/org.json"] : [])], deps);
   expect(code, err).not.toBe(2);
   const report = JSON.parse(out) as Report;
   expectValidReport(report);
