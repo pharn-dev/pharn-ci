@@ -22,7 +22,8 @@ const TEXT = {
   noCoverageFile: "no coverage file",
 };
 
-type Ignored = { setting: string; layer: string; reason: string };
+// CORE-123: a record names the setting and no layer.
+type Ignored = { setting: string; reason: string };
 type Application = { inputs: Record<string, unknown>; ignored: Ignored[]; acceptLabel?: string };
 type Message = { level: string; code: string; text: string };
 
@@ -104,7 +105,7 @@ describe("policy keys this item does not apply", () => {
     const layers = { config, raw, resolved: resolved.inputs };
 
     const fileRequired = core.applyPolicy(layers, file(REQUIRED));
-    expect(fileRequired.ignored).toEqual([{ setting: "policy.required", layer: "policy-file", reason: "not-allowed" }]);
+    expect(fileRequired.ignored).toEqual([{ setting: "policy.required", reason: "not-allowed" }]);
     expect(fileRequired.inputs).toEqual(resolved.inputs);
 
     const appRequired = core.applyPolicy(layers, app(REQUIRED));
@@ -129,7 +130,7 @@ describe("policy keys this item does not apply", () => {
       const first = core.applyPolicy(layers, policy);
       const isApp = policy.source === "app";
       expect(first.ignored, policy.source).toEqual(
-        isApp ? [] : [{ setting: "dependencies.registries", layer: "policy-file", reason: "not-allowed" }],
+        isApp ? [] : [{ setting: "dependencies.registries", reason: "not-allowed" }],
       );
       expect(first.inputs, policy.source).toEqual({
         ...resolved.inputs,

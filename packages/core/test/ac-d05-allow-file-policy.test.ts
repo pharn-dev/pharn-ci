@@ -49,7 +49,8 @@ function layersFor(raw: Record<string, unknown>) {
 }
 
 describe("a policy file's allowed hosts", () => {
-  it("AC-10: a file: policy's dependencies.allowed_hosts allows nothing (the entry is D05) and POLICY_OVERRIDE_IGNORED names dependencies.allowed_hosts (policy-file)", () => {
+  // CORE-123: the message names the setting and no layer (it named "dependencies.allowed_hosts (policy-file)").
+  it("AC-10: a file: policy's dependencies.allowed_hosts allows nothing (the entry is D05) and POLICY_OVERRIDE_IGNORED names dependencies.allowed_hosts", () => {
     const policy = {
       source: "file",
       version: null,
@@ -68,7 +69,7 @@ describe("a policy file's allowed hosts", () => {
     expect(d05.map((s) => [s.severity, s.path, s.name])).toEqual([["block", "package-lock.json", "left-pad"]]);
     const ignored = report.messages.filter((m) => m.code === "POLICY_OVERRIDE_IGNORED");
     expect(ignored).toHaveLength(1);
-    expect(ignored[0]?.text).toContain("dependencies.allowed_hosts (policy-file)");
+    expect(ignored[0]?.text).toContain("applies: dependencies.allowed_hosts.");
     expect(ignored[0]?.text).not.toContain(HOST);
   });
 });

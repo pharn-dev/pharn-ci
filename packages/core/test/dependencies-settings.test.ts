@@ -130,12 +130,13 @@ describe("the org policy", () => {
       input: "never",
       policy: { kind: "app", lookup: true, minAgeDays: 14, registries: ["npm"] },
     });
-    expect(app.ignored).toEqual([{ setting: "dependencies", layer: "input", reason: "looser" }]);
+    // CORE-123: a record names the setting and no layer.
+    expect(app.ignored).toEqual([{ setting: "dependencies", reason: "looser" }]);
     expect(resolveDependencySettings(app.inputs.dependencies).mode).toBe("lookup");
 
     const file = applyPolicy(layers, filePolicy({ lookup: true, registries: ["npm"] }));
     expect(file.inputs.dependencies).toEqual({ input: "never", policy: { kind: "file", lookup: true } });
-    expect(file.ignored).toEqual([{ setting: "dependencies.registries", layer: "policy-file", reason: "not-allowed" }]);
+    expect(file.ignored).toEqual([{ setting: "dependencies.registries", reason: "not-allowed" }]);
     expect(resolveDependencySettings(file.inputs.dependencies).mode).toBe("never");
   });
 });
@@ -183,7 +184,8 @@ describe("the allowed registry hosts", () => {
     );
   });
 
-  it("records the input hosts an app policy leaves out, and a policy file's list, by setting and layer only", () => {
+  // CORE-123: by setting only (it was by setting and layer).
+  it("records the input hosts an app policy leaves out, and a policy file's list, by setting only", () => {
     const layers = layersWith(["a.example", "b.example"]);
     const app = applyPolicy(layers, appPolicy({ allowed_hosts: ["A.example", "b.EXAMPLE", "c.example"] }));
     expect(app.ignored).toEqual([]);
@@ -192,12 +194,10 @@ describe("the allowed registry hosts", () => {
       policy: { kind: "app", allowedHosts: ["A.example", "b.EXAMPLE", "c.example"] },
     });
     const narrower = applyPolicy(layers, appPolicy({ allowed_hosts: ["a.example"] }));
-    expect(narrower.ignored).toEqual([{ setting: "dependencies.allowed_hosts", layer: "input", reason: "looser" }]);
+    expect(narrower.ignored).toEqual([{ setting: "dependencies.allowed_hosts", reason: "looser" }]);
     expect(resolveDependencySettings(narrower.inputs.dependencies).allowedHosts).toEqual(["a.example"]);
     const file = applyPolicy(layers, filePolicy({ allowed_hosts: ["c.example"] }));
-    expect(file.ignored).toEqual([
-      { setting: "dependencies.allowed_hosts", layer: "policy-file", reason: "not-allowed" },
-    ]);
+    expect(file.ignored).toEqual([{ setting: "dependencies.allowed_hosts", reason: "not-allowed" }]);
     expect(resolveDependencySettings(file.inputs.dependencies).allowedHosts).toEqual(["a.example", "b.example"]);
     expect(applyPolicy(layers, filePolicy({ allowed_hosts: [] })).ignored).toEqual([]);
   });

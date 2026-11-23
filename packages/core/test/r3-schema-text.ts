@@ -45,6 +45,12 @@ export const R3_SCHEMA_TEXT_EDITS: readonly (readonly [string, string])[] = [
     "what is over is left out).",
     "what is over is left out). Codes added in v0.12.0: POLICY_KEYS_UNKNOWN (warn, at most once per report and only for a policy the app serves: the policy held keys or ids this version of pharn-ci does not know, such as a newer test-integrity signal, policy rule, response key or agent tool, so they were skipped and the rest of the policy applies; the message names up to 20 of them as code spans, sorted, each cut to 64 characters, and counts the rest; a policy file with an unknown key still fails the run).",
   ],
+  // CORE-123 (R5.6, epic CORE-10): POLICY_OVERRIDE_IGNORED names the setting and no longer the layer it came from. Only
+  // the description text changes; the code, its level and every other byte stay pinned.
+  [
+    "the message names each setting and the layer it came from, at most 20,",
+    "the message names each setting and not the layer it came from, at most 20,",
+  ],
 ];
 
 /** `text` (report.v2.json or a description in it) with each R3 text edit put back; throws unless each appears once. */

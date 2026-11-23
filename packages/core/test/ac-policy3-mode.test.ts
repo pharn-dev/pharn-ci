@@ -6,7 +6,8 @@ import { expectValidReport } from "./schema.js";
 // policy precedence exists, so nothing the build adds may run while the file loads. The layers are built the way the
 // adapters build them, and applyPolicy's effective settings are passed to check() as the adapters pass them.
 
-type Ignored = { setting: string; layer: string; reason: string };
+// CORE-123 (R5.6): a record names the setting and no layer.
+type Ignored = { setting: string; reason: string };
 type Application = { inputs: { testIntegrityMode?: unknown }; ignored: Ignored[] };
 type Report = { testIntegrity: { mode: string; source: string }; messages: { code: string; level: string }[] };
 
@@ -73,7 +74,7 @@ describe("applyPolicy and check(): the test-integrity mode", () => {
         app("block"),
         "block",
         "policy",
-        [{ setting: "test_integrity.mode", layer: "input", reason: "looser" }],
+        [{ setting: "test_integrity.mode", reason: "looser" }],
       ],
       ["app off, nothing given", {}, undefined, app("off"), "off", "policy", []],
       ["app warn under input block", {}, "block", app("warn"), "block", "input", []],
@@ -84,7 +85,7 @@ describe("applyPolicy and check(): the test-integrity mode", () => {
         app("block"),
         "block",
         "policy",
-        [{ setting: "test_integrity.mode", layer: "config", reason: "looser" }],
+        [{ setting: "test_integrity.mode", reason: "looser" }],
       ],
       ["file block over the default", {}, undefined, file("block"), "block", "policy", []],
       // Review finding 14: a looser file mode over the default is named in POLICY_OVERRIDE_IGNORED too; the mode in
@@ -96,7 +97,7 @@ describe("applyPolicy and check(): the test-integrity mode", () => {
         file("off"),
         "warn",
         "default",
-        [{ setting: "test_integrity.mode", layer: "policy-file", reason: "looser" }],
+        [{ setting: "test_integrity.mode", reason: "looser" }],
       ],
       [
         "file off under input warn",
@@ -105,7 +106,7 @@ describe("applyPolicy and check(): the test-integrity mode", () => {
         file("off"),
         "warn",
         "input",
-        [{ setting: "test_integrity.mode", layer: "policy-file", reason: "looser" }],
+        [{ setting: "test_integrity.mode", reason: "looser" }],
       ],
     ];
     for (const [name, config, input, policy, mode, source, ignored] of cases) {

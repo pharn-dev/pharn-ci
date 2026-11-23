@@ -56,25 +56,25 @@ export function agentPrIncompleteMessage(reason: AgentPrIncomplete): Message {
 }
 
 /**
- * The POLICY_OVERRIDE_IGNORED message: the settings of a layer that the policy's value beat, or that a policy file may
- * not set. One warning for the whole list, sorted by setting then layer in code-unit order, each setting and layer once,
- * at most 20 named and the rest counted. A threshold names both numbers; no pattern, root or label is ever named.
+ * The POLICY_OVERRIDE_IGNORED message: the settings that the policy's value beat, or that a policy file may not set. One
+ * warning for the whole list, sorted by setting in code-unit order, each setting once, at most 20 named and the rest
+ * counted. It names the setting and no layer (CORE-123). A threshold names both numbers; no pattern, root or label is
+ * ever named.
  */
 export function policyOverrideIgnoredMessage(ignored: readonly IgnoredSetting[]): Message {
   const seen = new Set<string>();
   const unique = ignored.filter((record) => {
-    const key = `${record.setting}\u0000${record.layer}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    if (seen.has(record.setting)) return false;
+    seen.add(record.setting);
     return true;
   });
-  unique.sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer, b.layer));
+  unique.sort((a, b) => byCodeUnit(a.setting, b.setting));
   const named = unique.slice(0, MAX_NAMED_SETTINGS).map((record) => {
     const numbers =
       record.given !== undefined && record.applied !== undefined
         ? ` ${formatNumber(record.given)} → ${formatNumber(record.applied)}`
         : "";
-    return `${record.setting} (${record.layer})${numbers}`;
+    return `${record.setting}${numbers}`;
   });
   const more = unique.length - MAX_NAMED_SETTINGS;
   const list = more > 0 ? `${named.join(", ")}, and ${String(more)} more` : named.join(", ");

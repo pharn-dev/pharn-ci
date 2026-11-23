@@ -71,7 +71,7 @@ export function injectionSettingsOf(policy: ResolvedPolicy | undefined, base?: P
   const basePhrases = base?.kind === "document" ? base.document.injection?.phrases : undefined;
   settings.phrases = tidy(injection.phrases, basePhrases);
   if (injection.exempt !== undefined && injection.exempt.length > 0) {
-    settings.ignored.push({ setting: "injection.exempt", layer: "policy-file", reason: "not-allowed" });
+    settings.ignored.push({ setting: "injection.exempt", reason: "not-allowed" });
   }
   for (const id of INJECTION_SIGNAL_IDS) {
     const value = Object.hasOwn(wanted, id) ? wanted[id] : undefined;
@@ -79,7 +79,7 @@ export function injectionSettingsOf(policy: ResolvedPolicy | undefined, base?: P
     const fallback = DEFAULT_INJECTION_SEVERITIES[id];
     if (RANK[value] > RANK[fallback]) severities[id] = value as InjectionSeverity;
     else if (RANK[value] < RANK[fallback]) {
-      settings.ignored.push({ setting: `injection.signals.${id}`, layer: "policy-file", reason: "looser" });
+      settings.ignored.push({ setting: `injection.signals.${id}`, reason: "looser" });
     }
   }
   return settings;

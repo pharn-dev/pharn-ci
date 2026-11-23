@@ -5,37 +5,42 @@ import { expectValidReport } from "./schema.js";
 
 // check() is loaded inside the test body: the AC test is written before CheckInput has `policy` and `policyIgnored`,
 // so nothing the build adds may run while the file loads. The ignored settings are passed to check() directly, in a
-// shuffled order, as 23 distinct setting and layer pairs.
+// shuffled order, as 23 distinct settings (two of them given twice).
+//
+// CORE-123 (R5.6): a record names the setting and no layer, and the message names no layer: the same setting given
+// twice (it was once per layer) is named once.
 
-type Layer = "input" | "config" | "policy-file";
-type Ignored = { setting: string; layer: Layer; reason: "looser" | "not-allowed" };
+type Ignored = { setting: string; reason: "looser" | "not-allowed" };
 type Message = { level: string; code: string; text: string };
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
+const SETTINGS = [
+  "coverage.exclude",
+  "coverage.root",
+  "coverage.threshold",
+  "setup.require",
+  "test_integrity.mode",
+  "test_integrity.accept_label",
+  "policy.required",
+  "dependencies",
+  "dependencies.allowed_hosts",
+  "dependencies.registries",
+  "injection.exempt",
+  "injection.signals.PI01",
+  "policy.rules.P01",
+  ...Array.from({ length: 10 }, (_, i) => `test_integrity.signals.TI${String(i + 1).padStart(2, "0")}`),
+];
 const IGNORED: Ignored[] = [
-  ...(["config", "input", "policy-file"] as const).flatMap((layer) =>
-    ["coverage.exclude", "coverage.root", "setup.require"].map((setting) => ({
-      setting,
-      layer,
-      reason: layer === "policy-file" && setting !== "setup.require" ? ("not-allowed" as const) : ("looser" as const),
-    })),
-  ),
-  { setting: "test_integrity.mode", layer: "config", reason: "looser" },
-  { setting: "test_integrity.mode", layer: "input", reason: "looser" },
-  { setting: "test_integrity.accept_label", layer: "policy-file", reason: "not-allowed" },
-  { setting: "policy.required", layer: "policy-file", reason: "not-allowed" },
-  ...Array.from({ length: 10 }, (_, i) => ({
-    setting: `test_integrity.signals.TI${String(i + 1).padStart(2, "0")}`,
-    layer: "policy-file" as const,
-    reason: "looser" as const,
-  })),
+  ...SETTINGS.map((setting) => ({ setting, reason: "looser" as const })),
+  { setting: "coverage.exclude", reason: "not-allowed" },
+  { setting: "test_integrity.mode", reason: "looser" },
 ];
 
-/** Code-unit order, by setting then layer. */
-const sorted = [...IGNORED].sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer, b.layer));
+/** The distinct records in code-unit order of the setting. */
+const sorted = SETTINGS.map((setting) => ({ setting })).sort((a, b) => byCodeUnit(a.setting, b.setting));
 /** A fixed shuffle, so the order check() is given is not the sorted one. */
-const shuffled = IGNORED.map((record, i) => ({ record, key: (i * 7919) % 23 }))
+const shuffled = IGNORED.map((record, i) => ({ record, key: (i * 7919) % IGNORED.length }))
   .sort((a, b) => a.key - b.key)
   .map(({ record }) => record);
 
@@ -58,8 +63,9 @@ const APP = { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", 
 
 describe("the two policy messages", () => {
   it("AC-25: one POLICY_OVERRIDE_IGNORED lists the first 20 settings sorted with no duplicate, then the count of the rest; POLICY_UNAVAILABLE comes directly before it, after every other message", async () => {
-    expect(new Set(IGNORED.map((r) => `${r.setting} ${r.layer}`)).size).toBe(23);
-    expect(shuffled).not.toEqual(sorted);
+    expect(new Set(IGNORED.map((r) => r.setting)).size).toBe(23);
+    expect(IGNORED).toHaveLength(25);
+    expect(shuffled.map((r) => r.setting)).not.toEqual(sorted.map((r) => r.setting));
 
     const report = await checkWith({ policy: APP, policyIgnored: shuffled });
     const messages = report.messages.filter((m) => m.code === "POLICY_OVERRIDE_IGNORED");
@@ -68,18 +74,20 @@ describe("the two policy messages", () => {
     expect(message.level).toBe("warn");
     expect(report.messages.at(-1)).toEqual(message);
 
-    // The first 20 appear in sorted order, each once; the last 3 are counted, not named.
+    // The first 20 appear in sorted order, each once and with no layer; the last 3 are counted, not named. Each named
+    // entry is a whole list item: after a space, before the comma that separates it from the next.
     let at = -1;
     for (const record of sorted.slice(0, 20)) {
-      const entry = `${record.setting} (${record.layer})`;
+      const entry = ` ${record.setting},`;
       const found = message.text.indexOf(entry);
       expect(found, entry).toBeGreaterThan(at);
       expect(message.text.indexOf(entry, found + 1), `${entry} once`).toBe(-1);
       at = found;
     }
     for (const record of sorted.slice(20)) {
-      expect(message.text).not.toContain(`${record.setting} (${record.layer})`);
+      expect(message.text).not.toContain(` ${record.setting}`);
     }
+    expect(message.text).not.toMatch(/\((?:input|config|policy-file)\)/);
     expect(message.text).toContain("and 3 more");
     expect(message.text.indexOf("and 3 more")).toBeGreaterThan(at);
     expect(message.text).toMatch(/policy['’]s value applies/i);

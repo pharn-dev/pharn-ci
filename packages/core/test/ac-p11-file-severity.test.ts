@@ -47,8 +47,9 @@ const withCode = (report: Report, code: string) => report.messages.filter((m) =>
 describe("org policy rule P11: a file: policy always blocks", { timeout: 60_000 }, () => {
   it("AC-5: under a file: policy, protected_paths_mode warn and policy.rules.P11 warn both leave P11 at block and are each named once in POLICY_OVERRIDE_IGNORED", async () => {
     for (const [extra, named] of [
-      [{ mode: "warn" }, "agents.protected_paths_mode (policy-file)"],
-      [{ rule: "warn" }, "policy.rules.P11 (policy-file)"],
+      // CORE-123: the message names the setting and no layer (it was "policy.rules.P11 (policy-file)").
+      [{ mode: "warn" }, "applies: agents.protected_paths_mode."],
+      [{ rule: "warn" }, "applies: policy.rules.P11."],
     ] as const) {
       const report = await run(extra);
       expect(

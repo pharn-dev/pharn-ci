@@ -325,8 +325,8 @@ describe("the org policy fetch outcomes", () => {
 
     const ignored = withCode(report, "POLICY_OVERRIDE_IGNORED");
     expect(ignored).toHaveLength(1);
-    expect(ignored[0]?.text).toContain("coverage.threshold (input) 70 → 85");
-    expect(ignored[0]?.text).toContain("coverage.exclude (input)");
+    // CORE-123: the settings and no layer (they were "coverage.threshold (input) 70 → 85" and "coverage.exclude (input)").
+    expect(ignored[0]?.text).toContain("applies: coverage.exclude, coverage.threshold 70 → 85.");
     expect(ignored[0]?.text).not.toContain("src/**");
 
     const policy = await fetchDirect("auto", [respond(200, apiFixture("envelope-valid.json"))]);

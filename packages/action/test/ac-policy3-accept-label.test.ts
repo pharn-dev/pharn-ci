@@ -132,7 +132,8 @@ describe("the accept label from an org policy", () => {
       expect(blocks(fileRun.report)).toEqual(blocks(never.report));
       const ignored = fileRun.report.messages.filter((m) => m.code === "POLICY_OVERRIDE_IGNORED");
       expect(ignored).toHaveLength(1);
-      expect(ignored[0]?.text).toContain("test_integrity.accept_label (policy-file)");
+      // CORE-123: the setting and no layer (it was "test_integrity.accept_label (policy-file)").
+      expect(ignored[0]?.text).toContain("applies: test_integrity.accept_label.");
       expect(ignored[0]?.text).not.toContain(APP_LABEL);
     } finally {
       rmSync(dir, { recursive: true, force: true });

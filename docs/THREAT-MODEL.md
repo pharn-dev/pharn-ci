@@ -131,7 +131,7 @@ and the tests cite them.
    `require-agent-setup: true` input in the workflow file is the stronger setting: the config cannot turn it off, and
    an input `false` no longer turns off a config `true` either (the config may only tighten); protect both with
    CODEOWNERS. **Closed when an app policy sets `setup.require: true`:** it wins over any lower `false`, and
-   `POLICY_OVERRIDE_IGNORED` names the layer it beat.
+   `POLICY_OVERRIDE_IGNORED` names the setting it beat.
 9. **The coverage root comes from the PR.** **Closed in 0.12.0 (CORE-95):** a change that edits `coverage.root` (or
    `coverage.file`) in the config is mapped with the value at the merge base (row C10); its own value applies after
    merge. **What remains:** the root in force is still untrusted input, from a config an earlier PR merged, and the
@@ -166,7 +166,7 @@ and the tests cite them.
     therefore cannot switch test integrity off or down for itself; the workflow file, protected with
     CODEOWNERS, decides the base. **Closed when an app policy sets `test_integrity.mode`:** the app's mode
     replaces the default and the input and the config can only raise it, so the workflow file can no longer
-    set the base below the app's mode either; `POLICY_OVERRIDE_IGNORED` names the layers it beat.
+    set the base below the app's mode either; `POLICY_OVERRIDE_IGNORED` names the setting it beat.
 13. **TI01 reads the text of the PR's diff.** To tell a test file that defines tests from a helper, the diff
     parser keeps the text of added and removed lines for test files, and TI01 matches each kept line (cut to
     400 characters, at most 5000 lines per file) against one anchored pattern that runs in linear time; a file

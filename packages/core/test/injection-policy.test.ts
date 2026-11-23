@@ -96,8 +96,9 @@ describe("injectionSettingsOf", () => {
       phrases: ["base", "head"],
       severities: { PI01: "block", PI02: "block", PI03: "warn", PI04: "warn", PI05: "warn" },
       ignored: [
-        { setting: "injection.exempt", layer: "policy-file", reason: "not-allowed" },
-        { setting: "injection.signals.PI01", layer: "policy-file", reason: "looser" },
+        // CORE-123: a record names the setting and no layer.
+        { setting: "injection.exempt", reason: "not-allowed" },
+        { setting: "injection.signals.PI01", reason: "looser" },
       ],
     });
   });
@@ -136,8 +137,9 @@ describe("the injection policy through check()", () => {
     expect(report.verdict).toBe("fail");
     expect(report.injection?.signals.map((s) => s.severity)).toEqual(["block", "block"]);
     const ignored = report.messages.find((m) => m.code === "POLICY_OVERRIDE_IGNORED");
-    expect(ignored?.text).toContain("injection.exempt (policy-file)");
-    expect(ignored?.text).toContain("injection.signals.PI01 (policy-file)");
+    // CORE-123: the message names the setting and no layer.
+    expect(ignored?.text).toContain("applies: injection.exempt, injection.signals.PI01.");
+    expect(ignored?.text).not.toContain("(policy-file)");
   });
 
   it("a policy file can raise a warning signal to block", () => {

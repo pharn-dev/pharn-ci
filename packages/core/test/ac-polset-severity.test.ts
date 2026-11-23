@@ -99,7 +99,8 @@ describe("org policy rule P02: severity from policy.rules", { timeout: 60_000 },
     ]);
     const ignored = withCode(fileWarn, "POLICY_OVERRIDE_IGNORED");
     expect(ignored).toHaveLength(1);
-    expect(ignored[0]?.text).toContain("policy.rules.P02 (policy-file)");
+    // CORE-123: the setting and no layer (it was "policy.rules.P02 (policy-file)").
+    expect(ignored[0]?.text).toContain("applies: policy.rules.P02.");
 
     const core = (await import("@pharn-ci/core")) as unknown as Core;
     const evaluation = core.evaluatePolicyRules({

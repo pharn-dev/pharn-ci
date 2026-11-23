@@ -35,32 +35,52 @@ const p09 = (report: Report) => withoutFix((report.policy?.violations ?? []).fil
 const configChanged = (report: Report) =>
   withoutFix(report.messages.filter((m) => m.code === "CONFIG_CHANGED_IN_DIFF"));
 
+// CORE-123 (R5.6): an ignored record no longer says which layer (workflow input or config) gave the looser value, so
+// class 2 reads any looser record of an app policy, the stricter reading: an edit of the config while the workflow input
+// alone is looser is now a block too (it was no class-2 violation). A record that is not `looser`, and every record of a
+// policy file (its own values), still give none.
+const configViolation = (settings: string) => ({
+  id: "P09",
+  severity: "block",
+  path: ".pharn/ci.yml",
+  line: null,
+  detail: `this change edits the config while a setting is looser than the policy (${settings})`,
+});
+
 describe("org policy rule P09: the config in use", { timeout: 60_000 }, () => {
-  it("AC-8: a diff editing .pharn/ci.yml while a config-layer setting is ignored gives a P09 block violation naming the setting; input-layer records alone give no class-2 violation; CONFIG_CHANGED_IN_DIFF is unchanged", async () => {
+  it("AC-8: a diff editing .pharn/ci.yml while a setting is looser than an app policy gives a P09 block violation naming the setting, whichever layer gave it; no record gives none; CONFIG_CHANGED_IN_DIFF is unchanged", async () => {
     const config = await run({
       policy: APP,
-      policyIgnored: [{ setting: "coverage.threshold", layer: "config", reason: "looser" }],
+      policyIgnored: [{ setting: "coverage.threshold", reason: "looser" }],
     });
-    expect(p09(config)).toEqual([
-      {
-        id: "P09",
-        severity: "block",
-        path: ".pharn/ci.yml",
-        line: null,
-        detail: "this change edits the config, which sets coverage.threshold looser than the policy",
-      },
-    ]);
+    // gates.diff also edits .github/workflows/ci.yml, which class 3 reads from the same records.
+    const workflow = (settings: string) => ({
+      ...configViolation(settings),
+      path: ".github/workflows/ci.yml",
+      detail: `this change edits a workflow while a setting is looser than the policy (${settings})`,
+    });
+    expect(p09(config)).toEqual([workflow("coverage.threshold"), configViolation("coverage.threshold")]);
 
-    const inputOnly = await run({
+    const fromInput = await run({
       policy: APP,
-      policyIgnored: [{ setting: "test_integrity.mode", layer: "input", reason: "looser" }],
+      policyIgnored: [{ setting: "test_integrity.mode", reason: "looser" }],
     });
-    expect(inputOnly.policy).toBeDefined();
-    expect(p09(inputOnly).filter((v) => v.path === ".pharn/ci.yml")).toEqual([]);
+    expect(p09(fromInput)).toEqual([workflow("test_integrity.mode"), configViolation("test_integrity.mode")]);
+
+    const none = await run({ policy: APP });
+    expect(none.policy).toBeDefined();
+    expect(p09(none).filter((v) => v.path === ".pharn/ci.yml")).toEqual([]);
+
+    const fileRecords = await run({
+      policy: { source: "file", version: null, path: "policy/org.json", document: { version: 1 } },
+      policyIgnored: [{ setting: "coverage.threshold", reason: "looser", given: 60, applied: 70 }],
+    });
+    expect(fileRecords.policy).toBeDefined();
+    expect(p09(fileRecords).filter((v) => v.path === ".pharn/ci.yml")).toEqual([]);
 
     const plain = await run({});
     expect(configChanged(plain)).toHaveLength(1);
     expect(configChanged(config)).toEqual(configChanged(plain));
-    expect(configChanged(inputOnly)).toEqual(configChanged(plain));
+    expect(configChanged(fromInput)).toEqual(configChanged(plain));
   });
 });

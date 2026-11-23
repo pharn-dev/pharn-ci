@@ -69,7 +69,9 @@ describe("resolveInputs: .pharn/ci.yml may only tighten the threshold and setup.
   });
 });
 
-describe("applyPolicy: the layer an app policy beat is the one whose value was in force", () => {
+// CORE-123 (R5.6): a record no longer names the layer an app policy beat; the value it records is still the one that was
+// in force (the larger of the input's and the config's threshold), and the message names no layer.
+describe("applyPolicy: the value an app policy beat is the one that was in force", () => {
   const app = (document: Record<string, unknown>): ResolvedPolicy =>
     ({
       source: "app",
@@ -101,41 +103,40 @@ describe("applyPolicy: the layer an app policy beat is the one whose value was i
     return report.messages.filter((m) => m.code === "POLICY_OVERRIDE_IGNORED").map((m) => m.text);
   };
 
-  it("names the config when its threshold was larger than the input's, and the input when the input's was (or tied)", () => {
+  it("records the threshold in force, the config's when it was larger than the input's and the input's when it was (or tied)", () => {
     const policy = app({ coverage: { threshold: 90 } });
-    const cases: Array<[string, RawInputs, "input" | "config", number]> = [
-      ["input 50 under config 80", { threshold: "50" }, "config", 80],
-      ["input 85 over config 80", { threshold: "85" }, "input", 85],
-      ["input 80 tied with config 80", { threshold: "80" }, "input", 80],
-      ["no input, config 80", {}, "config", 80],
+    const cases: Array<[string, RawInputs, number]> = [
+      ["input 50 under config 80", { threshold: "50" }, 80],
+      ["input 85 over config 80", { threshold: "85" }, 85],
+      ["input 80 tied with config 80", { threshold: "80" }, 80],
+      ["no input, config 80", {}, 80],
     ];
-    for (const [name, raw, layer, given] of cases) {
+    for (const [name, raw, given] of cases) {
       const application = applyPolicy(layers(STRICT, raw), policy);
       expect(application.inputs.threshold, name).toBe(90);
-      expect(application.ignored, name).toEqual([
-        { setting: "coverage.threshold", layer, reason: "looser", given, applied: 90 },
-      ]);
+      expect(application.ignored, name).toEqual([{ setting: "coverage.threshold", reason: "looser", given, applied: 90 }]);
       const texts = overrideTexts(application, policy);
       expect(texts, name).toHaveLength(1);
-      expect(texts[0], name).toContain(`coverage.threshold (${layer}) ${given} → 90`);
+      expect(texts[0], name).toContain(`coverage.threshold ${given} → 90`);
+      expect(texts[0], name).not.toMatch(/\((?:input|config|policy-file)\)/);
     }
   });
 
-  it("records no beaten setup.require when the config's true was in force over an input false; names the false layer otherwise", () => {
+  it("records no beaten setup.require when the config's true was in force over an input false; one record otherwise", () => {
     const policy = app({ setup: { require: true } });
-    const cases: Array<[string, typeof STRICT, RawInputs, Array<"input" | "config">]> = [
-      ["input false, config true: already on", STRICT, { requireAgentSetup: false }, []],
-      ["input false, config false", REQUIRE_FALSE, { requireAgentSetup: false }, ["input"]],
-      ["input absent, config false", REQUIRE_FALSE, {}, ["config"]],
-      ["input true, config false: already on", REQUIRE_FALSE, { requireAgentSetup: true }, []],
+    const cases: Array<[string, typeof STRICT, RawInputs, number]> = [
+      ["input false, config true: already on", STRICT, { requireAgentSetup: false }, 0],
+      ["input false, config false", REQUIRE_FALSE, { requireAgentSetup: false }, 1],
+      ["input absent, config false", REQUIRE_FALSE, {}, 1],
+      ["input true, config false: already on", REQUIRE_FALSE, { requireAgentSetup: true }, 0],
     ];
     for (const [name, config, raw, beaten] of cases) {
       const application = applyPolicy(layers(config, raw), policy);
       expect(application.inputs.requireAgentSetup, name).toBe(true);
       expect(application.ignored, name).toEqual(
-        beaten.map((layer) => ({ setting: "setup.require", layer, reason: "looser" })),
+        beaten === 0 ? [] : [{ setting: "setup.require", reason: "looser" }],
       );
-      expect(overrideTexts(application, policy), name).toHaveLength(beaten.length);
+      expect(overrideTexts(application, policy), name).toHaveLength(beaten);
     }
   });
 });

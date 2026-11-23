@@ -69,7 +69,7 @@ export function resolveKeyedSeverity(
     }
     const ignored: IgnoredSetting[] =
       featureValue !== undefined && RANK[featureValue] < RANK[fallback]
-        ? [{ setting: featureSetting, layer: "policy-file", reason: "looser" }]
+        ? [{ setting: featureSetting, reason: "looser" }]
         : [];
     const lowered = ruleValue !== undefined && RANK[ruleValue] < RANK[fallback];
     return { severity, ignored, lowered };

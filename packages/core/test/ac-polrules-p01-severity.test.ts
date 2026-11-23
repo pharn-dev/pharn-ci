@@ -64,6 +64,7 @@ describe("org policy rule P01: severity from policy.rules", { timeout: 60_000 },
     expect(new Set(p01(file).map((v) => v.severity))).toEqual(new Set(["block"]));
     const ignored = withCode(file, "POLICY_OVERRIDE_IGNORED");
     expect(ignored).toHaveLength(1);
-    expect(ignored[0]?.text).toContain("policy.rules.P01 (policy-file)");
+    // CORE-123: the setting and no layer (it was "policy.rules.P01 (policy-file)").
+    expect(ignored[0]?.text).toContain("applies: policy.rules.P01.");
   });
 });

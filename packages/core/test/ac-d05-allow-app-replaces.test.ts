@@ -50,7 +50,8 @@ function layersFor(raw: Record<string, unknown>) {
 }
 
 describe("the app policy replaces the input's allowed hosts", () => {
-  it("AC-8: an input host the app list does not name is D05 block, with one POLICY_OVERRIDE_IGNORED warning naming dependencies.allowed_hosts (input) and no host, and the verdict is not pass", () => {
+  // CORE-123: the warning names the setting and no layer (it named "dependencies.allowed_hosts (input)").
+  it("AC-8: an input host the app list does not name is D05 block, with one POLICY_OVERRIDE_IGNORED warning naming dependencies.allowed_hosts and no host, and the verdict is not pass", () => {
     for (const appHosts of [[], ["npm.corp.example"]]) {
       const name = `app allowed_hosts ${JSON.stringify(appHosts)}`;
       const policy = {
@@ -78,7 +79,7 @@ describe("the app policy replaces the input's allowed hosts", () => {
       const ignored = report.messages.filter((m) => m.code === "POLICY_OVERRIDE_IGNORED");
       expect(ignored, name).toHaveLength(1);
       expect(ignored[0]?.level, name).toBe("warn");
-      expect(ignored[0]?.text, name).toContain("dependencies.allowed_hosts (input)");
+      expect(ignored[0]?.text, name).toContain("applies: dependencies.allowed_hosts.");
       expect(ignored[0]?.text, name).not.toContain(MIRROR);
       expect(ignored[0]?.text, name).not.toContain("npm.corp.example");
       expect(report.verdict, name).not.toBe("pass");

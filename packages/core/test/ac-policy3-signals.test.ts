@@ -110,7 +110,8 @@ describe("per-signal severities from a policy", () => {
     expect(severities(lowered, "TI01")).toEqual(severities(base, "TI01"));
     const ignored = withCode(lowered, "POLICY_OVERRIDE_IGNORED");
     expect(ignored).toHaveLength(1);
-    expect(ignored[0]?.text).toContain("test_integrity.signals.TI01 (policy-file)");
+    // CORE-123: the setting and no layer (it was "test_integrity.signals.TI01 (policy-file)").
+    expect(ignored[0]?.text).toContain("applies: test_integrity.signals.TI01.");
 
     // File TI06: block raises warn to block.
     const fileRaised = await signalsRun(file({ signals: { TI06: "block" } }), "block");

@@ -40,8 +40,9 @@ const withCode = (report: Report, code: string) => report.messages.filter((m) =>
 describe("org policy rule P07: a file: policy only tightens", { timeout: 60_000 }, () => {
   it("AC-10: under a file: policy, setup.consistency off and policy.rules.P07 info leave P07 at warn and are each named in one POLICY_OVERRIDE_IGNORED; setup.consistency block blocks with no POLICY_OVERRIDE_IGNORED", async () => {
     for (const [extra, named] of [
-      [{ setup: { consistency: "off" } }, "setup.consistency (policy-file)"],
-      [{ policy: { rules: { P07: "info" } } }, "policy.rules.P07 (policy-file)"],
+      // CORE-123: the message names the setting and no layer (it was "setup.consistency (policy-file)").
+      [{ setup: { consistency: "off" } }, "applies: setup.consistency."],
+      [{ policy: { rules: { P07: "info" } } }, "applies: policy.rules.P07."],
     ] as const) {
       const report = await run(extra);
       expect(
