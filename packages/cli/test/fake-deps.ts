@@ -38,6 +38,7 @@ export function fakeDeps(files: Record<string, string>, gitOverrides: Record<str
     async readFile(path) {
       return files[path] ?? null;
     },
+    listDir: () => Promise.reject(new Error("unexpected listDir")),
     resolvePath: (...segments) =>
       segments.reduce((acc, s) => (s.startsWith("/") ? s : `${acc.replace(/\/$/, "")}/${s.replace(/^\.\//, "")}`), ""),
     stdout: (t) => {
