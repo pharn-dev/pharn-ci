@@ -1,0 +1,7 @@
+[project]
+name = "demo"
+description = """A \"""quoted\""" word"""
+
+[tool]
+pytest.ini_options.addopts = "-ra"
+pytest.ini_options.testpaths = ["tests"] # the suites

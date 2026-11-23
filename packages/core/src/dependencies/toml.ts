@@ -71,8 +71,21 @@ export function parseToml(text: string): TomlTable[] | null {
   return parseTomlDocument(text)?.tables ?? null;
 }
 
-/** A TOML text as one nested table (see `TomlDocument`), or null when the text is not valid TOML. */
-export function parseTomlDocument(text: string): TomlDocument | null {
+/**
+ * How a value of a parsed document came to be, for a reader that needs more than the tree (the pytest config reader):
+ * `value` was written after a `=` (a string, an array, an inline table or another scalar) at `[start, end)` of the
+ * text without its leading byte order mark; `header` is a table a `[header]` defined, an `[[array table]]`'s array or
+ * one of its elements; `dotted` a table dotted keys made or extended; `implicit` a table only named on the way to a
+ * deeper header.
+ */
+export type TomlOrigin = { kind: "value"; start: number; end: number } | { kind: "header" | "dotted" | "implicit" };
+
+/**
+ * A TOML text as one nested table (see `TomlDocument`), or null when the text is not valid TOML. When `origins` is
+ * given, it is filled with how each table and each value written after a `=` came to be (see `TomlOrigin`).
+ */
+export function parseTomlDocument(text: string, origins?: Map<TomlValue, TomlOrigin>): TomlDocument | null {
+  const record = (value: TomlValue, kind: "header" | "dotted" | "implicit") => origins?.set(value, { kind });
   const src = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   const lineStarts = [0];
   for (let i = 0; i < src.length; i++) if (src[i] === "\n") lineStarts.push(i + 1);
@@ -264,6 +277,12 @@ export function parseTomlDocument(text: string): TomlDocument | null {
   };
 
   const value = (depth: number): TomlValue => {
+    const start = pos;
+    const parsed = parseValue(depth);
+    origins?.set(parsed, { kind: "value", start, end: pos });
+    return parsed;
+  };
+  const parseValue = (depth: number): TomlValue => {
     if (depth > MAX_DEPTH) fail();
     const line = lineAt(pos);
     const ch = src[pos];
@@ -308,7 +327,10 @@ export function parseTomlDocument(text: string): TomlDocument | null {
           value(depth + 1),
           keyLine,
           (parent) => made.has(parent),
-          (child) => made.add(child),
+          (child) => {
+            made.add(child);
+            record(child, "dotted");
+          },
         );
         skipAll();
         if (src[pos] === ",") pos++;
@@ -330,6 +352,7 @@ export function parseTomlDocument(text: string): TomlDocument | null {
       if (next === undefined) {
         next = newTable(line);
         origin.set(next, "implicit");
+        record(next, "implicit");
         table.entries.set(key, next);
       } else if (next.type === "array" && origin.get(next) === "array-table") {
         // A header under an array table names its last element.
@@ -345,24 +368,28 @@ export function parseTomlDocument(text: string): TomlDocument | null {
       if (list === undefined) {
         list = { type: "array", items: [], line };
         origin.set(list, "array-table");
+        record(list, "header");
         table.entries.set(last, list);
       } else if (list.type !== "array" || origin.get(list) !== "array-table") {
         fail();
       }
       const element = newTable(line);
       origin.set(element, "defined");
+      record(element, "header");
       (list as Extract<TomlValue, { type: "array" }>).items.push(element);
       return element;
     }
     if (existing === undefined) {
       const created = newTable(line);
       origin.set(created, "defined");
+      record(created, "header");
       table.entries.set(last, created);
       return created;
     }
     if (existing.type !== "table" || origin.get(existing) !== "implicit") fail();
     const defined = existing as TomlTableValue;
     origin.set(defined, "defined");
+    record(defined, "header");
     defined.line = line;
     return defined;
   };
@@ -408,12 +435,14 @@ export function parseTomlDocument(text: string): TomlDocument | null {
           const from = origin.get(parent);
           if (from === "implicit") {
             origin.set(parent, "dotted");
+            record(parent, "dotted");
             dotted.push(parent);
           }
           return from === "implicit" || from === "dotted";
         },
         (child) => {
           origin.set(child, "dotted");
+          record(child, "dotted");
           dotted.push(child);
         },
       );

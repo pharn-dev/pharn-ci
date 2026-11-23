@@ -641,11 +641,14 @@ TI09 compares a fixed list of settings of the test-runner config files the chang
   `[tool.pytest.ini_options]` table count: a change from a file that has either one to a file that has neither gives
   nothing.
 - **pytest's native `[tool.pytest]` table.** `pyproject.toml` is read for pytest 9's native `[tool.pytest]` table
-  beside `[tool.pytest.ini_options]`, by the same rules. The headers are matched whole (`[tool.pytestx]`,
-  `[tool.pytest.foo]` and `[[tool.pytest]]` are other tables and give nothing), and a quoted or dotted key in a header
-  is not read. When a file holds both tables their entries are merged into one, and the native value wins over the
-  `ini_options` one of the same key, whatever pytest itself does with a file that has both (TI09 does not model it).
-  A table that cannot be read is refused like the other config texts (`too-large`, `invalid-toml`).
+  beside `[tool.pytest.ini_options]`, by the same rules. Both are taken from the file's nested TOML document, so a
+  table reads the same whether it is written as a header (quoted or spaced parts included), dotted keys
+  (`[tool]` then `pytest.ini_options.addopts = …`) or an inline table (`[tool.pytestx]`, `[tool.pytest.foo]` and
+  `[[tool.pytest]]` are other tables and give nothing). When a file holds both tables their entries are merged into
+  one, and the native value wins over the `ini_options` one of the same key, whatever pytest itself does with a file
+  that has both (TI09 does not model it). A file that is not valid TOML anywhere (a duplicated key or table included)
+  is refused like the other config texts (`invalid-toml`), as pytest refuses it, and so is one over the size cap
+  (`too-large`).
 - **Playwright per-project settings.** Only the top-level keys are read. `projects[].retries`, `projects[].grep`,
   `projects[].testMatch` and everything under `use` are not.
 - **Vitest and jest projects are matched by identity.** The object projects of a `projects` list are matched by name
@@ -1043,7 +1046,7 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   top-level import of the same name replaces the earlier binding, so `import os as pt` after `import pytest as pt` hides
   pytest.
 - `[tool.pytest]` and `[tool.pytest.ini_options]` in one `pyproject.toml` are merged into one table in which the native
-  value wins, which is not necessarily what pytest does; a header written with a quoted or dotted key is not read.
+  value wins, which is not necessarily what pytest does.
 - Results depend on the runner's Python. Test files are parsed by the runner's own `python3` (or `python`), so a file
   that uses syntax newer than that interpreter (for example a `match` statement on Python 3.8 or 3.9) may not parse
   there; it is then named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` (`warn`) and not compared. Pin the Python version

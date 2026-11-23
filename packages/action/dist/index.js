@@ -29674,7 +29674,8 @@ var TomlError = class extends Error {
 };
 var isBare = (c) => c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c >= "0" && c <= "9" || c === "_" || c === "-";
 var newTable = (line) => ({ type: "table", entries: /* @__PURE__ */ new Map(), line });
-function parseTomlDocument(text) {
+function parseTomlDocument(text, origins) {
+  const record = (value2, kind) => origins?.set(value2, { kind });
   const src = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
   const lineStarts2 = [0];
   for (let i = 0; i < src.length; i++) if (src[i] === "\n") lineStarts2.push(i + 1);
@@ -29841,6 +29842,12 @@ function parseTomlDocument(text) {
     target.entries.set(last, value2);
   };
   const value = (depth) => {
+    const start = pos;
+    const parsed = parseValue(depth);
+    origins?.set(parsed, { kind: "value", start, end: pos });
+    return parsed;
+  };
+  const parseValue = (depth) => {
     if (depth > MAX_DEPTH2) fail2();
     const line = lineAt(pos);
     const ch = src[pos];
@@ -29883,7 +29890,10 @@ function parseTomlDocument(text) {
           value(depth + 1),
           keyLine,
           (parent) => made.has(parent),
-          (child) => made.add(child)
+          (child) => {
+            made.add(child);
+            record(child, "dotted");
+          }
         );
         skipAll();
         if (src[pos] === ",") pos++;
@@ -29903,6 +29913,7 @@ function parseTomlDocument(text) {
       if (next === void 0) {
         next = newTable(line);
         origin.set(next, "implicit");
+        record(next, "implicit");
         table.entries.set(key, next);
       } else if (next.type === "array" && origin.get(next) === "array-table") {
         next = next.items[next.items.length - 1];
@@ -29917,24 +29928,28 @@ function parseTomlDocument(text) {
       if (list === void 0) {
         list = { type: "array", items: [], line };
         origin.set(list, "array-table");
+        record(list, "header");
         table.entries.set(last, list);
       } else if (list.type !== "array" || origin.get(list) !== "array-table") {
         fail2();
       }
       const element = newTable(line);
       origin.set(element, "defined");
+      record(element, "header");
       list.items.push(element);
       return element;
     }
     if (existing === void 0) {
       const created = newTable(line);
       origin.set(created, "defined");
+      record(created, "header");
       table.entries.set(last, created);
       return created;
     }
     if (existing.type !== "table" || origin.get(existing) !== "implicit") fail2();
     const defined = existing;
     origin.set(defined, "defined");
+    record(defined, "header");
     defined.line = line;
     return defined;
   };
@@ -29979,12 +29994,14 @@ function parseTomlDocument(text) {
           const from = origin.get(parent);
           if (from === "implicit") {
             origin.set(parent, "dotted");
+            record(parent, "dotted");
             dotted.push(parent);
           }
           return from === "implicit" || from === "dotted";
         },
         (child) => {
           origin.set(child, "dotted");
+          record(child, "dotted");
           dotted.push(child);
         }
       );
@@ -41231,11 +41248,9 @@ function readJs(path, text) {
 }
 
 // ../core/src/testConfig/readToml.ts
-var TABLE2 = /^\[\s*tool\s*\.\s*pytest\s*\.\s*ini_options\s*\]\s*(?:#.*)?$/;
-var NATIVE_TABLE = /^\[\s*tool\s*\.\s*pytest\s*\]\s*(?:#.*)?$/;
-var HEADER_LINE = /^\[\[?[A-Za-z0-9_.\s-]+\]\]?\s*(?:#.*)?$/;
-var KEY_LINE = /^([A-Za-z0-9_.-]+|"(?:[^"\\]|\\.)*"|'[^']*')\s*=([\s\S]*)$/;
 var NUMBER3 = /^[-+]?\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][-+]?\d+)?$/;
+var INI_OPTIONS = ["tool", "pytest", "ini_options"];
+var NATIVE = ["tool", "pytest"];
 function stringEnd2(text, open3) {
   const quote = text[open3];
   for (let i = open3 + 1; i < text.length; i++) {
@@ -41243,27 +41258,6 @@ function stringEnd2(text, open3) {
     else if (text[i] === quote) return i;
   }
   return -1;
-}
-function closesMultiLine(line, from, delimiter) {
-  if (delimiter === "'''") return line.includes(delimiter, from);
-  for (let i = from; i < line.length; i++) {
-    if (line[i] === "\\") i++;
-    else if (line.startsWith(delimiter, i)) return true;
-  }
-  return false;
-}
-function stripTomlComment(line) {
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"' || ch === "'") {
-      const end = stringEnd2(line, i);
-      if (end === -1) return line.trim();
-      i = end;
-    } else if (ch === "#") {
-      return line.slice(0, i).trim();
-    }
-  }
-  return line.trim();
 }
 function scalar(text) {
   if (text.startsWith('"') || text.startsWith("'")) {
@@ -41283,179 +41277,60 @@ function scalar(text) {
   if (NUMBER3.test(text)) return { type: "number", value: Number(text.replace(/_/g, "")) };
   return { type: "opaque", text: normalizeOpaque(text) };
 }
-function scanBrackets(text, from, depth) {
-  let open3 = depth;
-  for (let i = from; i < text.length; i++) {
+function withoutComments2(text) {
+  let out = "";
+  let from = 0;
+  for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (ch === '"' || ch === "'") {
-      const end = stringEnd2(text, i);
-      if (end === -1) return null;
-      i = end;
-    } else if (ch === "[" || ch === "{") {
-      open3++;
-    } else if (ch === "]" || ch === "}") {
-      open3--;
-      if (open3 === 0) return { close: i, depth: 0 };
+      const delimiter = text.startsWith(ch.repeat(3), i) ? ch.repeat(3) : ch;
+      let j = i + delimiter.length;
+      while (j < text.length && !text.startsWith(delimiter, j)) j += ch === '"' && text[j] === "\\" ? 2 : 1;
+      i = j + delimiter.length - 1;
+    } else if (ch === "#") {
+      out += text.slice(from, i);
+      while (i < text.length && text[i] !== "\n") i++;
+      from = i;
     }
   }
-  return { close: -1, depth: open3 };
+  return out + text.slice(from);
 }
-function closeOf2(text, open3) {
-  return scanBrackets(text, open3, 0)?.close ?? -1;
+function configValue(value, origins, src, nested2) {
+  const origin = origins.get(value);
+  const raw = origin?.kind === "value" ? src.slice(origin.start, origin.end) : "";
+  if (value.type === "table" || value.type === "array" && nested2) {
+    return { type: "opaque", text: normalizeOpaque(withoutComments2(raw)) };
+  }
+  if (value.type === "array")
+    return { type: "array", items: value.items.map((item) => configValue(item, origins, src, true)) };
+  return scalar(raw.trim());
 }
-function arrayValue(text) {
-  const items = [];
-  let i = 1;
-  while (i < text.length) {
-    const ch = text[i];
-    if (ch === "]") break;
-    if (/\s/.test(ch) || ch === ",") {
-      i++;
-    } else if (ch === '"' || ch === "'") {
-      const end = stringEnd2(text, i);
-      if (end === -1) break;
-      items.push(scalar(text.slice(i, end + 1)));
-      i = end + 1;
-    } else if (ch === "[" || ch === "{") {
-      const end = closeOf2(text, i);
-      if (end === -1) break;
-      items.push({ type: "opaque", text: normalizeOpaque(text.slice(i, end + 1)) });
-      i = end + 1;
-    } else {
-      let end = i;
-      while (end < text.length && text[end] !== "," && text[end] !== "]") end++;
-      items.push(scalar(text.slice(i, end).trim()));
-      i = end;
-    }
+function collect(table, prefix, origins, src, into, skip) {
+  for (const [key, value] of table.entries) {
+    if (key === skip) continue;
+    const kind = origins.get(value)?.kind;
+    if (kind === "value") into.set(prefix + key, { value: configValue(value, origins, src, false), line: value.line });
+    else if (kind === "dotted" && value.type === "table") collect(value, `${prefix}${key}.`, origins, src, into, null);
   }
-  return { type: "array", items };
-}
-function breakAt(text, from) {
-  for (let i = from; i < text.length; i++) {
-    const code2 = text.charCodeAt(i);
-    if (code2 === 10 || code2 === 13) return i;
-  }
-  return -1;
-}
-var afterBreak = (text, at) => at + (text.charCodeAt(at) === 13 && text.charCodeAt(at + 1) === 10 ? 2 : 1);
-var Lines = class {
-  constructor(text, from, first) {
-    this.text = text;
-    this.first = first;
-    this.pos = from;
-    this.done = from > text.length;
-  }
-  text;
-  first;
-  pos;
-  done;
-  cache = [];
-  /** The line with index `i`, or undefined past the end of the text. */
-  at(i) {
-    const k = i - this.first;
-    while (this.cache.length <= k && !this.done) {
-      const end = breakAt(this.text, this.pos);
-      if (end === -1) {
-        this.cache.push(this.text.slice(this.pos));
-        this.done = true;
-      } else {
-        this.cache.push(this.text.slice(this.pos, end));
-        this.pos = afterBreak(this.text, end);
-      }
-    }
-    return this.cache[k];
-  }
-};
-function headerAt(text, needle, header2) {
-  let from = 0;
-  for (; ; ) {
-    const hit = text.indexOf(needle, from);
-    if (hit === -1) return null;
-    let start = hit;
-    while (start > 0 && text.charCodeAt(start - 1) !== 10 && text.charCodeAt(start - 1) !== 13) start--;
-    const end = breakAt(text, hit);
-    if (header2.test(text.slice(start, end === -1 ? text.length : end).trim())) {
-      let line = 0;
-      for (let i = 0; i < start; i++) {
-        const code2 = text.charCodeAt(i);
-        if (code2 === 10 || code2 === 13 && text.charCodeAt(i + 1) !== 10) line++;
-      }
-      return { line, next: end === -1 ? text.length + 1 : afterBreak(text, end) };
-    }
-    if (end === -1) return null;
-    from = end;
-  }
-}
-function readTable(lines, headerAt2) {
-  const entries = /* @__PURE__ */ new Map();
-  let i = headerAt2 + 1;
-  for (let raw = lines.at(i); raw !== void 0; raw = lines.at(i)) {
-    const line = stripTomlComment(raw);
-    if (line === "") {
-      i++;
-      continue;
-    }
-    if (line.startsWith("[")) break;
-    const match = KEY_LINE.exec(line);
-    if (match === null) return null;
-    const rawKey = match[1];
-    let key = rawKey.replace(/^'|'$/g, "");
-    if (rawKey.startsWith('"')) {
-      try {
-        key = JSON.parse(rawKey);
-      } catch {
-        return null;
-      }
-    }
-    const rest = match[2].trim();
-    const first = i;
-    const multi = rest.startsWith('"""') ? '"""' : rest.startsWith("'''") ? "'''" : null;
-    if (multi !== null) {
-      let closed = closesMultiLine(rest, 3, multi);
-      while (!closed) {
-        i++;
-        const more = lines.at(i);
-        if (more === void 0) return null;
-        closed = closesMultiLine(more, 0, multi);
-      }
-      entries.set(key, { value: { type: "opaque", text: normalizeOpaque(rest) }, line: first + 1 });
-      i++;
-      continue;
-    }
-    let value;
-    if (rest.startsWith("[")) {
-      const parts = [rest];
-      let scan = scanBrackets(rest, 0, 0);
-      while (scan !== null && scan.close === -1) {
-        i++;
-        const next = lines.at(i);
-        if (next === void 0 || HEADER_LINE.test(next.trim())) return null;
-        const added = stripTomlComment(next);
-        parts.push(added);
-        scan = scanBrackets(added, 0, scan.depth);
-      }
-      if (scan === null) return null;
-      value = arrayValue(parts.join(" "));
-    } else {
-      value = scalar(rest);
-    }
-    entries.set(key, { value, line: first + 1 });
-    i++;
-  }
-  return entries;
 }
 function readToml(text) {
   if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
-  const starts = [headerAt(text, "ini_options", TABLE2), headerAt(text, "pytest", NATIVE_TABLE)];
-  if (starts[0] === null && starts[1] === null) return { ok: true, root: null };
+  const origins = /* @__PURE__ */ new Map();
+  const document2 = parseTomlDocument(text, origins);
+  if (document2 === null) return { ok: false, reason: "invalid-toml" };
+  const src = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
   const entries = /* @__PURE__ */ new Map();
-  for (const start of starts) {
-    if (start === null) continue;
-    const table = readTable(new Lines(text, start.next, start.line + 1), start.line);
-    if (table === null) return { ok: false, reason: "invalid-toml" };
-    for (const [key, entry] of table) entries.set(key, entry);
+  let present = false;
+  for (const [path, skip] of [
+    [INI_OPTIONS, null],
+    [NATIVE, "ini_options"]
+  ]) {
+    const table = valueAt(document2.root, path);
+    if (table?.type !== "table" || origins.get(table)?.kind === "implicit") continue;
+    present = true;
+    collect(table, "", origins, src, entries, skip);
   }
-  return { ok: true, root: { type: "object", entries, open: false, extras: [] } };
+  return { ok: true, root: present ? { type: "object", entries, open: false, extras: [] } : null };
 }
 
 // ../core/src/testConfig/readYaml.ts

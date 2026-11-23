@@ -1,12 +1,9 @@
+import { parseTomlDocument, type TomlOrigin, type TomlValue, valueAt } from "../dependencies/toml.js";
 import { type ConfigEntry, type ConfigValue, MAX_CONFIG_CHARS, normalizeOpaque, type ReadResult } from "./value.js";
 
-const TABLE = /^\[\s*tool\s*\.\s*pytest\s*\.\s*ini_options\s*\]\s*(?:#.*)?$/;
-/** The header of pytest 9's native table; `[tool.pytestx]`, `[tool.pytest.foo]` and `[[tool.pytest]]` do not match. */
-const NATIVE_TABLE = /^\[\s*tool\s*\.\s*pytest\s*\]\s*(?:#.*)?$/;
-/** A table header line, as seen where an unclosed array would otherwise swallow it. */
-const HEADER_LINE = /^\[\[?[A-Za-z0-9_.\s-]+\]\]?\s*(?:#.*)?$/;
-const KEY_LINE = /^([A-Za-z0-9_.-]+|"(?:[^"\\]|\\.)*"|'[^']*')\s*=([\s\S]*)$/;
 const NUMBER = /^[-+]?\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][-+]?\d+)?$/;
+const INI_OPTIONS = ["tool", "pytest", "ini_options"] as const;
+const NATIVE = ["tool", "pytest"] as const;
 
 /** The index of the quote that closes the string opened at `open`, or -1. */
 function stringEnd(text: string, open: number): number {
@@ -18,36 +15,7 @@ function stringEnd(text: string, open: number): number {
   return -1;
 }
 
-/**
- * Whether the multi-line string delimited by `delimiter` closes on `line`, looking from `from`. A literal string (`'''`)
- * has no escapes. In a basic string (`"""`) a backslash escapes the character after it, so `\"""` does not close the
- * string and `\\"""` does; a backslash at the end of the line escapes the line break, and the next line starts afresh.
- */
-function closesMultiLine(line: string, from: number, delimiter: string): boolean {
-  if (delimiter === "'''") return line.includes(delimiter, from);
-  for (let i = from; i < line.length; i++) {
-    if (line[i] === "\\") i++;
-    else if (line.startsWith(delimiter, i)) return true;
-  }
-  return false;
-}
-
-/** The line without a trailing `#` comment (a `#` outside a string), trimmed. */
-function stripTomlComment(line: string): string {
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"' || ch === "'") {
-      const end = stringEnd(line, i);
-      if (end === -1) return line.trim();
-      i = end;
-    } else if (ch === "#") {
-      return line.slice(0, i).trim();
-    }
-  }
-  return line.trim();
-}
-
-/** A scalar token as a value: a string, boolean or number; anything else (a date, an inline table, hex) is opaque. */
+/** A scalar token as a value: a string, boolean or number; anything else (a date, a multi-line string, hex) is opaque. */
 function scalar(text: string): ConfigValue {
   if (text.startsWith('"') || text.startsWith("'")) {
     const end = stringEnd(text, 0);
@@ -68,225 +36,93 @@ function scalar(text: string): ConfigValue {
   return { type: "opaque", text: normalizeOpaque(text) };
 }
 
-/**
- * Scans `text` from `from` with `depth` brackets already open, string-aware: the index of the bracket that closes the
- * outermost one (`close`), or -1 with the depth still open; null when a string is not closed on the text.
- */
-function scanBrackets(text: string, from: number, depth: number): { close: number; depth: number } | null {
-  let open = depth;
-  for (let i = from; i < text.length; i++) {
+/** The source text of a value with its TOML comments (a `#` outside a string, to the end of its line) dropped. */
+function withoutComments(text: string): string {
+  let out = "";
+  let from = 0;
+  for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (ch === '"' || ch === "'") {
-      const end = stringEnd(text, i);
-      if (end === -1) return null;
-      i = end;
-    } else if (ch === "[" || ch === "{") {
-      open++;
-    } else if (ch === "]" || ch === "}") {
-      open--;
-      if (open === 0) return { close: i, depth: 0 };
+      const delimiter = text.startsWith(ch.repeat(3), i) ? ch.repeat(3) : ch;
+      let j = i + delimiter.length;
+      while (j < text.length && !text.startsWith(delimiter, j)) j += ch === '"' && text[j] === "\\" ? 2 : 1;
+      i = j + delimiter.length - 1;
+    } else if (ch === "#") {
+      out += text.slice(from, i);
+      while (i < text.length && text[i] !== "\n") i++;
+      from = i;
     }
   }
-  return { close: -1, depth: open };
+  return out + text.slice(from);
 }
-
-/** The index of the bracket that closes the one opened at `open`, string-aware, or -1. */
-function closeOf(text: string, open: number): number {
-  return scanBrackets(text, open, 0)?.close ?? -1;
-}
-
-/** The items of an array text that starts with `[` and is balanced. */
-function arrayValue(text: string): ConfigValue {
-  const items: ConfigValue[] = [];
-  let i = 1;
-  while (i < text.length) {
-    const ch = text[i] as string;
-    if (ch === "]") break;
-    if (/\s/.test(ch) || ch === ",") {
-      i++;
-    } else if (ch === '"' || ch === "'") {
-      const end = stringEnd(text, i);
-      if (end === -1) break;
-      items.push(scalar(text.slice(i, end + 1)));
-      i = end + 1;
-    } else if (ch === "[" || ch === "{") {
-      const end = closeOf(text, i);
-      if (end === -1) break;
-      items.push({ type: "opaque", text: normalizeOpaque(text.slice(i, end + 1)) });
-      i = end + 1;
-    } else {
-      let end = i;
-      while (end < text.length && text[end] !== "," && text[end] !== "]") end++;
-      items.push(scalar(text.slice(i, end).trim()));
-      i = end;
-    }
-  }
-  return { type: "array", items };
-}
-
-/** The index of the first line break (`\n` or `\r`) at or after `from`, or -1. */
-function breakAt(text: string, from: number): number {
-  for (let i = from; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    if (code === 10 || code === 13) return i;
-  }
-  return -1;
-}
-
-/** The index just after the line break at `at`; `\r\n` is one break. */
-const afterBreak = (text: string, at: number): number =>
-  at + (text.charCodeAt(at) === 13 && text.charCodeAt(at + 1) === 10 ? 2 : 1);
 
 /**
- * The lines of a text from an offset on, split at `\r\n`, `\r` and `\n` like `text.split(/\r\n|\r|\n/)` (a text that ends
- * with a break has a last empty line), cut out one at a time as they are asked for. The first line held has index `first`.
+ * A value written after a `=`, as TI09 reads it: a scalar from its source text, an array item by item, and an inline
+ * table or a nested array as opaque normalized source.
  */
-class Lines {
-  private pos: number;
-  private done: boolean;
-  private readonly cache: string[] = [];
-
-  constructor(
-    private readonly text: string,
-    from: number,
-    private readonly first: number,
-  ) {
-    this.pos = from;
-    this.done = from > text.length;
+function configValue(
+  value: TomlValue,
+  origins: ReadonlyMap<TomlValue, TomlOrigin>,
+  src: string,
+  nested: boolean,
+): ConfigValue {
+  const origin = origins.get(value);
+  const raw = origin?.kind === "value" ? src.slice(origin.start, origin.end) : "";
+  if (value.type === "table" || (value.type === "array" && nested)) {
+    return { type: "opaque", text: normalizeOpaque(withoutComments(raw)) };
   }
-
-  /** The line with index `i`, or undefined past the end of the text. */
-  at(i: number): string | undefined {
-    const k = i - this.first;
-    while (this.cache.length <= k && !this.done) {
-      const end = breakAt(this.text, this.pos);
-      if (end === -1) {
-        this.cache.push(this.text.slice(this.pos));
-        this.done = true;
-      } else {
-        this.cache.push(this.text.slice(this.pos, end));
-        this.pos = afterBreak(this.text, end);
-      }
-    }
-    return this.cache[k];
-  }
+  if (value.type === "array")
+    return { type: "array", items: value.items.map((item) => configValue(item, origins, src, true)) };
+  return scalar(raw.trim());
 }
 
 /**
- * The first line, in text order, that holds `needle` and is `header` once trimmed: its index and the offset of the line
- * after it (past the end of the text when it is the last line). Each line is looked at once, so the cost is linear.
+ * The entries of one pytest table: each key written after a `=` with its own line, a table dotted keys made folded back
+ * into `a.b` keys, and a table a header defined (a sub-table, an array table) left out.
  */
-function headerAt(text: string, needle: string, header: RegExp): { line: number; next: number } | null {
-  let from = 0;
-  for (;;) {
-    const hit = text.indexOf(needle, from);
-    if (hit === -1) return null;
-    let start = hit;
-    while (start > 0 && text.charCodeAt(start - 1) !== 10 && text.charCodeAt(start - 1) !== 13) start--;
-    const end = breakAt(text, hit);
-    if (header.test(text.slice(start, end === -1 ? text.length : end).trim())) {
-      let line = 0;
-      for (let i = 0; i < start; i++) {
-        const code = text.charCodeAt(i);
-        if (code === 10 || (code === 13 && text.charCodeAt(i + 1) !== 10)) line++;
-      }
-      return { line, next: end === -1 ? text.length + 1 : afterBreak(text, end) };
-    }
-    if (end === -1) return null;
-    from = end;
+function collect(
+  table: Extract<TomlValue, { type: "table" }>,
+  prefix: string,
+  origins: ReadonlyMap<TomlValue, TomlOrigin>,
+  src: string,
+  into: Map<string, ConfigEntry>,
+  skip: string | null,
+): void {
+  for (const [key, value] of table.entries) {
+    if (key === skip) continue;
+    const kind = origins.get(value)?.kind;
+    if (kind === "value") into.set(prefix + key, { value: configValue(value, origins, src, false), line: value.line });
+    else if (kind === "dotted" && value.type === "table") collect(value, `${prefix}${key}.`, origins, src, into, null);
   }
 }
 
 /**
- * Reads the `key = value` lines of the table whose header is line `headerAt`, up to the next line that starts with `[`.
- * Null when the text must be refused as `invalid-toml`.
- */
-function readTable(lines: Lines, headerAt: number): Map<string, ConfigEntry> | null {
-  const entries = new Map<string, ConfigEntry>();
-  let i = headerAt + 1;
-  for (let raw = lines.at(i); raw !== undefined; raw = lines.at(i)) {
-    const line = stripTomlComment(raw);
-    if (line === "") {
-      i++;
-      continue;
-    }
-    if (line.startsWith("[")) break;
-    const match = KEY_LINE.exec(line);
-    if (match === null) return null;
-    const rawKey = match[1] as string;
-    let key = rawKey.replace(/^'|'$/g, "");
-    if (rawKey.startsWith('"')) {
-      try {
-        key = JSON.parse(rawKey) as string;
-      } catch {
-        return null;
-      }
-    }
-    const rest = (match[2] as string).trim();
-    const first = i;
-
-    const multi = rest.startsWith('"""') ? '"""' : rest.startsWith("'''") ? "'''" : null;
-    if (multi !== null) {
-      // The closing delimiter cannot span a line break, so each line is looked at once.
-      let closed = closesMultiLine(rest, 3, multi);
-      while (!closed) {
-        i++;
-        const more = lines.at(i);
-        if (more === undefined) return null;
-        closed = closesMultiLine(more, 0, multi);
-      }
-      entries.set(key, { value: { type: "opaque", text: normalizeOpaque(rest) }, line: first + 1 });
-      i++;
-      continue;
-    }
-
-    let value: ConfigValue;
-    if (rest.startsWith("[")) {
-      // Each added line is scanned once, carrying the open depth, so a long unclosed array costs linear time. A
-      // string cannot span lines in TOML, so one left open on a line refuses the text.
-      const parts = [rest];
-      let scan = scanBrackets(rest, 0, 0);
-      while (scan !== null && scan.close === -1) {
-        i++;
-        const next = lines.at(i);
-        if (next === undefined || HEADER_LINE.test(next.trim())) return null;
-        const added = stripTomlComment(next);
-        parts.push(added);
-        scan = scanBrackets(added, 0, scan.depth);
-      }
-      if (scan === null) return null;
-      value = arrayValue(parts.join(" "));
-    } else {
-      value = scalar(rest);
-    }
-    entries.set(key, { value, line: first + 1 });
-    i++;
-  }
-  return entries;
-}
-
-/**
- * Reads the pytest tables of `pyproject.toml`: pytest 9's native `[tool.pytest]` and `[tool.pytest.ini_options]`. Each is
- * `key = value` lines whose value is a string, an integer, a float, a boolean or an array of these over one or more lines
- * (comments and a trailing comma allowed). Anything else (an inline table, a multi-line string) is opaque. An array not
- * closed before the next header or the end of the file, and any other line in a table, refuse the text as `invalid-toml`.
- * The first table of each kind is read; when both are present their entries are merged into one root, the
- * `ini_options` ones first and a native entry replacing an `ini_options` one of the same key, each entry keeping its own
- * line. The root is null when neither table is present.
+ * Reads the pytest tables of `pyproject.toml`: pytest 9's native `[tool.pytest]` and `[tool.pytest.ini_options]`, from
+ * the nested TOML document (`parseTomlDocument`), so a table reads the same whether it is written as a header (quoted
+ * or spaced parts included), dotted keys or an inline table. A value that is a string, an integer, a float or a boolean
+ * is read as one; an array item by item; anything else (an inline table, a multi-line string, a date) is opaque. A text
+ * that is not valid TOML is refused as `invalid-toml`, as pytest refuses it. When both tables are present their entries
+ * are merged into one root, the `ini_options` ones first and a native entry replacing an `ini_options` one of the same
+ * key, each entry keeping its own line. The root is null when neither table is present (a table only named on the way
+ * to a deeper header is not present).
  */
 export function readToml(text: string): ReadResult {
   if (text.length > MAX_CONFIG_CHARS) return { ok: false, reason: "too-large" };
-  // Both headers contain "pytest", and the ini_options one "ini_options": only the lines holding the word are looked at
-  // for a header, and only the lines a table spans are cut out of the text, so most of a large file is never split.
-  const starts = [headerAt(text, "ini_options", TABLE), headerAt(text, "pytest", NATIVE_TABLE)];
-  if (starts[0] === null && starts[1] === null) return { ok: true, root: null };
+  const origins = new Map<TomlValue, TomlOrigin>();
+  const document = parseTomlDocument(text, origins);
+  if (document === null) return { ok: false, reason: "invalid-toml" };
+  const src = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
 
   const entries = new Map<string, ConfigEntry>();
-  for (const start of starts) {
-    if (start === null) continue;
-    const table = readTable(new Lines(text, start.next, start.line + 1), start.line);
-    if (table === null) return { ok: false, reason: "invalid-toml" };
-    for (const [key, entry] of table) entries.set(key, entry);
+  let present = false;
+  for (const [path, skip] of [
+    [INI_OPTIONS, null],
+    [NATIVE, "ini_options"],
+  ] as const) {
+    const table = valueAt(document.root, path);
+    if (table?.type !== "table" || origins.get(table)?.kind === "implicit") continue;
+    present = true;
+    collect(table, "", origins, src, entries, skip);
   }
-  return { ok: true, root: { type: "object", entries, open: false, extras: [] } };
+  return { ok: true, root: present ? { type: "object", entries, open: false, extras: [] } : null };
 }

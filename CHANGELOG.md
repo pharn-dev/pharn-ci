@@ -16,6 +16,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   fences and a PowerShell `PS …> ` prompt in a console block, as P07 did, and no longer takes "no" out of "Noël" as a
   negation (a word may hold any letter, not only ASCII). P07 now reads a span after a word such as `docs/not.md`,
   which it read as the negation "not"; a word may hold a dot after its first letter, as in the stale check.
+- TI09 reads the pytest tables of `pyproject.toml` with the TOML reader of dependency safety (CORE-142), so a table
+  reads the same in every TOML spelling, as CORE-114 made it for dependencies. A `[tool.pytest.ini_options]` table
+  moved to dotted keys (`[tool]` then `pytest.ini_options.testpaths = …`) or an inline table, or written with a quoted
+  header part, was not seen at all, so narrowing `testpaths` that way passed; it is now read and judged. A file that is
+  not valid TOML anywhere is refused as `invalid-toml`, as pytest refuses it, where before only the pytest tables had
+  to parse, and a multi-line string value is compared whole, where only its first line was.
 - The CLI and the Action gather what the checks read with one shared function (CORE-136), so they no longer differ on
   the same repository. The Action now scans the agent config files for secrets (A7), and reads the agent instruction
   (P07) and settings files (P02 to P06), at `HEAD` also when there is no diff to measure because the checkout is still
