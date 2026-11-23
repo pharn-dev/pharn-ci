@@ -141,15 +141,16 @@ describe("cli: a --base that resolves to HEAD (real git repo)", () => {
 
 const HEAD_OID = "c".repeat(40);
 const OTHER_OID = "d".repeat(40);
+const BASE_OID = "e".repeat(40);
 
 /** The fake CLI deps with an empty diff (unless `diff` is given) and the given answers to the merge-base check. */
 function emptyDiffDeps(mergeBase: string | Error, head: string | Error = HEAD_OID, diff = "") {
   const deps = fakeDeps(coverage, { diff });
   const fallback = deps.git.bind(deps);
   deps.git = async (args) => {
-    if (args[0] === "merge-base" || (args[0] === "rev-parse" && args.includes("HEAD^{commit}"))) {
+    if (args[0] === "merge-base" || (args[0] === "rev-parse" && args.at(-1)?.endsWith("^{commit}"))) {
       deps.gitCalls.push(args);
-      const answer = args[0] === "merge-base" ? mergeBase : head;
+      const answer = args[0] === "merge-base" ? mergeBase : args.includes("HEAD^{commit}") ? head : BASE_OID;
       if (answer instanceof Error) throw answer;
       return `${answer}\n`;
     }
@@ -168,8 +169,10 @@ describe("cli: only a merge base equal to HEAD means nothing to measure", () => 
     const report = JSON.parse(deps.out) as Report;
     expectValidReport(report);
     expect(codes(report)).toContain("DIFF_UNAVAILABLE");
-    expect(deps.gitCalls).toContainEqual(["merge-base", "--end-of-options", "develop", "HEAD"]);
+    // The run's revisions (CORE-143): the base and HEAD by rev-parse after --end-of-options, then their merge base.
+    expect(deps.gitCalls).toContainEqual(["rev-parse", "--verify", "--quiet", "--end-of-options", "develop^{commit}"]);
     expect(deps.gitCalls).toContainEqual(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"]);
+    expect(deps.gitCalls).toContainEqual(["merge-base", BASE_OID, HEAD_OID]);
   });
 
   it("AC-13: an empty diff whose merge base is another commit is NO_COVERABLE_CHANGES, as before", async () => {

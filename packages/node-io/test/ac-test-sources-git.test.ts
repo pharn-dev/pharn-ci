@@ -10,10 +10,9 @@ import { gitDiffArgs, parseUnifiedDiff } from "../../core/src/index.js";
 
 type Side = { unavailable: string } | { files: { path: string; text: string }[]; dropped: unknown[] };
 type Sources = { base: Side; head: Side };
-type Reader = (
-  deps: { git(args: string[]): Promise<string>; gitBatch(args: string[], input: string): Promise<Uint8Array> },
-  options: { base: string; head?: string; diff: readonly unknown[] },
-) => Promise<Sources>;
+type GitDeps = { git(args: string[]): Promise<string>; gitBatch(args: string[], input: string): Promise<Uint8Array> };
+type Revisions = { base: string; resolve(): Promise<unknown> };
+type Reader = (deps: GitDeps, options: { revisions: Revisions; diff: readonly unknown[] }) => Promise<Sources>;
 interface Io {
   runGit(cwd: string, args: string[]): Promise<string>;
   runGitBatch(cwd: string, args: string[], input: string): Promise<Uint8Array>;
@@ -55,7 +54,13 @@ function repoModifying(count: number): string {
 }
 
 async function load() {
-  const { readTestSources } = (await import("../src/index.js")) as unknown as { readTestSources: Reader };
+  const { readTestSources: read, runRevisions } = (await import("../src/index.js")) as unknown as {
+    readTestSources: Reader;
+    runRevisions(deps: GitDeps, base: string): Revisions;
+  };
+  // The base is resolved by the run's revisions, with the same git runner, as gatherSources does.
+  const readTestSources = (deps: GitDeps, options: { base: string; diff: readonly unknown[] }) =>
+    read(deps, { revisions: runRevisions(deps, options.base), diff: options.diff });
   const io = (await import("../src/io.js")) as unknown as Io;
   return { readTestSources, io };
 }
@@ -90,7 +95,7 @@ describe("readTestSources: git calls", () => {
             return io.runGitBatch(dir, args, input);
           },
         },
-        { base: "main", head: "HEAD", diff },
+        { base: "main", diff },
       );
 
       // The reader did the work: 30 files on each side.
@@ -147,7 +152,7 @@ describe("readTestSources: git failures", () => {
       ] as const) {
         const result = await readTestSources(
           { git: (args) => io.runGit(dir, args), gitBatch: (args, input) => io.runGitBatch(dir, args, input) },
-          { base, head: "HEAD", diff },
+          { base, diff },
         );
         for (const side of [result.base, result.head]) {
           expect(side, `${base} in ${dir === repo ? "the repository" : "a plain directory"}`).toEqual({

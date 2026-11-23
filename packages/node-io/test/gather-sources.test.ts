@@ -8,6 +8,7 @@ import {
   loadConfigInUse,
   OBJECT_ID,
   readCapped,
+  runRevisions,
 } from "../src/index.js";
 
 // CORE-136: the helpers the CLI and the Action share. The git runners here are fakes: a batch call fails the test, so a
@@ -26,7 +27,7 @@ function options(over: Partial<GatherSourcesOptions> = {}): GatherSourcesOptions
   const lines: string[] = [];
   return {
     diff: { parsed: [] },
-    base: SHA_A,
+    revisions: runRevisions(refusingDeps, SHA_A),
     checkout: "head",
     repoFiles: AGENT_FILES,
     testIntegrityMode: undefined,
@@ -54,18 +55,18 @@ describe("gatherSources: when the files at HEAD are read", () => {
   const notHead: { name: string; over: Partial<GatherSourcesOptions>; reason: string }[] = [
     {
       name: "PR-number mode",
-      over: { checkout: "pr-number", diff: { text: "" }, base: undefined },
+      over: { checkout: "pr-number", diff: { text: "" }, revisions: undefined },
       reason:
         "pr-number mode: the checkout is not the pull request head, so its committed agent config files were not read",
     },
     {
       name: "a compare-API diff",
-      over: { checkout: "unknown", diff: { text: "" }, base: undefined },
+      over: { checkout: "unknown", diff: { text: "" }, revisions: undefined },
       reason: "the diff came from the GitHub compare API, so the checkout may not be the pull request head",
     },
     {
       name: "an unavailable diff on a checkout that may not be the head",
-      over: { checkout: "unknown", diff: { unavailable: "x" }, base: undefined },
+      over: { checkout: "unknown", diff: { unavailable: "x" }, revisions: undefined },
       reason: "the diff is unavailable, so the checkout may not be the pull request head",
     },
   ];
@@ -91,7 +92,7 @@ describe("gatherSources: when the files at HEAD are read", () => {
           return "";
         },
       },
-      options({ checkout: "pr-number", diff: { text: "" }, base: undefined }),
+      options({ checkout: "pr-number", diff: { text: "" }, revisions: undefined }),
     );
     expect(calls).toEqual([]);
     expect(out.repoFileBytes).toBeUndefined();
@@ -106,7 +107,7 @@ describe("gatherSources: when the files at HEAD are read", () => {
         throw new Error("fatal: simulated");
       },
     };
-    const o = options({ diff: { unavailable: "the base is HEAD" }, base: undefined });
+    const o = options({ diff: { unavailable: "the base is HEAD" }, revisions: undefined });
     const out = await gatherSources(deps, o);
     expect(inputs.some((input) => input.includes(".mcp.json"))).toBe(true);
     // The read failed, so the reason is git's, said once in the log channel; never "may not be the head".
@@ -152,18 +153,16 @@ describe("headIsInBase", () => {
     const answer = (mergeBase: string, head: string) => ({
       git: async (args: string[]) => (args[0] === "merge-base" ? `${mergeBase}\n` : `${head}\n`),
     });
-    expect(await headIsInBase(answer(SHA_A, SHA_A), "main")).toBe(true);
-    expect(await headIsInBase(answer(SHA_A, SHA_B), "main")).toBe(false);
-    expect(await headIsInBase(answer("ok", "ok"), "main")).toBe(false);
+    const inBase = (deps: { git(args: string[]): Promise<string> }) => headIsInBase(runRevisions(deps, "main"));
+    expect(await inBase(answer(SHA_A, SHA_A))).toBe(true);
+    expect(await inBase(answer(SHA_A, SHA_B))).toBe(false);
+    expect(await inBase(answer("ok", "ok"))).toBe(false);
     expect(
-      await headIsInBase(
-        {
-          git: async () => {
-            throw new Error("fatal");
-          },
+      await inBase({
+        git: async () => {
+          throw new Error("fatal");
         },
-        "main",
-      ),
+      }),
     ).toBe(false);
     expect(OBJECT_ID.test("c".repeat(64))).toBe(true);
   });
@@ -196,7 +195,7 @@ describe("loadConfig and loadConfigInUse", () => {
         configPath: undefined,
         repoRoot: "/repo",
         diff: null,
-        base: SHA_A,
+        revisions: runRevisions(refusingDeps, SHA_A),
       },
     );
     expect(inUse).toEqual({ config: { coverage: { threshold: 80 } } });

@@ -14,19 +14,12 @@ import {
   type TestSources,
   unavailableTestSources,
 } from "@pharn-ci/core";
-import { batchCheck, batchRead, firstLine, OBJECT_ID, StepFailed } from "./gitBlobs.js";
-
-/** The two git calls the reader makes: whole text out, and bytes out for a call that is given stdin. */
-export interface TestSourceGitDeps {
-  git(args: string[]): Promise<string>;
-  gitBatch(args: string[], input: string): Promise<Uint8Array>;
-}
+import { batchCheck, batchRead, firstLine, type GitBatchDeps, StepFailed } from "./gitBlobs.js";
+import type { RunRevisions } from "./revisions.js";
 
 export interface ReadTestSourcesOptions {
-  /** The base revision; the base side is read at its merge base with the head. */
-  base: string;
-  /** The head revision. Default `HEAD`. */
-  head?: string;
+  /** The run's base and HEAD; the base side is read at their merge base, the head side at HEAD. */
+  revisions: RunRevisions;
   /** The parsed diff of the change under review. */
   diff: readonly DiffFile[];
   /**
@@ -37,45 +30,20 @@ export interface ReadTestSourcesOptions {
    */
   select?: (diff: readonly DiffFile[]) => { base: string[]; head: string[] };
   /** The read plan's caps. Default the test sources' (`TEST_SOURCE_LIMITS`); dependency safety passes `DEPENDENCY_SOURCE_LIMITS`. */
-  limits?: TestSourceReadLimits;
-}
-
-async function resolveRevision(deps: TestSourceGitDeps, revision: string, label: string): Promise<string> {
-  let out: string;
-  try {
-    out = await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${revision}^{commit}`]);
-  } catch (err) {
-    throw new StepFailed(`git rev-parse could not resolve the ${label}: ${firstLine(err)}`);
-  }
-  const oid = out.trim();
-  if (!OBJECT_ID.test(oid))
-    throw new StepFailed(`git rev-parse could not resolve the ${label}: no commit id was printed`);
-  return oid;
-}
-
-async function mergeBaseOf(deps: TestSourceGitDeps, baseOid: string, headOid: string): Promise<string> {
-  let out: string;
-  try {
-    out = await deps.git(["merge-base", baseOid, headOid]);
-  } catch (err) {
-    throw new StepFailed(`git merge-base failed: ${firstLine(err)}`);
-  }
-  const oid = out.trim();
-  if (!OBJECT_ID.test(oid)) throw new StepFailed("git merge-base failed: no commit id was printed");
-  return oid;
+  limits?: TestSourceReadLimits | undefined;
 }
 
 /**
- * The text of the test and test-config files a change touches: the base side at the merge base of `base` and `head`,
- * the head side at `head`. Reads committed git objects only, with one `merge-base`, one `cat-file --batch-check` for
- * both sides and one `cat-file --batch` for the blobs the read plan keeps. A git failure makes both sides
- * `unavailable` with a reason that names the step; this never throws.
+ * The text of the test and test-config files a change touches: the base side at the merge base of the base and HEAD
+ * (resolved once per run, see `RunRevisions`), the head side at HEAD. Reads committed git objects only, with one
+ * `cat-file --batch-check` for both sides and one `cat-file --batch` for the blobs the read plan keeps. A git failure
+ * makes both sides `unavailable` with a reason that names the step; this never throws.
  */
-export async function readTestSources(deps: TestSourceGitDeps, options: ReadTestSourcesOptions): Promise<TestSources> {
+export async function readTestSources(deps: GitBatchDeps, options: ReadTestSourcesOptions): Promise<TestSources> {
   try {
-    const baseOid = await resolveRevision(deps, options.base, "base");
-    const headOid = await resolveRevision(deps, options.head ?? "HEAD", "head");
-    const mergeBase = await mergeBaseOf(deps, baseOid, headOid);
+    const revisions = await options.revisions.resolve();
+    if ("unresolved" in revisions) return unavailableTestSources(revisions.unresolved);
+    const { head: headOid, mergeBase } = revisions;
 
     const selected = (options.select ?? selectTestSourcePaths)(options.diff);
     // A path with a control character or a path-resolution segment never reaches git's stdin.

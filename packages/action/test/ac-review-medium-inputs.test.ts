@@ -50,6 +50,12 @@ async function baseCheckHarness({ inputs = {}, mergeBase, head = HEAD_OID, diff 
       h.gitCalls.push(args);
       return `${head}\n`;
     }
+    // A full commit sha as the base resolves to itself, as git prints it.
+    const sha = /^([0-9a-f]{40})\^\{commit\}$/.exec(args.at(-1) ?? "");
+    if (args[0] === "rev-parse" && sha !== null) {
+      h.gitCalls.push(args);
+      return `${sha[1]}\n`;
+    }
     return fallback(args);
   };
   return h;
@@ -124,8 +130,10 @@ describe("action: a base that resolves to HEAD is DIFF_UNAVAILABLE (review findi
     expect(unavailable?.text).toContain(`base-ref "${HEAD_OID}" resolves to HEAD or a descendant of HEAD`);
     expect(codes(report)).not.toContain("NO_COVERABLE_CHANGES");
     expect(h.failed).toHaveLength(1);
-    expect(h.gitCalls).toContainEqual(["merge-base", "--end-of-options", HEAD_OID, "HEAD"]);
+    // The run's revisions (CORE-143): the base and HEAD by rev-parse after --end-of-options, then their merge base.
+    expect(h.gitCalls).toContainEqual(["rev-parse", "--verify", "--quiet", "--end-of-options", `${HEAD_OID}^{commit}`]);
     expect(h.gitCalls).toContainEqual(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"]);
+    expect(h.gitCalls).toContainEqual(["merge-base", HEAD_OID, HEAD_OID]);
   });
 
   it("AC-13: a pull request base that resolves to HEAD is DIFF_UNAVAILABLE too, naming the base", async () => {

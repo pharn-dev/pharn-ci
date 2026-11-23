@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type DiffFile, detectStaleInstructions, scanAgentSetup } from "../../core/src/index.js";
 import { runGit, runGitBatch } from "../src/io.js";
+import { runRevisions } from "../src/revisions.js";
 import { readStaleInstructionSources } from "../src/staleInstructions.js";
 
 // Stale instructions (Horizon 2 item H3): the node-io reader against a real repository. The base commit is dated two
@@ -67,7 +68,11 @@ const deps = () => ({
 describe("readStaleInstructionSources", () => {
   it("reads the instruction files at HEAD and the touched package.json at the merge base too, and no commit time", async () => {
     const files = repoFiles();
-    const sources = await readStaleInstructionSources(deps(), { repoFiles: files, diff: DIFF, base: "main" });
+    const sources = await readStaleInstructionSources(deps(), {
+      repoFiles: files,
+      diff: DIFF,
+      revisions: runRevisions(deps(), "main"),
+    });
     expect(sources).toBeDefined();
     if (sources === undefined || "unavailable" in sources.instructions) throw new Error("no sources");
     expect(sources.instructions.files.map((f) => f.path)).toEqual(["AGENTS.md", "CLAUDE.md"]);
@@ -88,11 +93,11 @@ describe("readStaleInstructionSources", () => {
     expect(findings.map((f) => `${f.id} ${f.path}:${f.line} ${f.token}`)).toEqual(["SI01 CLAUDE.md:1 pnpm run format"]);
   });
 
-  it("reads nothing without instruction files; without a git runner it has no base side", async () => {
+  it("reads nothing without instruction files; without the run's revisions it has no base side", async () => {
     expect(await readStaleInstructionSources(deps(), { repoFiles: ["src/index.ts"], diff: DIFF })).toBeUndefined();
     const batchOnly = await readStaleInstructionSources(
       { gitBatch: deps().gitBatch },
-      { repoFiles: repoFiles(), diff: DIFF, base: "main" },
+      { repoFiles: repoFiles(), diff: DIFF },
     );
     expect(batchOnly?.packageJson).toEqual({ head: expect.stringContaining('"build"') });
   });
@@ -108,29 +113,33 @@ describe("readStaleInstructionSources", () => {
     });
   });
 
-  it("runs no git log (CORE-144): with a fake git that records every call, only merge-base is asked for", async () => {
+  it("runs no git log (CORE-144): with a fake git that records every call, only the run's revisions are asked for", async () => {
     const calls: string[][] = [];
     const mergeBase = (await runGit(dir, ["merge-base", "main", "HEAD"])).trim();
+    const recording = async (args: string[]) => {
+      calls.push(args);
+      if (args[0] === "merge-base") return `${mergeBase}\n`;
+      if (args[0] === "rev-parse") return runGit(dir, args);
+      throw new Error(`unexpected git call: ${args.join(" ")}`);
+    };
     const sources = await readStaleInstructionSources(
-      {
-        gitBatch: deps().gitBatch,
-        git: async (args) => {
-          calls.push(args);
-          if (args[0] === "merge-base") return `${mergeBase}\n`;
-          throw new Error(`unexpected git call: ${args.join(" ")}`);
-        },
-      },
-      { repoFiles: repoFiles(), diff: DIFF, base: "main" },
+      { gitBatch: deps().gitBatch },
+      { repoFiles: repoFiles(), diff: DIFF, revisions: runRevisions({ git: recording }, "main") },
     );
-    expect(calls).toEqual([["merge-base", "main", "HEAD"]]);
+    const oid = expect.stringMatching(/^[0-9a-f]{40}$/);
+    expect(calls).toEqual([
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "main^{commit}"],
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"],
+      ["merge-base", oid, oid],
+    ]);
     expect(calls.some((args) => args[0] === "log")).toBe(false);
     expect(sources?.packageJson?.base).toContain('"format"');
   });
 
   it("never passes a revision that starts with a dash to git", async () => {
     const dashed = await readStaleInstructionSources(
-      { gitBatch: deps().gitBatch, git: (args) => runGit(dir, args) },
-      { repoFiles: repoFiles(), diff: DIFF, base: "--output=x" },
+      { gitBatch: deps().gitBatch },
+      { repoFiles: repoFiles(), diff: DIFF, revisions: runRevisions(deps(), "--output=x") },
     );
     expect(dashed?.packageJson?.base).toBeUndefined();
   });

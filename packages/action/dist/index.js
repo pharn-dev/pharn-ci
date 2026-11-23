@@ -47070,11 +47070,6 @@ async function readPolicyFileAt(deps, options) {
 // ../node-io/src/configFile.ts
 var CONFIG_FILE_MAX_BYTES = 1048576;
 var REGULAR_FILE_MODES = /* @__PURE__ */ new Set(["100644", "100755"]);
-async function commitOf(deps, revision) {
-  const out = await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${revision}^{commit}`]);
-  const oid = out.trim();
-  return OBJECT_ID.test(oid) ? oid : null;
-}
 function treeEntry(tree, name, oidBytes) {
   let at = 0;
   while (at < tree.length) {
@@ -47092,14 +47087,11 @@ function treeEntry(tree, name, oidBytes) {
 async function readConfigFileAt(deps, options) {
   const unreadable = { kind: "unreadable" };
   try {
-    const { base, path } = options;
-    const head = options.head ?? "HEAD";
-    if (isUnsafeTestSourcePath(path) || !isUsableRevision(base) || !isUsableRevision(head)) return unreadable;
-    const baseOid = await commitOf(deps, base);
-    const headOid = await commitOf(deps, head);
-    if (baseOid === null || headOid === null) return unreadable;
-    const mergeBase = (await deps.git(["merge-base", baseOid, headOid])).trim();
-    if (!OBJECT_ID.test(mergeBase)) return unreadable;
+    const { revisions, path } = options;
+    if (isUnsafeTestSourcePath(path) || !isUsableRevision(revisions.base)) return unreadable;
+    const resolved = await revisions.resolve();
+    if ("unresolved" in resolved) return unreadable;
+    const { mergeBase } = resolved;
     const slash = path.lastIndexOf("/");
     const dir = slash === -1 ? "" : path.slice(0, slash);
     const name = path.slice(slash + 1);
@@ -47133,8 +47125,8 @@ async function configCopyInUse(deps, options) {
   if (state === "added") return { source: "absent" };
   const path = configRepoPath(options.configPath, options.repoRoot);
   const { gitBatch } = deps;
-  if (path === null || options.base === void 0 || gitBatch === void 0) return { source: "unreadable" };
-  const copy = await readConfigFileAt({ git: (args) => deps.git(args), gitBatch }, { base: options.base, path });
+  if (path === null || options.revisions === void 0 || gitBatch === void 0) return { source: "unreadable" };
+  const copy = await readConfigFileAt({ gitBatch }, { revisions: options.revisions, path });
   return copy.kind === "text" ? { source: "merge-base", path, text: copy.text } : { source: "unreadable" };
 }
 async function loadConfig(deps, location) {
@@ -47152,7 +47144,7 @@ async function loadConfig(deps, location) {
 async function loadConfigInUse(deps, location) {
   const copy = await configCopyInUse(deps, {
     diff: location.diff,
-    base: location.base,
+    revisions: location.revisions,
     configPath: location.configPath,
     repoRoot: location.repoRoot
   });
@@ -48185,10 +48177,11 @@ async function readStaleInstructionSources(deps, options) {
   const touched = (path) => options.diff.some((file) => file.path === path || file.oldPath === path);
   try {
     let mergeBase = null;
-    const { base } = options;
-    if (base !== void 0 && !base.startsWith("-") && deps.git !== void 0 && MANIFESTS.some(touched)) {
-      const out = (await deps.git(["merge-base", base, "HEAD"])).trim();
-      if (OBJECT_ID.test(out)) mergeBase = out;
+    const { revisions } = options;
+    if (revisions !== void 0 && !revisions.base.startsWith("-") && MANIFESTS.some(touched)) {
+      const resolved = await revisions.resolve();
+      if ("unresolved" in resolved) throw new Error(resolved.unresolved);
+      mergeBase = resolved.mergeBase;
     }
     const requests = [];
     for (const manifest of MANIFESTS) {
@@ -48213,34 +48206,11 @@ async function readStaleInstructionSources(deps, options) {
 }
 
 // ../node-io/src/testSources.ts
-async function resolveRevision(deps, revision, label) {
-  let out;
-  try {
-    out = await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${revision}^{commit}`]);
-  } catch (err) {
-    throw new StepFailed(`git rev-parse could not resolve the ${label}: ${firstLine(err)}`);
-  }
-  const oid = out.trim();
-  if (!OBJECT_ID.test(oid))
-    throw new StepFailed(`git rev-parse could not resolve the ${label}: no commit id was printed`);
-  return oid;
-}
-async function mergeBaseOf(deps, baseOid, headOid) {
-  let out;
-  try {
-    out = await deps.git(["merge-base", baseOid, headOid]);
-  } catch (err) {
-    throw new StepFailed(`git merge-base failed: ${firstLine(err)}`);
-  }
-  const oid = out.trim();
-  if (!OBJECT_ID.test(oid)) throw new StepFailed("git merge-base failed: no commit id was printed");
-  return oid;
-}
 async function readTestSources(deps, options) {
   try {
-    const baseOid = await resolveRevision(deps, options.base, "base");
-    const headOid = await resolveRevision(deps, options.head ?? "HEAD", "head");
-    const mergeBase = await mergeBaseOf(deps, baseOid, headOid);
+    const revisions = await options.revisions.resolve();
+    if ("unresolved" in revisions) return unavailableTestSources(revisions.unresolved);
+    const { head: headOid, mergeBase } = revisions;
     const selected = (options.select ?? selectTestSourcePaths)(options.diff);
     const requests = [
       ...selected.base.filter((path) => !isUnsafeTestSourcePath(path)).map((path) => ({ oid: mergeBase, path })),
@@ -48322,14 +48292,9 @@ async function gatherSources(deps, options) {
   if (dependencySources !== void 0) out.dependencySources = dependencySources;
   return out;
 }
-async function headIsInBase(deps, base) {
-  try {
-    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, "HEAD"])).trim();
-    const head = (await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"])).trim();
-    return OBJECT_ID.test(mergeBase) && mergeBase === head;
-  } catch {
-    return false;
-  }
+async function headIsInBase(revisions) {
+  const resolved = await revisions.resolve();
+  return !("unresolved" in resolved) && resolved.mergeBase === resolved.head;
 }
 async function readHeadTree(deps, warn) {
   try {
@@ -48343,7 +48308,7 @@ function baseAndHeadUnread(options, gitBatch) {
   if (options.checkout === "pr-number") return "pr-number mode: the diff came from the GitHub API";
   if ("text" in options.diff) return "the diff came from the GitHub compare API";
   if ("unavailable" in options.diff) return "the diff is unavailable";
-  if (gitBatch === void 0 || options.base === void 0) return "reading git objects is not available";
+  if (gitBatch === void 0 || options.revisions === void 0) return "reading git objects is not available";
   return null;
 }
 function headUnread(options, what) {
@@ -48359,16 +48324,13 @@ function policyDocumentInForce(policy) {
 var emptySources = () => ({ base: { files: [], dropped: [] }, head: { files: [], dropped: [] } });
 async function gatherTestSources(deps, options) {
   if (resolveTestIntegrityMode(options.testIntegrityMode).mode === "off") return void 0;
-  const { diff, base } = options;
+  const { diff, revisions } = options;
   const { gitBatch } = deps;
   const unread = baseAndHeadUnread(options, gitBatch);
-  if (unread !== null || gitBatch === void 0 || base === void 0 || !("parsed" in diff)) {
+  if (unread !== null || gitBatch === void 0 || revisions === void 0 || !("parsed" in diff)) {
     return unavailableTestSources(unread ?? "reading git objects is not available");
   }
-  const sources = await readTestSources(
-    { git: (args) => deps.git(args), gitBatch },
-    { base, head: "HEAD", diff: diff.parsed }
-  );
+  const sources = await readTestSources({ gitBatch }, { revisions, diff: diff.parsed });
   if ("unavailable" in sources.base) {
     options.log(
       `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`
@@ -48448,23 +48410,17 @@ async function gatherDependencySources(deps, options) {
   });
 }
 async function readChangedSources(deps, options, read) {
-  const { diff, base } = options;
+  const { diff, revisions } = options;
   const { gitBatch } = deps;
   const unread = baseAndHeadUnread(options, gitBatch);
-  if (unread !== null || gitBatch === void 0 || base === void 0 || !("parsed" in diff)) {
+  if (unread !== null || gitBatch === void 0 || revisions === void 0 || !("parsed" in diff)) {
     return unavailableTestSources(unread ?? "reading git objects is not available");
   }
   const selected = read.select(diff.parsed);
   if (selected.base.length === 0 && selected.head.length === 0) return emptySources();
   const sources = await readTestSources(
-    { git: (args) => deps.git(args), gitBatch },
-    {
-      base,
-      head: "HEAD",
-      diff: diff.parsed,
-      select: read.select,
-      ...read.limits === void 0 ? {} : { limits: read.limits }
-    }
+    { gitBatch },
+    { revisions, diff: diff.parsed, select: read.select, limits: read.limits }
   );
   if ("unavailable" in sources.base) {
     options.log(`pharn-ci: could not read ${read.what} from git, so ${read.effect}: ${sources.base.unavailable}`);
@@ -48473,11 +48429,11 @@ async function readChangedSources(deps, options, read) {
 }
 async function gatherStaleInstructionSources(deps, options) {
   const { gitBatch } = deps;
-  const { diff, base } = options;
+  const { diff, revisions } = options;
   if (gitBatch === void 0 || options.checkout === "pr-number" || !("parsed" in diff)) return void 0;
   const sources = await readStaleInstructionSources(
-    { gitBatch, git: (args) => deps.git(args) },
-    { repoFiles: options.repoFiles, diff: diff.parsed, ...base === void 0 ? {} : { base } }
+    { gitBatch },
+    { repoFiles: options.repoFiles, diff: diff.parsed, revisions }
   );
   if (sources !== void 0 && "unavailable" in sources.instructions) {
     options.log(
@@ -48716,6 +48672,56 @@ async function matchJunitFiles(deps, options) {
     }
   }
   return { paths, walkLimit: false };
+}
+
+// ../node-io/src/revisions.ts
+var revParseArgs = (revision) => [
+  "rev-parse",
+  "--verify",
+  "--quiet",
+  "--end-of-options",
+  `${revision}^{commit}`
+];
+function runRevisions(deps, base, printedBase) {
+  let answer;
+  const commit = async (revision, label, printed) => {
+    let out = printed;
+    if (out === void 0) {
+      try {
+        out = await deps.git(revParseArgs(revision));
+      } catch (err) {
+        throw new StepFailed(`git rev-parse could not resolve the ${label}: ${firstLine(err)}`);
+      }
+    }
+    const oid = out.trim();
+    if (!OBJECT_ID.test(oid))
+      throw new StepFailed(`git rev-parse could not resolve the ${label}: no commit id was printed`);
+    return oid;
+  };
+  const find = async () => {
+    try {
+      const baseOid = await commit(base, "base", printedBase);
+      const headOid = await commit("HEAD", "head");
+      let out;
+      try {
+        out = await deps.git(["merge-base", baseOid, headOid]);
+      } catch (err) {
+        throw new StepFailed(`git merge-base failed: ${firstLine(err)}`);
+      }
+      const mergeBase = out.trim();
+      if (!OBJECT_ID.test(mergeBase)) throw new StepFailed("git merge-base failed: no commit id was printed");
+      return { base: baseOid, head: headOid, mergeBase };
+    } catch (err) {
+      return { unresolved: err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}` };
+    }
+  };
+  return {
+    base,
+    resolve: () => {
+      answer ??= find();
+      return answer;
+    }
+  };
 }
 
 // src/node-io.ts
@@ -49700,7 +49706,7 @@ async function runUnsafe(deps) {
     configPath: configInput || void 0,
     repoRoot: deps.workspace,
     diff: earlyDiff === void 0 || "unavailable" in earlyDiff.diff ? null : "parsed" in earlyDiff.diff ? earlyDiff.diff.parsed : parseUnifiedDiff(earlyDiff.diff.text),
-    base: earlyDiff?.localBase
+    revisions: earlyDiff?.revisions
   });
   const rawInputs = {
     coverageFile: splitLines(input("coverage-file")),
@@ -49764,10 +49770,11 @@ async function runUnsafe(deps) {
     coverage2 = { files: coverageFiles, format };
   }
   const repoFiles = await trackedFiles(target, deps);
-  const { diff, localBase, checkout } = earlyDiff ?? await getDiff(baseRefInput, deps, target, configInput);
+  const { diff, revisions, checkout } = earlyDiff ?? await getDiff(baseRefInput, deps, target, configInput);
+  const localBase = revisions?.base;
   const gathered = await gatherSources(deps, {
     diff,
-    base: localBase,
+    revisions,
     checkout,
     repoFiles,
     testIntegrityMode,
@@ -49993,8 +50000,9 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
       };
     }
   }
-  const localBase = await resolveLocal(base, deps);
-  if (localBase) {
+  const revisions = await resolveLocal(base, deps);
+  if (revisions !== null) {
+    const localBase = revisions.base;
     let parsed;
     try {
       const options = { configPath: configInput === "" ? void 0 : configInput, repoRoot: deps.workspace };
@@ -50004,7 +50012,7 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
         `the local git diff against "${base}" failed (${String(err)}); check out full history with actions/checkout and fetch-depth: 0`
       );
     }
-    if (parsed.length === 0 && await headIsInBase(deps, localBase)) {
+    if (parsed.length === 0 && await headIsInBase(revisions)) {
       const named = baseRefInput ? `base-ref "${baseRefInput}"` : `the base ${base}`;
       return {
         diff: {
@@ -50014,7 +50022,7 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
         checkout: "head"
       };
     }
-    return { diff: { parsed }, localBase, checkout: "head" };
+    return { diff: { parsed }, revisions, checkout: "head" };
   }
   try {
     return { diff: { text: await deps.api.compareDiff(`${base}...${head}`) }, checkout: "unknown" };
@@ -50058,11 +50066,13 @@ async function forkPoint(base, head, deps) {
 async function resolveLocal(base, deps) {
   const candidates = COMMIT_SHA.test(base) ? [base] : [`origin/${base}`, base];
   for (const ref of candidates) {
+    let printed;
     try {
-      await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]);
-      return ref;
+      printed = await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]);
     } catch {
+      continue;
     }
+    return runRevisions(deps, ref, printed);
   }
   return null;
 }

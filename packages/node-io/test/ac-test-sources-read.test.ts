@@ -12,10 +12,8 @@ import { gitDiffArgs, parseUnifiedDiff } from "../../core/src/index.js";
 type SourceFile = { path: string; text: string };
 type Side = { unavailable: string } | { files: SourceFile[]; dropped: { path: string; reason: string }[] };
 type Sources = { base: Side; head: Side };
-type Reader = (
-  deps: { git(args: string[]): Promise<string>; gitBatch(args: string[], input: string): Promise<Uint8Array> },
-  options: { base: string; head?: string; diff: readonly unknown[] },
-) => Promise<Sources>;
+type GitDeps = { git(args: string[]): Promise<string>; gitBatch(args: string[], input: string): Promise<Uint8Array> };
+type Reader = (deps: GitDeps, options: { revisions: unknown; diff: readonly unknown[] }) => Promise<Sources>;
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -43,12 +41,15 @@ function repo() {
 }
 
 async function load() {
-  const { readTestSources } = (await import("../src/index.js")) as unknown as { readTestSources: Reader };
+  const { readTestSources, runRevisions } = (await import("../src/index.js")) as unknown as {
+    readTestSources: Reader;
+    runRevisions(deps: GitDeps, base: string): unknown;
+  };
   const io = (await import("../src/io.js")) as unknown as {
     runGit(cwd: string, args: string[]): Promise<string>;
     runGitBatch(cwd: string, args: string[], input: string): Promise<Uint8Array>;
   };
-  return { readTestSources, runGit: io.runGit, runGitBatch: io.runGitBatch };
+  return { readTestSources, runRevisions, runGit: io.runGit, runGitBatch: io.runGitBatch };
 }
 
 function sideOf(side: Side): { files: SourceFile[]; dropped: { path: string; reason: string }[] } {
@@ -60,7 +61,7 @@ const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path 
 
 describe("readTestSources: base and head text from git", () => {
   it("AC-4: reads the base side at the merge base and the head side at HEAD, per path, and drops nothing", async () => {
-    const { readTestSources, runGit, runGitBatch } = await load();
+    const { readTestSources, runRevisions, runGit, runGitBatch } = await load();
     const r = repo();
 
     // Rename detection needs most of the renamed file to stay the same.
@@ -102,10 +103,11 @@ describe("readTestSources: base and head text from git", () => {
     const diff = parseUnifiedDiff(await runGit(dir, gitDiffArgs("main")));
     expect(diff.find((f) => f.path === "tests/renamed.test.ts")?.status, "the diff sees the rename").toBe("renamed");
 
-    const result = await readTestSources(
-      { git: (args) => runGit(dir, args), gitBatch: (args, input) => runGitBatch(dir, args, input) },
-      { base: "main", head: "HEAD", diff },
-    );
+    const deps: GitDeps = {
+      git: (args) => runGit(dir, args),
+      gitBatch: (args, input) => runGitBatch(dir, args, input),
+    };
+    const result = await readTestSources(deps, { revisions: runRevisions(deps, "main"), diff });
     const base = sideOf(result.base);
     const head = sideOf(result.head);
 

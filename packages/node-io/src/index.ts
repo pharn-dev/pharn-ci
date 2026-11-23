@@ -51,6 +51,7 @@ export {
 } from "./pythonIndex.js";
 export { PYTHON_BOOTSTRAP, PYTHON_INDEX_SCRIPT } from "./pythonIndexScript.js";
 export { indexPythonTestSources } from "./pythonSources.js";
+export { type Revisions, type RunRevisions, runRevisions } from "./revisions.js";
 export { readStaleInstructionSources, type StaleInstructionGitDeps } from "./staleInstructions.js";
 export { type FileStamp, fileStamp } from "./stamp.js";
-export { type ReadTestSourcesOptions, readTestSources, type TestSourceGitDeps } from "./testSources.js";
+export { type ReadTestSourcesOptions, readTestSources } from "./testSources.js";

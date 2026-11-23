@@ -7,13 +7,11 @@ import {
   staleInstructionPaths,
 } from "@pharn-ci/core";
 import { readAgentConfigSources } from "./agentConfigSources.js";
-import { batchCheck, batchRead, type GitBatchDeps, OBJECT_ID } from "./gitBlobs.js";
+import { batchCheck, batchRead, type GitBatchDeps } from "./gitBlobs.js";
+import type { RunRevisions } from "./revisions.js";
 
-/** The git calls the stale-instruction reader makes: blobs by `cat-file`, and `merge-base` for the manifests' base side. */
-export interface StaleInstructionGitDeps extends GitBatchDeps {
-  /** Absent: the merge base is not asked for, so the root manifests are read at HEAD only. */
-  git?(args: string[]): Promise<string>;
-}
+/** The git call the stale-instruction reader makes: blobs by `cat-file` (the merge base comes from the run's revisions). */
+export type StaleInstructionGitDeps = GitBatchDeps;
 
 /** The largest root package.json or Makefile that is read; a larger one counts as unreadable. */
 const MAX_MANIFEST_BYTES = 512 * 1024;
@@ -46,15 +44,15 @@ async function readBlobs(
 /**
  * What the stale-instruction signals (SI01 to SI03) read, or undefined when the repository has no instruction file:
  * the instruction files at HEAD (the inventory's instruction kinds, at most 50, through `readAgentConfigSources` and its
- * caps), and the root `package.json` and `Makefile` at HEAD and, when the change touches them, `base` is given and a
- * `git` runner finds the merge base, at the merge base. Every read is of committed objects, never the working tree; no
- * commit time is read (SI04, which needed `git log`, is not emitted since CORE-144). A failed manifest read leaves the
- * manifests out (no command is checked); an unreadable instruction set is returned as `{ unavailable }`, which core
- * reads as nothing. Never throws.
+ * caps), and the root `package.json` and `Makefile` at HEAD and, when the change touches them and the run's `revisions`
+ * are given, at their merge base. Every read is of committed objects, never the working tree; no commit time is read
+ * (SI04, which needed `git log`, is not emitted since CORE-144). A failed manifest read leaves the manifests out (no
+ * command is checked); an unreadable instruction set is returned as `{ unavailable }`, which core reads as nothing.
+ * Never throws.
  */
 export async function readStaleInstructionSources(
   deps: StaleInstructionGitDeps,
-  options: { repoFiles: readonly string[]; diff: readonly DiffFile[]; base?: string },
+  options: { repoFiles: readonly string[]; diff: readonly DiffFile[]; revisions?: RunRevisions | undefined },
 ): Promise<StaleInstructionSources | undefined> {
   const agentSetup = scanAgentSetup(options.repoFiles);
   const paths = staleInstructionPaths(agentSetup);
@@ -66,12 +64,14 @@ export async function readStaleInstructionSources(
   const tracked = new Set(options.repoFiles);
   const touched = (path: string) => options.diff.some((file) => file.path === path || file.oldPath === path);
   try {
-    // The base side is read at the merge base of `base` and HEAD, as the diff is, and only for a touched manifest.
+    // The base side is read at the merge base of the base and HEAD, as the diff is, and only for a touched manifest.
     let mergeBase: string | null = null;
-    const { base } = options;
-    if (base !== undefined && !base.startsWith("-") && deps.git !== undefined && MANIFESTS.some(touched)) {
-      const out = (await deps.git(["merge-base", base, "HEAD"])).trim();
-      if (OBJECT_ID.test(out)) mergeBase = out;
+    const { revisions } = options;
+    if (revisions !== undefined && !revisions.base.startsWith("-") && MANIFESTS.some(touched)) {
+      const resolved = await revisions.resolve();
+      // Not found: the manifests are left out, as for any failed read.
+      if ("unresolved" in resolved) throw new Error(resolved.unresolved);
+      mergeBase = resolved.mergeBase;
     }
     const requests: { rev: string; path: string; side: "head" | "base"; manifest: (typeof MANIFESTS)[number] }[] = [];
     for (const manifest of MANIFESTS) {

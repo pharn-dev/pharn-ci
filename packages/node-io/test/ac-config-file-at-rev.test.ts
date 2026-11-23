@@ -3,8 +3,9 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { CONFIG_FILE_MAX_BYTES, configCopyInUse, readConfigFileAt } from "../src/configFile.js";
+import { CONFIG_FILE_MAX_BYTES, configCopyInUse as copyInUse, readConfigFileAt as readAt } from "../src/configFile.js";
 import { runGit, runGitBatch } from "../src/io.js";
+import { runRevisions } from "../src/revisions.js";
 
 // CORE-95: readConfigFileAt reads the pharn-ci config at the merge base from committed git objects only, never through
 // a symbolic link, and configCopyInUse picks the copy a check runs with from the diff. A real temporary repository:
@@ -22,6 +23,19 @@ const deps = () => ({
   git: (args: string[]) => runGit(dir, args),
   gitBatch: (args: string[], input: string) => runGitBatch(dir, args, input),
 });
+
+// The readers take the run's revisions (CORE-143); each call here resolves its base with the same git runner.
+type GitDeps = {
+  git(args: string[]): Promise<string>;
+  gitBatch?: (args: string[], input: string) => Promise<Uint8Array>;
+};
+const revisionsOf = (d: GitDeps, base: string | undefined) => (base === undefined ? undefined : runRevisions(d, base));
+const readConfigFileAt = (d: Required<GitDeps>, options: { base: string; path: string }) =>
+  readAt(d, { revisions: runRevisions(d, options.base), path: options.path });
+const configCopyInUse = (
+  d: GitDeps,
+  { base, ...options }: Omit<Parameters<typeof copyInUse>[1], "revisions"> & { base: string | undefined },
+) => copyInUse(d, { ...options, revisions: revisionsOf(d, base) });
 
 beforeAll(() => {
   dir = realpathSync(mkdtempSync(join(tmpdir(), "pharn-ci-config-at-rev-")));

@@ -27,9 +27,10 @@ import {
   unavailableTestSources,
 } from "@pharn-ci/core";
 import { readAgentConfigSources, readPolicySettingsSources } from "./agentConfigSources.js";
-import { firstLine, OBJECT_ID } from "./gitBlobs.js";
+import { firstLine } from "./gitBlobs.js";
 import { indexPythonTests } from "./pythonIndex.js";
 import { indexPythonTestSources } from "./pythonSources.js";
+import type { RunRevisions } from "./revisions.js";
 import { readStaleInstructionSources } from "./staleInstructions.js";
 import { readTestSources } from "./testSources.js";
 
@@ -53,8 +54,11 @@ export type HeadCheckout = "head" | "unknown" | "pr-number";
 
 export interface GatherSourcesOptions {
   diff: CheckInput["diff"];
-  /** The revision a parsed diff was taken against in local git; undefined when the diff did not come from local git. */
-  base: string | undefined;
+  /**
+   * The run's base (the revision a parsed diff was taken against in local git) and HEAD, resolved once for every reader;
+   * undefined when the diff did not come from local git.
+   */
+  revisions: RunRevisions | undefined;
   checkout: HeadCheckout;
   repoFiles: readonly string[];
   testIntegrityMode: TestIntegrityModeSettings | undefined;
@@ -136,18 +140,13 @@ export async function gatherSources(deps: GatherSourcesDeps, options: GatherSour
 
 /**
  * True only when git says HEAD has no commit the base lacks: the merge base of the base and HEAD is HEAD itself, so
- * the base is HEAD or a descendant of it. Asked with `merge-base` and `rev-parse`, which the shared git runner allows
- * (it refuses `rev-list`). Only two printed commit ids that are equal count; any other answer, or a failed call, is
- * unknown and false: the diff is then used as it is.
+ * the base is HEAD or a descendant of it. Asked with `rev-parse` and `merge-base` (the run's revisions), which the
+ * shared git runner allows (it refuses `rev-list`). Only two printed commit ids that are equal count; any other
+ * answer, or a failed call, is unknown and false: the diff is then used as it is.
  */
-export async function headIsInBase(deps: Pick<GatherSourcesDeps, "git">, base: string): Promise<boolean> {
-  try {
-    const mergeBase = (await deps.git(["merge-base", "--end-of-options", base, "HEAD"])).trim();
-    const head = (await deps.git(["rev-parse", "--verify", "--quiet", "--end-of-options", "HEAD^{commit}"])).trim();
-    return OBJECT_ID.test(mergeBase) && mergeBase === head;
-  } catch {
-    return false;
-  }
+export async function headIsInBase(revisions: RunRevisions): Promise<boolean> {
+  const resolved = await revisions.resolve();
+  return !("unresolved" in resolved) && resolved.mergeBase === resolved.head;
 }
 
 /**
@@ -171,7 +170,7 @@ function baseAndHeadUnread(options: GatherSourcesOptions, gitBatch: GatherSource
   if (options.checkout === "pr-number") return "pr-number mode: the diff came from the GitHub API";
   if ("text" in options.diff) return "the diff came from the GitHub compare API";
   if ("unavailable" in options.diff) return "the diff is unavailable";
-  if (gitBatch === undefined || options.base === undefined) return "reading git objects is not available";
+  if (gitBatch === undefined || options.revisions === undefined) return "reading git objects is not available";
   return null;
 }
 
@@ -202,16 +201,13 @@ async function gatherTestSources(
   options: GatherSourcesOptions,
 ): Promise<TestSources | undefined> {
   if (resolveTestIntegrityMode(options.testIntegrityMode).mode === "off") return undefined;
-  const { diff, base } = options;
+  const { diff, revisions } = options;
   const { gitBatch } = deps;
   const unread = baseAndHeadUnread(options, gitBatch);
-  if (unread !== null || gitBatch === undefined || base === undefined || !("parsed" in diff)) {
+  if (unread !== null || gitBatch === undefined || revisions === undefined || !("parsed" in diff)) {
     return unavailableTestSources(unread ?? "reading git objects is not available");
   }
-  const sources = await readTestSources(
-    { git: (args) => deps.git(args), gitBatch },
-    { base, head: "HEAD", diff: diff.parsed },
-  );
+  const sources = await readTestSources({ gitBatch }, { revisions, diff: diff.parsed });
   if ("unavailable" in sources.base) {
     options.log(
       `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`,
@@ -345,23 +341,17 @@ async function readChangedSources(
     limits?: typeof DEPENDENCY_SOURCE_LIMITS;
   },
 ): Promise<TestSources> {
-  const { diff, base } = options;
+  const { diff, revisions } = options;
   const { gitBatch } = deps;
   const unread = baseAndHeadUnread(options, gitBatch);
-  if (unread !== null || gitBatch === undefined || base === undefined || !("parsed" in diff)) {
+  if (unread !== null || gitBatch === undefined || revisions === undefined || !("parsed" in diff)) {
     return unavailableTestSources(unread ?? "reading git objects is not available");
   }
   const selected = read.select(diff.parsed);
   if (selected.base.length === 0 && selected.head.length === 0) return emptySources();
   const sources = await readTestSources(
-    { git: (args) => deps.git(args), gitBatch },
-    {
-      base,
-      head: "HEAD",
-      diff: diff.parsed,
-      select: read.select,
-      ...(read.limits === undefined ? {} : { limits: read.limits }),
-    },
+    { gitBatch },
+    { revisions, diff: diff.parsed, select: read.select, limits: read.limits },
   );
   if ("unavailable" in sources.base) {
     options.log(`pharn-ci: could not read ${read.what} from git, so ${read.effect}: ${sources.base.unavailable}`);
@@ -378,11 +368,11 @@ async function gatherStaleInstructionSources(
   options: GatherSourcesOptions,
 ): Promise<StaleInstructionSources | undefined> {
   const { gitBatch } = deps;
-  const { diff, base } = options;
+  const { diff, revisions } = options;
   if (gitBatch === undefined || options.checkout === "pr-number" || !("parsed" in diff)) return undefined;
   const sources = await readStaleInstructionSources(
-    { gitBatch, git: (args) => deps.git(args) },
-    { repoFiles: options.repoFiles, diff: diff.parsed, ...(base === undefined ? {} : { base }) },
+    { gitBatch },
+    { repoFiles: options.repoFiles, diff: diff.parsed, revisions },
   );
   if (sources !== undefined && "unavailable" in sources.instructions) {
     options.log(
