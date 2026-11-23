@@ -1,0 +1,26 @@
+# Info words
+
+```bash{2}
+pnpm run highlighted
+```
+
+```{bash}
+bun run brace-word
+```
+
+```{.sh .numberLines}
+make brace-class
+npx vitest run
+```
+
+```{.text}
+make sure the docs build before a release
+```
+
+```{r}
+yarn <- read_yarn("spec.csv")
+```
+
+```{=html}
+npm <b>run</b> raw-html
+```

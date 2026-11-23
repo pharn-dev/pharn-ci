@@ -16,6 +16,15 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   fences and a PowerShell `PS …> ` prompt in a console block, as P07 did, and no longer takes "no" out of "Noël" as a
   negation (a word may hold any letter, not only ASCII). P07 now reads a span after a word such as `docs/not.md`,
   which it read as the negation "not"; a word may hold a dot after its first letter, as in the stale check.
+- P07 and the stale-instruction check (SI01 to SI03) read code fences with one reader, as CommonMark reads them
+  (CORE-14). A fence line with text after it (`` ```text `` inside a block) is a line of the block, not its end: P07
+  ended the block there, so the closing fence opened an unmarked (shell) block and the prose after it could declare a
+  tool. A fence inside a list item, indented 4 spaces or more under `1. Install:` or written on the marker's line
+  (`` - ```bash ``), is read by both: the stale check skipped the first, and both scans took the second's closing fence
+  for a new unmarked block. A fence line in an indented code block outside a list opens nothing, where P07 opened a
+  block. A fence's language is its first word cut at `{`, or the word in a leading `{…}`: `js{1,3}`, `{bash}` and
+  `{.sh}` are their language for both, where P07 read them as examples, and `{.text}`, `{r}` and `{=html}` are
+  examples, where the stale check read them as shell.
 - TI09 reads the pytest tables of `pyproject.toml` with the TOML reader of dependency safety (CORE-142), so a table
   reads the same in every TOML spelling, as CORE-114 made it for dependencies. A `[tool.pytest.ini_options]` table
   moved to dotted keys (`[tool]` then `pytest.ini_options.testpaths = …`) or an inline table, or written with a quoted

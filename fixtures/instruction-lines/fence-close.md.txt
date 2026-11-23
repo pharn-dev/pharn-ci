@@ -1,0 +1,11 @@
+# Release notes
+
+The release notes start from this template:
+
+```
+pnpm run notes-before
+```text
+pnpm run notes-after
+```
+
+yarn run is how the old guide started a release, years ago.

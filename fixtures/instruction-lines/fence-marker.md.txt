@@ -1,0 +1,7 @@
+# Checks
+
+- ```sh
+  pnpm run marker-line
+  ```
+
+bun run is how the old guide started the checks, years ago.

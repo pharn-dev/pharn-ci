@@ -219,6 +219,122 @@ export function withoutComments(line: string, state: { open: boolean }): string 
 }
 
 /**
+ * What one line of an instruction file is to the block reader: a line inside a fenced block (with whether the block is
+ * shell, and a session), a line the scans skip (a fence line, or a line wholly inside an HTML comment), or text outside
+ * any fence, with its HTML comments removed.
+ */
+export type BlockLine =
+  | { kind: "fenced"; shell: boolean; session: boolean }
+  | { kind: "skipped" }
+  | { kind: "text"; line: string };
+
+/** The language word of a fence's info string: the first word, cut at `{`, or the word in a leading `{…}`. */
+export function fenceInfoWord(info: string): string {
+  let end = 0;
+  while (end < info.length && !isSpaceCode(info.charCodeAt(end)) && info[end] !== "{") end++;
+  if (end > 0 || info[0] !== "{") return info.slice(0, end).toLowerCase();
+  // `{bash}`, `{.sh .numberLines}`, `{r, echo=FALSE}`: the word after the brace and an optional class dot.
+  const from = info[1] === "." ? 2 : 1;
+  end = from;
+  while (end < info.length && !isSpaceCode(info.charCodeAt(end)) && info[end] !== "}" && info[end] !== ",") end++;
+  return info.slice(from, end).toLowerCase();
+}
+
+/** The length of the backtick or tilde run at `at`, or 0. */
+function fenceRun(line: string, at: number): number {
+  const char = line[at];
+  if (char !== "`" && char !== "~") return 0;
+  let run = 1;
+  while (line[at + run] === char) run++;
+  return run;
+}
+
+/**
+ * The content column of a list item that starts at `at` (`-`, `+` or `*`, or 1 to 9 digits and `.` or `)`, then a
+ * space, a tab or the end of the line), or -1 when the line starts no list item.
+ */
+function listItemContent(line: string, at: number): number {
+  let end = at;
+  const char = line[at];
+  if (char === "-" || char === "+" || char === "*") {
+    end = at + 1;
+  } else {
+    while (end < line.length && end - at < 10 && line.charCodeAt(end) >= 48 && line.charCodeAt(end) <= 57) end++;
+    if (end === at || end - at > 9 || (line[end] !== "." && line[end] !== ")")) return -1;
+    end++;
+  }
+  if (end === line.length) return end + 1;
+  if (line[end] !== " " && line[end] !== "\t") return -1;
+  const content = firstNonSpace(line, end);
+  // Five or more spaces after the marker: the item's text is indented code, and the content starts after one space.
+  return content === line.length || content - end > 4 ? end + 1 : content;
+}
+
+/**
+ * The fenced-block reader both instruction scans share, as CommonMark reads a fence. A fence opens on a run of three
+ * or more backticks or tildes indented at most three spaces past the content column of the list item that holds the
+ * line (a line inside an item's indentation belongs to the item), or as the text of a list item on its marker's line
+ * (`- ```bash`); deeper, the line is indented code. It closes on a run of the same character at least as long,
+ * followed only by spaces and tabs; a run with text after it is a line of the block. The block's language is the first
+ * word of the info string (`fenceInfoWord`). List items are the only containers followed (not block quotes). Lines
+ * inside a fence are raw; other lines lose their HTML comments first. Call the returned function once per line, in
+ * order. Pure; never throws.
+ */
+export function blockReader(): (raw: string) => BlockLine {
+  const comment = { open: false };
+  let fence: { char: string; length: number; shell: boolean; session: boolean } | null = null;
+  // The content columns of the open list items, outermost first.
+  const items: number[] = [];
+  // The previous line was paragraph text, so a less indented line may continue it (a lazy continuation line).
+  let paragraph = false;
+  return (raw) => {
+    if (fence !== null) {
+      const at = firstNonSpace(raw);
+      let run = 0;
+      while (raw[at + run] === fence.char) run++;
+      if (run >= fence.length && firstNonSpace(raw, at + run) === raw.length) {
+        fence = null;
+        return { kind: "skipped" };
+      }
+      return { kind: "fenced", shell: fence.shell, session: fence.session };
+    }
+    const line = withoutComments(raw, comment);
+    if (line === null) {
+      paragraph = false;
+      return { kind: "skipped" };
+    }
+    const at = firstNonSpace(line);
+    if (at >= line.length) {
+      paragraph = false;
+      return { kind: "text", line };
+    }
+    const char = line[at];
+    const content = listItemContent(line, at);
+    // A less indented line leaves the items it is not inside, unless it continues a paragraph.
+    const lazy = paragraph && fenceRun(line, at) < 3 && content === -1 && char !== "#";
+    if (!lazy) while (items.length > 0 && (items[items.length - 1] as number) > at) items.pop();
+    const indent = at - (items.length > 0 ? (items[items.length - 1] as number) : 0);
+    if (indent >= 4) {
+      paragraph = paragraph && char !== "#";
+      return { kind: "text", line };
+    }
+    if (content !== -1) items.push(content);
+    // The fence starts the line, or the text of the list item the line starts (`- ```bash`).
+    const from = content !== -1 && content < line.length ? content : at;
+    const run = fenceRun(line, from);
+    if (run >= 3) {
+      const word = fenceInfoWord(line.slice(from + run).trim());
+      const fenceChar = line[from] as string;
+      fence = { char: fenceChar, length: run, shell: SHELL_INFO.has(word), session: SESSION_INFO.has(word) };
+      paragraph = false;
+      return { kind: "skipped" };
+    }
+    paragraph = char !== "#";
+    return { kind: "text", line };
+  };
+}
+
+/**
  * The text of a shell-block line after its prompt, or null when the line names no command. In a session block only a
  * line after a `$ `, `% ` or `> ` prompt, or a PowerShell `PS …> ` prompt, is a command; in any other shell block every
  * line is, after such a prompt if it has one, except a `#` comment.

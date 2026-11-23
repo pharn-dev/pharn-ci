@@ -30760,6 +30760,86 @@ function withoutComments(line, state) {
     pos = close + 3;
   }
 }
+function fenceInfoWord(info2) {
+  let end = 0;
+  while (end < info2.length && !isSpaceCode(info2.charCodeAt(end)) && info2[end] !== "{") end++;
+  if (end > 0 || info2[0] !== "{") return info2.slice(0, end).toLowerCase();
+  const from = info2[1] === "." ? 2 : 1;
+  end = from;
+  while (end < info2.length && !isSpaceCode(info2.charCodeAt(end)) && info2[end] !== "}" && info2[end] !== ",") end++;
+  return info2.slice(from, end).toLowerCase();
+}
+function fenceRun(line, at) {
+  const char = line[at];
+  if (char !== "`" && char !== "~") return 0;
+  let run2 = 1;
+  while (line[at + run2] === char) run2++;
+  return run2;
+}
+function listItemContent(line, at) {
+  let end = at;
+  const char = line[at];
+  if (char === "-" || char === "+" || char === "*") {
+    end = at + 1;
+  } else {
+    while (end < line.length && end - at < 10 && line.charCodeAt(end) >= 48 && line.charCodeAt(end) <= 57) end++;
+    if (end === at || end - at > 9 || line[end] !== "." && line[end] !== ")") return -1;
+    end++;
+  }
+  if (end === line.length) return end + 1;
+  if (line[end] !== " " && line[end] !== "	") return -1;
+  const content = firstNonSpace(line, end);
+  return content === line.length || content - end > 4 ? end + 1 : content;
+}
+function blockReader() {
+  const comment = { open: false };
+  let fence = null;
+  const items = [];
+  let paragraph = false;
+  return (raw) => {
+    if (fence !== null) {
+      const at2 = firstNonSpace(raw);
+      let run3 = 0;
+      while (raw[at2 + run3] === fence.char) run3++;
+      if (run3 >= fence.length && firstNonSpace(raw, at2 + run3) === raw.length) {
+        fence = null;
+        return { kind: "skipped" };
+      }
+      return { kind: "fenced", shell: fence.shell, session: fence.session };
+    }
+    const line = withoutComments(raw, comment);
+    if (line === null) {
+      paragraph = false;
+      return { kind: "skipped" };
+    }
+    const at = firstNonSpace(line);
+    if (at >= line.length) {
+      paragraph = false;
+      return { kind: "text", line };
+    }
+    const char = line[at];
+    const content = listItemContent(line, at);
+    const lazy = paragraph && fenceRun(line, at) < 3 && content === -1 && char !== "#";
+    if (!lazy) while (items.length > 0 && items[items.length - 1] > at) items.pop();
+    const indent = at - (items.length > 0 ? items[items.length - 1] : 0);
+    if (indent >= 4) {
+      paragraph = paragraph && char !== "#";
+      return { kind: "text", line };
+    }
+    if (content !== -1) items.push(content);
+    const from = content !== -1 && content < line.length ? content : at;
+    const run2 = fenceRun(line, from);
+    if (run2 >= 3) {
+      const word = fenceInfoWord(line.slice(from + run2).trim());
+      const fenceChar = line[from];
+      fence = { char: fenceChar, length: run2, shell: SHELL_INFO.has(word), session: SESSION_INFO.has(word) };
+      paragraph = false;
+      return { kind: "skipped" };
+    }
+    paragraph = char !== "#";
+    return { kind: "text", line };
+  };
+}
 function shellLine(line, session) {
   const start = firstNonSpace(line);
   if (session) {
@@ -30968,50 +31048,29 @@ function instructionDeclarations(text) {
       break;
     }
   }
-  const comment = { open: false };
-  let fence = null;
+  const read = blockReader();
   let ignored = false;
   let previousBlank = true;
   let previousIndented = false;
   for (let index = start; index < lines.length; index++) {
     const raw = lines[index];
     const lineNumber = index + 1;
-    if (fence !== null) {
-      const at2 = firstNonSpace(raw);
-      let run2 = 0;
-      while (raw[at2 + run2] === fence.char) run2++;
-      if (run2 >= fence.length) {
-        fence = null;
-        previousBlank = false;
-        previousIndented = false;
-      } else if (fence.counted && !ignored) {
-        const command = shellLine(raw, fence.session);
+    const block = read(raw);
+    if (block.kind === "fenced") {
+      if (block.shell && !ignored) {
+        const command = shellLine(raw, block.session);
         if (command !== null) declareCommand(command, lineNumber, found);
       }
       continue;
     }
-    const line = withoutComments(raw, comment);
-    if (line === null) {
+    if (block.kind === "skipped") {
       previousBlank = false;
       previousIndented = false;
       continue;
     }
+    const line = block.line;
     const at = firstNonSpace(line);
     const char = line[at];
-    if (char === "`" || char === "~") {
-      let run2 = 0;
-      while (line[at + run2] === char) run2++;
-      if (run2 >= 3) {
-        const info2 = line.slice(at + run2).trim();
-        let end = 0;
-        while (end < info2.length && !isSpaceCode(info2.charCodeAt(end))) end++;
-        const word = info2.slice(0, end).toLowerCase();
-        fence = { char, length: run2, counted: SHELL_INFO.has(word), session: SESSION_INFO.has(word) };
-        previousBlank = false;
-        previousIndented = false;
-        continue;
-      }
-    }
     if (char === "#") {
       ignored = hasCueWord(line, at, line.length, CUE_WORDS);
       previousBlank = false;
@@ -35926,50 +35985,29 @@ function scanInstructionTokens(text) {
       }
     }
   }
-  const comment = { open: false };
-  let fence = null;
+  const read = blockReader();
   let ignored = false;
   let previousBlank = true;
   let previousIndented = false;
   for (let index = start; index < lines.length && !full(); index++) {
     const raw = lines[index];
     const lineNumber = index + 1;
-    if (fence !== null) {
-      const at2 = firstNonSpace(raw);
-      let run2 = 0;
-      while (raw[at2 + run2] === fence.char) run2++;
-      if (run2 >= fence.length && raw.slice(at2 + run2).trim() === "") {
-        fence = null;
-        previousBlank = false;
-        previousIndented = false;
-      } else if (fence.shell && !ignored) {
-        const command = shellLine(raw, fence.session);
+    const block = read(raw);
+    if (block.kind === "fenced") {
+      if (block.shell && !ignored) {
+        const command = shellLine(raw, block.session);
         if (command !== null) commandsIn(command, lineNumber, commands);
       }
       continue;
     }
-    const line = withoutComments(raw, comment);
-    if (line === null) {
+    if (block.kind === "skipped") {
       previousBlank = false;
       previousIndented = false;
       continue;
     }
+    const line = block.line;
     const at = firstNonSpace(line);
     const char = line[at];
-    if ((char === "`" || char === "~") && at < 4) {
-      let run2 = 0;
-      while (line[at + run2] === char) run2++;
-      if (run2 >= 3) {
-        const info2 = line.slice(at + run2).trim();
-        let end = 0;
-        while (end < info2.length && !isSpaceCode(info2.charCodeAt(end)) && info2[end] !== "{") end++;
-        const word = info2.slice(0, end).toLowerCase();
-        fence = { char, length: run2, shell: SHELL_INFO.has(word), session: SESSION_INFO.has(word) };
-        previousBlank = false;
-        previousIndented = false;
-        continue;
-      }
-    }
     if (char === "#") {
       ignored = hasCueWord(line, 0, line.length, CUE_WORDS2);
       previousBlank = false;

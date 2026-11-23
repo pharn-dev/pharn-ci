@@ -1,0 +1,20 @@
+# Setup
+
+1. Install the tools:
+
+    ```bash
+    pnpm run listed-step
+    ```
+
+   - Then build the docs:
+
+        ```sh
+        make nested-target
+        npx vitest run
+        ```
+
+To start a block of code, write three backticks on a line of their own:
+
+    ```
+
+npm run is how the old guide started a script, years ago.

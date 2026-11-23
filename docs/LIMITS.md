@@ -1290,7 +1290,10 @@ instruction file that went old next to the code it describes is not reported. Wh
   (`next/link`, `owner/repo`) and files a tool creates later are never reported, even when an instruction tells the
   agent to read them.
 - **Examples and negations are word heuristics.** A fenced block in any language but a shell (PowerShell and `cmd`
-  count as shells) is an example and is not read; an indented block, an HTML comment and frontmatter are not read; a line or a section under a heading with
+  count as shells) is an example and is not read; its language is the fence's first word cut at `{` (`js{1,3}` is
+  `js`) or the word in a leading `{…}` (`{bash}`, `{.sh}`). Fences are read as CommonMark reads them inside list
+  items, but not inside a block quote (`` > ```bash ``), whose lines are prose. An indented block, an HTML comment and
+  frontmatter are not read; a line or a section under a heading with
   `not`, `never`, `don't`, `avoid`, `instead`, `deprecated`, `removed`, `legacy`, `example` or a similar word is
   skipped. A legacy name in a line without such a word ("equivalent to `middleware.ts`") is still read.
 - **Diff-aware by design.** A stale token in an instruction file the change does not touch is reported only when the
@@ -1727,6 +1730,8 @@ review of the instructions. What it misses:
   A root file and a nested `AGENTS.md` that name different tools do not contradict.
 - **Tools in indented, non-shell or multi-line code are missed.** An indented code block, a `json`, `python` or other
   non-shell fence, a command split over several lines and a command in a console line without a prompt declare nothing.
+  A fence inside a block quote (`` > ```bash ``) is prose, so it declares nothing either; a fence inside a list item is
+  read, as the stale-instruction check reads it.
 - **Negation is a word heuristic.** A span after a cue word ("don't", "instead of", "never"), before "is not" or
   "isn't", or under a heading with such a word is skipped. A list continuation (``Don't use `npm` or `yarn` ``) negates
   only the first span, and a file that names pnpm among others never contradicts a pnpm file.

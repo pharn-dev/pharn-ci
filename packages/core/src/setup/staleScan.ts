@@ -6,16 +6,14 @@
  */
 import { JS_TS_EXTENSIONS } from "../jsTsExtensions.js";
 import {
+  blockReader,
   codeSpans,
   commandsOfLine,
   firstNonSpace,
   hasCueWord,
   isAsciiLetter,
   isSpaceCode,
-  SESSION_INFO,
-  SHELL_INFO,
   shellLine,
-  withoutComments,
 } from "./instructionLines.js";
 
 /** The most code units of one instruction file that are scanned; the rest is not read. */
@@ -620,8 +618,7 @@ export function scanInstructionTokens(text: string): InstructionTokens {
     }
   }
 
-  const comment = { open: false };
-  let fence: { char: string; length: number; shell: boolean; session: boolean } | null = null;
+  const read = blockReader();
   let ignored = false;
   let previousBlank = true;
   let previousIndented = false;
@@ -629,45 +626,23 @@ export function scanInstructionTokens(text: string): InstructionTokens {
     const raw = lines[index] as string;
     const lineNumber = index + 1;
 
-    if (fence !== null) {
-      const at = firstNonSpace(raw);
-      let run = 0;
-      while (raw[at + run] === fence.char) run++;
-      if (run >= fence.length && raw.slice(at + run).trim() === "") {
-        fence = null;
-        previousBlank = false;
-        previousIndented = false;
-      } else if (fence.shell && !ignored) {
-        const command = shellLine(raw, fence.session);
+    const block = read(raw);
+    if (block.kind === "fenced") {
+      if (block.shell && !ignored) {
+        const command = shellLine(raw, block.session);
         if (command !== null) commandsIn(command, lineNumber, commands);
       }
       continue;
     }
-
-    const line = withoutComments(raw, comment);
-    if (line === null) {
+    if (block.kind === "skipped") {
       previousBlank = false;
       previousIndented = false;
       continue;
     }
 
+    const line = block.line;
     const at = firstNonSpace(line);
     const char = line[at];
-    if ((char === "`" || char === "~") && at < 4) {
-      let run = 0;
-      while (line[at + run] === char) run++;
-      if (run >= 3) {
-        const info = line.slice(at + run).trim();
-        let end = 0;
-        while (end < info.length && !isSpaceCode(info.charCodeAt(end)) && info[end] !== "{") end++;
-        const word = info.slice(0, end).toLowerCase();
-        fence = { char, length: run, shell: SHELL_INFO.has(word), session: SESSION_INFO.has(word) };
-        previousBlank = false;
-        previousIndented = false;
-        continue;
-      }
-    }
-
     if (char === "#") {
       ignored = hasCueWord(line, 0, line.length, CUE_WORDS);
       previousBlank = false;
