@@ -149,8 +149,12 @@ describe("pharn-ci check: policy mode reads the committed agent settings files",
     const empty = repo({ "README.md": "# demo\n" }).dir;
     const emptyWith = await runCli(empty, true);
     const emptyWithout = await runCli(empty, false);
+    // The policy file itself is read at the base too (CORE-14 follow-up: the CLI passes `policyFileBase`, as the
+    // Action does): one batch check that names only the policy path and one batch read of its blob. No other call is
+    // added.
+    expect(naming(emptyWith.calls, "policy/org.json"), "the policy file is read at the base").toHaveLength(1);
     expect(emptyWith.calls.length, "no more git calls than without a policy").toBeLessThanOrEqual(
-      emptyWithout.calls.length,
+      emptyWithout.calls.length + 2,
     );
     expect(withoutFix((emptyWith.report.policy?.violations ?? []).filter((v) => v.id === "P03"))).toEqual([
       {

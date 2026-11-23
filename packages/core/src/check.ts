@@ -235,15 +235,16 @@ export interface CheckInput {
    */
   agentPrFacts?: AgentPrFacts | undefined;
   /**
-   * The `file:` policy as the merge base has it (see `PolicyFileBase`), read by the Action from committed objects. Its
-   * lists are united with the head lists; an unreadable one with an edited policy file makes the pull request an agent PR.
-   * Absent means it was not read.
+   * The `file:` policy as the base commit of the local diff has it (see `PolicyFileBase`), read from committed objects by
+   * the CLI and the Action (node-io `gatherSources`). Its lists and injection phrases are united with the head copy's; an
+   * unreadable one with an edited policy file makes the pull request an agent PR. Absent means it was not read.
    */
   policyFileBase?: PolicyFileBase | undefined;
   /**
    * The text of the agent settings, MCP, workflow and CODEOWNERS files the change touches, at the merge base and at
-   * HEAD (`selectSelfModificationPaths`), gathered by the Action under a policy in force for org-policy rule P13. Absent
-   * means P13 adds nothing and the report is the one it was.
+   * HEAD (`selectSelfModificationPaths`), gathered by the CLI and the Action (node-io `gatherSources`) under a policy in
+   * force for org-policy rule P13. P13 judges only an agent pull request, so without the Action's `agentPrFacts` it adds
+   * nothing. Absent means P13 adds nothing and the report is the one it was.
    */
   selfModificationSources?: TestSources | undefined;
   /**

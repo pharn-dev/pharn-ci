@@ -12,7 +12,6 @@ import {
   gitDiffArgs,
   type InputErrorText,
   type JunitResults,
-  type PolicyFileBase,
   type PythonIndexRun,
   type PythonSourceFile,
   parseExcludePattern,
@@ -43,7 +42,6 @@ import {
   readCoverageFiles,
   readDiscoveredCoverage,
   readJunitFiles,
-  readPolicyFileAt,
   runRevisions,
 } from "@pharn-ci/node-io";
 import { applyAcceptLabel } from "./accept-label.js";
@@ -448,17 +446,6 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
       `pharn-ci: agent PR detection could not read all of the pull request's evidence (${defaultDetection.incomplete}), so it counts as an agent PR`,
     );
   }
-  // A `file:` policy the pull request carries is also read at the merge base, from committed objects: the pull request
-  // cannot remove an agent label, login or protected path by editing the file. Only a local diff makes that possible;
-  // otherwise a file policy is unreadable there and core decides from the diff whether that matters.
-  let policyFileBase: PolicyFileBase | undefined;
-  if (policy?.source === "file") {
-    policyFileBase =
-      localBase !== undefined && policy.path !== undefined
-        ? await readPolicyFileAt(deps, { rev: localBase, path: policy.path })
-        : { kind: "unreadable" };
-  }
-
   // The JUnit results the test step wrote: read from the workspace, never through a symbolic link, under the run's caps.
   const junit = junitPatterns.length === 0 ? undefined : await gatherJunit(deps, junitPatterns);
 
@@ -482,7 +469,6 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     policyIgnored: application?.ignored,
     signalOverrides: application?.signalOverrides,
     agentPrFacts,
-    policyFileBase,
     junit,
     // Only the app's own answer carries a quarantine list; a pull request has no way to add one.
     quarantine,

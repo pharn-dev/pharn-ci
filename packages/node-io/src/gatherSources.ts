@@ -7,6 +7,7 @@ import {
   DEPENDENCY_SOURCE_LIMITS,
   type DependencySettingsLayers,
   type DiffFile,
+  type PolicyFileBase,
   type PolicySettingsSources,
   type PythonIndexRun,
   type PythonSourceFile,
@@ -28,9 +29,10 @@ import {
 } from "@pharn-ci/core";
 import { readAgentConfigSources, readPolicySettingsSources } from "./agentConfigSources.js";
 import { firstLine } from "./gitBlobs.js";
+import { readPolicyFileAt } from "./policyFile.js";
 import { indexPythonTests } from "./pythonIndex.js";
 import { indexPythonTestSources } from "./pythonSources.js";
-import type { RunRevisions } from "./revisions.js";
+import { diffEnds, type RunRevisions } from "./revisions.js";
 import { readStaleInstructionSources } from "./staleInstructions.js";
 import { readTestSources } from "./testSources.js";
 
@@ -81,6 +83,7 @@ export interface GatheredSources {
   selfModificationSources?: TestSources;
   staleInstructionSources?: StaleInstructionSources;
   dependencySources?: TestSources;
+  policyFileBase?: PolicyFileBase;
 }
 
 /**
@@ -98,6 +101,8 @@ export interface GatheredSources {
  * - `selfModificationSources` (P13, under an app or file policy) and `dependencySources` (A13, unless the mode is
  *   `never`): read at the base and at HEAD from a local diff only; empty when the diff touches none of their files.
  * - `staleInstructionSources` (SI01 to SI03): only with a local diff.
+ * - `policyFileBase` (a `file:` policy as the base has it, which core unites with the head copy for the agent lists, P14's
+ *   caps and the injection phrases): read under a `file:` policy from a local diff only, otherwise `unreadable`.
  */
 export async function gatherSources(deps: GatherSourcesDeps, options: GatherSourcesOptions): Promise<GatheredSources> {
   const out: GatheredSources = {};
@@ -133,6 +138,8 @@ export async function gatherSources(deps: GatherSourcesDeps, options: GatherSour
   if (staleInstructionSources !== undefined) out.staleInstructionSources = staleInstructionSources;
   const dependencySources = await gatherDependencySources(deps, options);
   if (dependencySources !== undefined) out.dependencySources = dependencySources;
+  const policyFileBase = await gatherPolicyFileBase(deps, options);
+  if (policyFileBase !== undefined) out.policyFileBase = policyFileBase;
   return out;
 }
 
@@ -343,6 +350,26 @@ async function readChangedSources(
     options.log(`pharn-ci: could not read ${read.what} from git, so ${read.effect}: ${sources.base.unavailable}`);
   }
   return sources;
+}
+
+/**
+ * A `file:` policy as the base commit has it, read from committed objects, so a change that edits the file cannot drop an
+ * entry of its agent lists or its injection phrases, or raise one of its caps; undefined without a `file:` policy. The
+ * base is the commit the local diff named (`diffEnds`). Without a local diff it is `unreadable`, and core decides from
+ * the diff whether that matters. The CLI has no pull request, so of these only the injection phrases apply there (core
+ * reads the agent lists only with the Action's agent PR facts); reading the base still keeps a branch from removing a
+ * phrase the base's policy has, as in the Action.
+ */
+async function gatherPolicyFileBase(
+  deps: GatherSourcesDeps,
+  options: GatherSourcesOptions,
+): Promise<PolicyFileBase | undefined> {
+  const { policy, revisions } = options;
+  if (policy?.source !== "file") return undefined;
+  if (baseAndHeadUnread(options) !== null || revisions === undefined || policy.path === undefined) {
+    return { kind: "unreadable" };
+  }
+  return readPolicyFileAt(deps, { rev: (await diffEnds(revisions)).base, path: policy.path });
 }
 
 /**

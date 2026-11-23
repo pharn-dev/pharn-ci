@@ -47813,6 +47813,60 @@ async function indexPythonTestSources(sources, index = (files) => indexPythonTes
   return pythonTestIndexFromRun(sources, run2);
 }
 
+// ../node-io/src/revisions.ts
+var revParseArgs = (revision) => [
+  "rev-parse",
+  "--verify",
+  "--quiet",
+  "--end-of-options",
+  `${revision}^{commit}`
+];
+function runRevisions(deps, base, printedBase) {
+  let answer;
+  const commit = async (revision, label, printed) => {
+    let out = printed;
+    if (out === void 0) {
+      try {
+        out = await deps.git(revParseArgs(revision));
+      } catch (err) {
+        throw new StepFailed(`git rev-parse could not resolve the ${label}: ${firstLine(err)}`);
+      }
+    }
+    const oid = out.trim();
+    if (!OBJECT_ID.test(oid))
+      throw new StepFailed(`git rev-parse could not resolve the ${label}: no commit id was printed`);
+    return oid;
+  };
+  const find = async () => {
+    try {
+      const baseOid = await commit(base, "base", printedBase);
+      const headOid = await commit("HEAD", "head");
+      let out;
+      try {
+        out = await deps.git(["merge-base", baseOid, headOid]);
+      } catch (err) {
+        throw new StepFailed(`git merge-base failed: ${firstLine(err)}`);
+      }
+      const mergeBase = out.trim();
+      if (!OBJECT_ID.test(mergeBase)) throw new StepFailed("git merge-base failed: no commit id was printed");
+      return { base: baseOid, head: headOid, mergeBase };
+    } catch (err) {
+      return { unresolved: err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}` };
+    }
+  };
+  return {
+    base,
+    resolve: () => {
+      answer ??= find();
+      return answer;
+    }
+  };
+}
+async function diffEnds(revisions) {
+  const resolved = await revisions.resolve();
+  return "unresolved" in resolved ? { base: revisions.base, head: "HEAD" } : { base: resolved.base, head: resolved.head };
+}
+
 // ../node-io/src/staleInstructions.ts
 var MAX_MANIFEST_BYTES = 512 * 1024;
 var MANIFESTS = ["package.json", "Makefile"];
@@ -47955,6 +48009,8 @@ async function gatherSources(deps, options) {
   if (staleInstructionSources !== void 0) out.staleInstructionSources = staleInstructionSources;
   const dependencySources = await gatherDependencySources(deps, options);
   if (dependencySources !== void 0) out.dependencySources = dependencySources;
+  const policyFileBase = await gatherPolicyFileBase(deps, options);
+  if (policyFileBase !== void 0) out.policyFileBase = policyFileBase;
   return out;
 }
 async function headIsInBase(revisions) {
@@ -48080,6 +48136,14 @@ async function readChangedSources(deps, options, read) {
     options.log(`pharn-ci: could not read ${read.what} from git, so ${read.effect}: ${sources.base.unavailable}`);
   }
   return sources;
+}
+async function gatherPolicyFileBase(deps, options) {
+  const { policy, revisions } = options;
+  if (policy?.source !== "file") return void 0;
+  if (baseAndHeadUnread(options) !== null || revisions === void 0 || policy.path === void 0) {
+    return { kind: "unreadable" };
+  }
+  return readPolicyFileAt(deps, { rev: (await diffEnds(revisions)).base, path: policy.path });
 }
 async function gatherStaleInstructionSources(deps, options) {
   const { diff, revisions } = options;
@@ -48326,56 +48390,6 @@ async function matchJunitFiles(deps, options) {
     }
   }
   return { paths, walkLimit: false };
-}
-
-// ../node-io/src/revisions.ts
-var revParseArgs = (revision) => [
-  "rev-parse",
-  "--verify",
-  "--quiet",
-  "--end-of-options",
-  `${revision}^{commit}`
-];
-function runRevisions(deps, base, printedBase) {
-  let answer;
-  const commit = async (revision, label, printed) => {
-    let out = printed;
-    if (out === void 0) {
-      try {
-        out = await deps.git(revParseArgs(revision));
-      } catch (err) {
-        throw new StepFailed(`git rev-parse could not resolve the ${label}: ${firstLine(err)}`);
-      }
-    }
-    const oid = out.trim();
-    if (!OBJECT_ID.test(oid))
-      throw new StepFailed(`git rev-parse could not resolve the ${label}: no commit id was printed`);
-    return oid;
-  };
-  const find = async () => {
-    try {
-      const baseOid = await commit(base, "base", printedBase);
-      const headOid = await commit("HEAD", "head");
-      let out;
-      try {
-        out = await deps.git(["merge-base", baseOid, headOid]);
-      } catch (err) {
-        throw new StepFailed(`git merge-base failed: ${firstLine(err)}`);
-      }
-      const mergeBase = out.trim();
-      if (!OBJECT_ID.test(mergeBase)) throw new StepFailed("git merge-base failed: no commit id was printed");
-      return { base: baseOid, head: headOid, mergeBase };
-    } catch (err) {
-      return { unresolved: err instanceof StepFailed ? err.message : `git could not be read: ${firstLine(err)}` };
-    }
-  };
-  return {
-    base,
-    resolve: () => {
-      answer ??= find();
-      return answer;
-    }
-  };
 }
 
 // src/node-io.ts
@@ -49421,7 +49435,7 @@ async function runUnsafe(deps) {
   }
   const repoFiles = await trackedFiles(target, deps);
   const { diff, revisions, checkout } = earlyDiff ?? await getDiff(baseRefInput, deps, target, configInput);
-  const localBase = revisions?.base;
+  const localBase = revisions === void 0 ? void 0 : (await diffEnds(revisions)).base;
   const gathered = await gatherSources(deps, {
     diff,
     revisions,
@@ -49446,10 +49460,6 @@ async function runUnsafe(deps) {
       `pharn-ci: agent PR detection could not read all of the pull request's evidence (${defaultDetection.incomplete}), so it counts as an agent PR`
     );
   }
-  let policyFileBase;
-  if (policy?.source === "file") {
-    policyFileBase = localBase !== void 0 && policy.path !== void 0 ? await readPolicyFileAt(deps, { rev: localBase, path: policy.path }) : { kind: "unreadable" };
-  }
   const junit = junitPatterns.length === 0 ? void 0 : await gatherJunit(deps, junitPatterns);
   const checkInput = {
     version: VERSION7,
@@ -49471,7 +49481,6 @@ async function runUnsafe(deps) {
     policyIgnored: application?.ignored,
     signalOverrides: application?.signalOverrides,
     agentPrFacts,
-    policyFileBase,
     junit,
     // Only the app's own answer carries a quarantine list; a pull request has no way to add one.
     quarantine,
@@ -49652,11 +49661,11 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
   }
   const revisions = await resolveLocal(base, deps);
   if (revisions !== null) {
-    const localBase = revisions.base;
+    const ends = await diffEnds(revisions);
     let parsed;
     try {
       const options = { configPath: configInput === "" ? void 0 : configInput, repoRoot: deps.workspace };
-      parsed = await readDiffChunks(deps.gitStream(gitDiffArgs(localBase)), options);
+      parsed = await readDiffChunks(deps.gitStream(gitDiffArgs(ends.base, ends.head)), options);
     } catch (err) {
       throw new Error(
         `the local git diff against "${base}" failed (${String(err)}); check out full history with actions/checkout and fetch-depth: 0`
