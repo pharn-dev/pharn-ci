@@ -96,7 +96,7 @@ describe("injectionSettingsOf", () => {
       phrases: ["base", "head"],
       severities: { PI01: "block", PI02: "block", PI03: "warn", PI04: "warn", PI05: "warn" },
       ignored: [
-        // CORE-123: a record names the setting and no layer.
+        // CORE-123: a policy file's record carries no layer (it was "policy-file").
         { setting: "injection.exempt", reason: "not-allowed" },
         { setting: "injection.signals.PI01", reason: "looser" },
       ],

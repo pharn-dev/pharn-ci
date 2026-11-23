@@ -7,9 +7,15 @@ import { expectValidReport } from "./schema.js";
 // adapters build them: a PharnConfig, the raw inputs, and resolveInputs() over both. A policy is passed as a
 // ResolvedPolicy of source "app" (served) or "file" (the PR-carried file: document).
 
-// CORE-123 (R5.6): a record names the setting and no layer, and POLICY_OVERRIDE_IGNORED names no layer either; a
-// setting that two layers gave looser is one record.
-type Ignored = { setting: string; reason: "looser" | "not-allowed"; given?: number; applied?: number };
+// CORE-123 (R5.6): POLICY_OVERRIDE_IGNORED names the setting and no layer. An app policy's looser record keeps the
+// layer it beat (input or config), which P09 reads; a policy file's record has none.
+type Ignored = {
+  setting: string;
+  layer?: "input" | "config";
+  reason: "looser" | "not-allowed";
+  given?: number;
+  applied?: number;
+};
 const LAYER_WORD = /\((?:input|config|policy-file)\)/;
 type Inputs = {
   threshold: number | null;
@@ -91,7 +97,7 @@ describe("applyPolicy: the coverage and setup keys", () => {
           { threshold: "70" },
           app({ coverage: { threshold: 80 } }),
           80,
-          [{ setting: "coverage.threshold", reason: "looser", given: 70, applied: 80 }],
+          [{ setting: "coverage.threshold", layer: "input", reason: "looser", given: 70, applied: 80 }],
           "coverage.threshold 70 → 80",
         ],
         [
@@ -100,7 +106,7 @@ describe("applyPolicy: the coverage and setup keys", () => {
           {},
           app({ coverage: { threshold: 80 } }),
           80,
-          [{ setting: "coverage.threshold", reason: "looser", given: 70, applied: 80 }],
+          [{ setting: "coverage.threshold", layer: "config", reason: "looser", given: 70, applied: 80 }],
           "coverage.threshold 70 → 80",
         ],
         ["app 60 under input 70", {}, { threshold: "70" }, app({ coverage: { threshold: 60 } }), 70, []],
@@ -142,7 +148,10 @@ describe("applyPolicy: the coverage and setup keys", () => {
         { exclude: ["src/**"] },
         app({ coverage: { exclude: ["gen/**"] } }),
         ["gen/**"],
-        [{ setting: "coverage.exclude", reason: "looser" }],
+        [
+          { setting: "coverage.exclude", layer: "config", reason: "looser" },
+          { setting: "coverage.exclude", layer: "input", reason: "looser" },
+        ],
       ],
       [
         "app [] over config docs/**",
@@ -150,7 +159,7 @@ describe("applyPolicy: the coverage and setup keys", () => {
         {},
         app({ coverage: { exclude: [] } }),
         [],
-        [{ setting: "coverage.exclude", reason: "looser" }],
+        [{ setting: "coverage.exclude", layer: "config", reason: "looser" }],
       ],
       [
         "app gen/** with input gen/**",
@@ -198,7 +207,7 @@ describe("applyPolicy: the coverage and setup keys", () => {
         { coverageRoot: "other" },
         app({ coverage: { root: "pkg" } }),
         "pkg",
-        [{ setting: "coverage.root", reason: "looser" }],
+        [{ setting: "coverage.root", layer: "input", reason: "looser" }],
       ],
       [
         "app null over config pkg",
@@ -206,7 +215,7 @@ describe("applyPolicy: the coverage and setup keys", () => {
         {},
         app({ coverage: { root: null } }),
         "repo",
-        [{ setting: "coverage.root", reason: "looser" }],
+        [{ setting: "coverage.root", layer: "config", reason: "looser" }],
       ],
       ["app pkg with input pkg", {}, { coverageRoot: "pkg" }, app({ coverage: { root: "pkg" } }), "pkg", []],
       [
@@ -242,14 +251,14 @@ describe("applyPolicy: the coverage and setup keys", () => {
         {},
         { requireAgentSetup: false },
         app({ setup: { require: true } }),
-        [{ setting: "setup.require", reason: "looser" }],
+        [{ setting: "setup.require", layer: "input", reason: "looser" }],
       ],
       [
         "app true over an explicit config false",
         { setup: { require: false } },
         {},
         app({ setup: { require: true } }),
-        [{ setting: "setup.require", reason: "looser" }],
+        [{ setting: "setup.require", layer: "config", reason: "looser" }],
       ],
       ["app true, nothing given", {}, {}, app({ setup: { require: true } }), []],
       ["app false under input true", {}, { requireAgentSetup: true }, app({ setup: { require: false } }), []],

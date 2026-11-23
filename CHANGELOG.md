@@ -14,9 +14,8 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - Policy findings and messages are simpler (CORE-123). P09 no longer reports an edited agent settings or MCP file that
   complies (`info`) or that supplies a required deny rule or hook (`warn`); its block and warn entries for a file that
   fails P02 to P06 or could not be checked are unchanged. `POLICY_OVERRIDE_IGNORED` names each setting and no longer
-  the layer it came from (`(input)`, `(config)`, `(policy-file)`), so P09 now blocks an edit of the config or a
-  workflow while any workflow input or config setting is looser than an app policy, whichever of the two gave it. An
-  exception inside the upload no longer fails the step under debug logging (`RUNNER_DEBUG=1`): it is logged by its
+  the layer it came from (`(input)`, `(config)`, `(policy-file)`); P09's verdicts on an edit of the config or a
+  workflow are unchanged. An exception inside the upload no longer fails the step under debug logging (`RUNNER_DEBUG=1`): it is logged by its
   error class and the upload ends `failed`, as in every other run. The policy response's `etag`, `updatedAt` and
   `settings.redactMessages` are optional and not read.
 - `pharn-ci test` trusts only a JUnit file this run wrote (CORE-121). After a failed command it exited `0` when every

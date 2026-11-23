@@ -17,9 +17,11 @@ const SETTINGS_LISTS = [
   "required_hooks",
 ] as const satisfies readonly (keyof PolicySetup)[];
 
-/** The distinct settings of the records, sorted: the first 5, then how many more. */
-function settings(looser: readonly IgnoredSetting[]): string {
-  const names = [...new Set(looser.map((record) => record.setting))].sort(byCodeUnit);
+/** The distinct settings of one layer's ignored records, sorted: the first 5, then how many more. */
+function settings(ignored: readonly IgnoredSetting[], layer: IgnoredSetting["layer"]): string {
+  const names = [...new Set(ignored.filter((record) => record.layer === layer).map((record) => record.setting))].sort(
+    byCodeUnit,
+  );
   const shown = names.slice(0, MAX_SETTINGS).join(", ");
   return names.length > MAX_SETTINGS ? `${shown}, and ${names.length - MAX_SETTINGS} more` : shown;
 }
@@ -35,12 +37,11 @@ export interface SettingsView {
 
 /**
  * P09, the pull request loosens the policy it is graded by. Four classes of edit in the diff: the policy file itself,
- * the config in use and a workflow while a setting of the workflow inputs or the config is looser than an app policy
- * (which of the two layers gave it is not recorded since CORE-123, so either edit counts, the stricter reading), and a
- * settings or MCP file the agent-settings rules read. Class 4 is a violation only when P02 to P06
- * found the file failing a rule at HEAD (that rule's severity) or could not check it (a block); an edited file that
- * complies gives nothing (CORE-123). When the files were not read (`view` null) it is item 22's warn (its direction is
- * not judged). A diff that is unavailable gives nothing.
+ * the config in use while a config setting is looser than the policy, a workflow while a workflow input is looser than
+ * the policy (the `layer` of an app policy's `looser` records), and a settings or MCP file the agent-settings rules
+ * read. Class 4 is a violation only when P02 to P06 found the file failing a rule at HEAD (that rule's severity) or
+ * could not check it (a block); an edited file that complies gives nothing (CORE-123). When the files were not read
+ * (`view` null) it is item 22's warn (its direction is not judged). A diff that is unavailable gives nothing.
  */
 export function detectP09(input: PolicyRuleInput, view: SettingsView | null): RuleFinding[] {
   const { policy, diff } = input;
@@ -63,25 +64,25 @@ export function detectP09(input: PolicyRuleInput, view: SettingsView | null): Ru
     });
   }
 
-  // A looser record of an app policy is a workflow input or config value it beat; a policy file's records are its own
-  // values, which classes 2 and 3 do not read.
-  const looser = policy.source === "app" ? input.ignored.filter((record) => record.reason === "looser") : [];
-
-  // 2. The config in use, while a setting is looser than the policy.
-  if (input.configPath !== null && touched.has(input.configPath) && looser.length > 0) {
+  // 2. The config in use, while a config setting is looser than the policy.
+  if (
+    input.configPath !== null &&
+    touched.has(input.configPath) &&
+    input.ignored.some((record) => record.layer === "config")
+  ) {
     findings.push({
       id: "P09",
       fallback: "block",
       path: input.configPath,
       line: null,
-      detail: `this change edits the config while a setting is looser than the policy (${settings(looser)})`,
+      detail: `this change edits the config, which sets ${settings(input.ignored, "config")} looser than the policy`,
     });
   }
 
   const paths = [...touched].sort(byCodeUnit);
 
-  // 3. A workflow, while a setting is looser than the policy.
-  if (looser.length > 0) {
+  // 3. A workflow, while a workflow input is looser than the policy.
+  if (input.ignored.some((record) => record.layer === "input")) {
     for (const path of paths) {
       if (!path.startsWith(WORKFLOWS_DIR)) continue;
       findings.push({
@@ -89,7 +90,7 @@ export function detectP09(input: PolicyRuleInput, view: SettingsView | null): Ru
         fallback: "block",
         path,
         line: null,
-        detail: `this change edits a workflow while a setting is looser than the policy (${settings(looser)})`,
+        detail: `this change edits a workflow while a workflow input is looser than the policy (${settings(input.ignored, "input")})`,
       });
     }
   }

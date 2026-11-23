@@ -33,40 +33,23 @@ async function run(extra: Record<string, unknown>): Promise<Report> {
 // fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so this reads without it.
 const p09 = (report: Report) => withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P09"));
 
-// CORE-123 (R5.6): an ignored record no longer says which layer gave the looser value, so class 3 reads any looser
-// record of an app policy (the stricter reading: a config-only record now counts too). gates.diff edits the config as
-// well, so class 2 gives its own violation beside this one.
-const workflowViolation = (settings: string) => ({
-  id: "P09",
-  severity: "block",
-  path: ".github/workflows/ci.yml",
-  line: null,
-  detail: `this change edits a workflow while a setting is looser than the policy (${settings})`,
-});
-
 describe("org policy rule P09: a workflow", { timeout: 60_000 }, () => {
-  // The title is AC-9's as item 22 wrote it. Since CORE-123 a record carries no layer: "an input-layer setting" is a
-  // workflow input's looser value, and "no input-layer record" is no record at all (a config record now counts too,
-  // in the test below).
   it("AC-9: a diff editing a workflow while an input-layer setting is ignored gives a P09 block violation naming the setting; with no input-layer record there is none", async () => {
     const report = await run({
-      policyIgnored: [{ setting: "test_integrity.mode", reason: "looser" }],
+      policyIgnored: [{ setting: "test_integrity.mode", layer: "input", reason: "looser" }],
     });
-    expect(p09(report).filter((v) => v.path === ".github/workflows/ci.yml")).toEqual([
-      workflowViolation("test_integrity.mode"),
+    expect(p09(report)).toEqual([
+      {
+        id: "P09",
+        severity: "block",
+        path: ".github/workflows/ci.yml",
+        line: null,
+        detail: "this change edits a workflow while a workflow input is looser than the policy (test_integrity.mode)",
+      },
     ]);
 
     const none = await run({});
     expect(none.policy).toBeDefined();
     expect(p09(none)).toEqual([]);
-  });
-
-  it("a config setting looser than an app policy makes a workflow edit a P09 block too (CORE-123)", async () => {
-    const fromConfig = await run({
-      policyIgnored: [{ setting: "coverage.threshold", reason: "looser" }],
-    });
-    expect(p09(fromConfig).filter((v) => v.path === ".github/workflows/ci.yml")).toEqual([
-      workflowViolation("coverage.threshold"),
-    ]);
   });
 });

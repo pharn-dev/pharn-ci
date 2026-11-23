@@ -7,8 +7,8 @@ import { expectValidReport } from "./schema.js";
 // so nothing the build adds may run while the file loads. The ignored settings are passed to check() directly, in a
 // shuffled order, as 23 distinct settings (two of them given twice).
 //
-// CORE-123 (R5.6): a record names the setting and no layer, and the message names no layer: the same setting given
-// twice (it was once per layer) is named once.
+// CORE-123 (R5.6): the message names no layer: the same setting given twice (it was named once per layer) is named
+// once. The records here carry no layer, which only P09 reads.
 
 type Ignored = { setting: string; reason: "looser" | "not-allowed" };
 type Message = { level: string; code: string; text: string };

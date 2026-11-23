@@ -33536,8 +33536,10 @@ var SETTINGS_LISTS = [
   "forbidden_mcp_servers",
   "required_hooks"
 ];
-function settings(looser) {
-  const names = [...new Set(looser.map((record) => record.setting))].sort(byCodeUnit);
+function settings(ignored, layer) {
+  const names = [...new Set(ignored.filter((record) => record.layer === layer).map((record) => record.setting))].sort(
+    byCodeUnit
+  );
   const shown2 = names.slice(0, MAX_SETTINGS).join(", ");
   return names.length > MAX_SETTINGS ? `${shown2}, and ${names.length - MAX_SETTINGS} more` : shown2;
 }
@@ -33559,18 +33561,17 @@ function detectP09(input, view) {
       detail: "this change edits the policy file it is checked against"
     });
   }
-  const looser = policy.source === "app" ? input.ignored.filter((record) => record.reason === "looser") : [];
-  if (input.configPath !== null && touched.has(input.configPath) && looser.length > 0) {
+  if (input.configPath !== null && touched.has(input.configPath) && input.ignored.some((record) => record.layer === "config")) {
     findings.push({
       id: "P09",
       fallback: "block",
       path: input.configPath,
       line: null,
-      detail: `this change edits the config while a setting is looser than the policy (${settings(looser)})`
+      detail: `this change edits the config, which sets ${settings(input.ignored, "config")} looser than the policy`
     });
   }
   const paths = [...touched].sort(byCodeUnit);
-  if (looser.length > 0) {
+  if (input.ignored.some((record) => record.layer === "input")) {
     for (const path of paths) {
       if (!path.startsWith(WORKFLOWS_DIR2)) continue;
       findings.push({
@@ -33578,7 +33579,7 @@ function detectP09(input, view) {
         fallback: "block",
         path,
         line: null,
-        detail: `this change edits a workflow while a setting is looser than the policy (${settings(looser)})`
+        detail: `this change edits a workflow while a workflow input is looser than the policy (${settings(input.ignored, "input")})`
       });
     }
   }
@@ -45557,14 +45558,15 @@ function applyPolicy(layers, policy) {
   }
   const seen = /* @__PURE__ */ new Set();
   result.ignored = ignored.filter((record) => {
-    if (seen.has(record.setting)) return false;
-    seen.add(record.setting);
+    const key = `${record.setting}\0${record.layer ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
-  }).sort((a, b) => byCodeUnit(a.setting, b.setting));
+  }).sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer ?? "", b.layer ?? ""));
   return result;
 }
 function applyCoverage(layers, document2, app, inputs, ignored) {
-  const { resolved } = layers;
+  const { config, raw, resolved } = layers;
   const coverage2 = document2.coverage;
   if (coverage2 === void 0) return;
   if (coverage2.threshold !== void 0) {
@@ -45574,8 +45576,14 @@ function applyCoverage(layers, document2, app, inputs, ignored) {
       inputs.threshold = theirs;
     } else {
       if (app ? inForce < theirs : theirs < inForce) {
-        const given = Math.min(theirs, inForce);
-        ignored.push({ setting: "coverage.threshold", reason: "looser", given, applied: Math.max(theirs, inForce) });
+        const inputInForce = raw.threshold !== void 0 && !(Number(raw.threshold.trim()) < inForce);
+        ignored.push({
+          setting: "coverage.threshold",
+          reason: "looser",
+          ...app ? { layer: inputInForce ? "input" : "config" } : {},
+          given: Math.min(theirs, inForce),
+          applied: Math.max(theirs, inForce)
+        });
       }
       inputs.threshold = Math.max(theirs, inForce);
     }
@@ -45583,8 +45591,12 @@ function applyCoverage(layers, document2, app, inputs, ignored) {
   if (coverage2.exclude !== void 0) {
     if (app) {
       const theirs = coverage2.exclude;
-      if (resolved.exclude.some((pattern) => !theirs.includes(pattern))) {
-        ignored.push({ setting: "coverage.exclude", reason: "looser" });
+      const configCount = (config.coverage?.exclude ?? []).length;
+      for (const layer of ["config", "input"]) {
+        const patterns = layer === "config" ? resolved.exclude.slice(0, configCount) : resolved.exclude.slice(configCount);
+        if (patterns.some((pattern) => !theirs.includes(pattern))) {
+          ignored.push({ setting: "coverage.exclude", reason: "looser", layer });
+        }
       }
       inputs.exclude = [...theirs];
     } else if (coverage2.exclude.length > 0) {
@@ -45595,7 +45607,11 @@ function applyCoverage(layers, document2, app, inputs, ignored) {
     if (app) {
       const theirs = coverage2.root === null ? "." : normalizedRoot(coverage2.root);
       if (resolved.coverageRoot !== void 0 && resolved.coverageRoot !== theirs) {
-        ignored.push({ setting: "coverage.root", reason: "looser" });
+        ignored.push({
+          setting: "coverage.root",
+          reason: "looser",
+          layer: raw.coverageRoot !== void 0 ? "input" : "config"
+        });
       }
       inputs.coverageRoot = theirs === "." ? void 0 : theirs;
     } else {
@@ -45609,9 +45625,9 @@ function applySetup(layers, document2, app, inputs, ignored) {
   if (setup2 === void 0) return;
   if (setup2.require !== void 0) {
     if (setup2.require) {
-      const saidFalse = raw.requireAgentSetup === false || config.setup?.require === false;
-      if (app && !resolved.requireAgentSetup && saidFalse) {
-        ignored.push({ setting: "setup.require", reason: "looser" });
+      const layer = raw.requireAgentSetup === false ? "input" : config.setup?.require === false ? "config" : void 0;
+      if (app && !resolved.requireAgentSetup && layer !== void 0) {
+        ignored.push({ setting: "setup.require", reason: "looser", layer });
       }
       inputs.requireAgentSetup = true;
     } else if (!app && resolved.requireAgentSetup) {
@@ -45627,7 +45643,7 @@ function applyDependencies(layers, document2, app, inputs, ignored) {
   const deps = document2.dependencies;
   if (deps === void 0) return;
   const given = layers.resolved.dependencies;
-  if (app && given?.input === "never") ignored.push({ setting: "dependencies", reason: "looser" });
+  if (app && given?.input === "never") ignored.push({ setting: "dependencies", reason: "looser", layer: "input" });
   if (!app && deps.registries !== void 0) {
     ignored.push({ setting: "dependencies.registries", reason: "not-allowed" });
   }
@@ -45635,7 +45651,7 @@ function applyDependencies(layers, document2, app, inputs, ignored) {
     if (app) {
       const named = deps.allowed_hosts.map((host) => host.toLowerCase());
       if ((given?.allowedHosts ?? []).some((host) => !named.includes(host))) {
-        ignored.push({ setting: "dependencies.allowed_hosts", reason: "looser" });
+        ignored.push({ setting: "dependencies.allowed_hosts", reason: "looser", layer: "input" });
       }
     } else if (deps.allowed_hosts.length > 0) {
       ignored.push({ setting: "dependencies.allowed_hosts", reason: "not-allowed" });
@@ -45658,8 +45674,11 @@ function applyMode(layers, document2, app, ignored) {
   const mode = document2.test_integrity?.mode;
   if (mode === void 0) return given;
   if (app) {
-    if ([given?.config, given?.input].some((value) => value !== void 0 && STRICTNESS2[value] < STRICTNESS2[mode])) {
-      ignored.push({ setting: "test_integrity.mode", reason: "looser" });
+    for (const layer of ["config", "input"]) {
+      const value = given?.[layer];
+      if (value !== void 0 && STRICTNESS2[value] < STRICTNESS2[mode]) {
+        ignored.push({ setting: "test_integrity.mode", reason: "looser", layer });
+      }
     }
   } else {
     const inForce = given?.input ?? "warn";

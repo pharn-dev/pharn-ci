@@ -56,10 +56,14 @@ export interface IgnoredSetting {
   setting: string;
   /**
    * `looser`: a value looser than the policy's (a workflow input or `.pharn/ci.yml` value an app policy beat, or a
-   * policy file's value looser than what the run already gives); `not-allowed`: a key a policy file may not set. Which
-   * layer gave the value is not recorded (CORE-123).
+   * policy file's value looser than what the run already gives); `not-allowed`: a key a policy file may not set.
    */
   reason: "looser" | "not-allowed";
+  /**
+   * The layer whose value an app policy beat, only on its `looser` records: P09 reads it (class 2 for `config`, class 3
+   * for `input`). No message names it (CORE-123).
+   */
+  layer?: "input" | "config";
   /** The number that was not applied, only for `coverage.threshold`. */
   given?: number;
   /** The number that applies instead, only for `coverage.threshold`. */

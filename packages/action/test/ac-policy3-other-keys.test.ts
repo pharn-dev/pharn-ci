@@ -22,7 +22,7 @@ const TEXT = {
   noCoverageFile: "no coverage file",
 };
 
-// CORE-123: a record names the setting and no layer.
+// CORE-123: a policy file's record carries no layer (it was "policy-file"); only an app policy's looser record has one.
 type Ignored = { setting: string; reason: string };
 type Application = { inputs: Record<string, unknown>; ignored: Ignored[]; acceptLabel?: string };
 type Message = { level: string; code: string; text: string };

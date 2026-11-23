@@ -20,7 +20,7 @@ export interface PolicyLayers {
 export interface PolicyApplication {
   /** The settings a run uses: `layers.resolved` with the policy applied. Unchanged for a policy of source none. */
   inputs: ResolvedInputs;
-  /** Sorted by setting, each setting once. */
+  /** Sorted by setting, then layer, each pair once. */
   ignored: IgnoredSetting[];
   /** Per-signal severities for `check()`, absent when the policy sets none. */
   signalOverrides?: SignalOverrides;
@@ -44,7 +44,7 @@ function normalizedRoot(root: string): string {
  *
  * - An app policy is authoritative for `coverage.exclude` (it replaces every lower layer's), `coverage.root` and
  *   `test_integrity.accept_label`, and raises `coverage.threshold`, `setup.require` and the mode above whatever a lower
- *   layer gave. A setting whose lower-layer value it beat is recorded as `looser`, by setting only (CORE-123).
+ *   layer gave. A lower layer's value it beat is recorded as `looser`, with that layer for P09.
  * - A policy file is carried by the pull request, so it can only tighten: a higher threshold, `setup.require: true`, a
  *   stricter mode, more `setup.expect` and higher signal severities. Exclusions, a root, an accept label and
  *   `policy.required` are `not-allowed`; a lower value than the layers already give is `looser`. Both are recorded and
@@ -82,11 +82,12 @@ export function applyPolicy(layers: PolicyLayers, policy: ResolvedPolicy): Polic
   const seen = new Set<string>();
   result.ignored = ignored
     .filter((record) => {
-      if (seen.has(record.setting)) return false;
-      seen.add(record.setting);
+      const key = `${record.setting}\u0000${record.layer ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     })
-    .sort((a, b) => byCodeUnit(a.setting, b.setting));
+    .sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer ?? "", b.layer ?? ""));
   return result;
 }
 
@@ -97,7 +98,7 @@ function applyCoverage(
   inputs: ResolvedInputs,
   ignored: IgnoredSetting[],
 ): void {
-  const { resolved } = layers;
+  const { config, raw, resolved } = layers;
   const coverage = document.coverage;
   if (coverage === undefined) return;
 
@@ -110,8 +111,15 @@ function applyCoverage(
       inputs.threshold = theirs;
     } else {
       if (app ? inForce < theirs : theirs < inForce) {
-        const given = Math.min(theirs, inForce);
-        ignored.push({ setting: "coverage.threshold", reason: "looser", given, applied: Math.max(theirs, inForce) });
+        // The layer an app policy beat: the input's, unless the config's was larger (a tie names the input).
+        const inputInForce = raw.threshold !== undefined && !(Number(raw.threshold.trim()) < inForce);
+        ignored.push({
+          setting: "coverage.threshold",
+          reason: "looser",
+          ...(app ? { layer: inputInForce ? "input" : "config" } : {}),
+          given: Math.min(theirs, inForce),
+          applied: Math.max(theirs, inForce),
+        });
       }
       inputs.threshold = Math.max(theirs, inForce);
     }
@@ -121,8 +129,14 @@ function applyCoverage(
   if (coverage.exclude !== undefined) {
     if (app) {
       const theirs = coverage.exclude;
-      if (resolved.exclude.some((pattern) => !theirs.includes(pattern))) {
-        ignored.push({ setting: "coverage.exclude", reason: "looser" });
+      // The config's patterns come first in `resolved.exclude`, then the input's.
+      const configCount = (config.coverage?.exclude ?? []).length;
+      for (const layer of ["config", "input"] as const) {
+        const patterns =
+          layer === "config" ? resolved.exclude.slice(0, configCount) : resolved.exclude.slice(configCount);
+        if (patterns.some((pattern) => !theirs.includes(pattern))) {
+          ignored.push({ setting: "coverage.exclude", reason: "looser", layer });
+        }
       }
       inputs.exclude = [...theirs];
     } else if (coverage.exclude.length > 0) {
@@ -136,7 +150,11 @@ function applyCoverage(
     if (app) {
       const theirs = coverage.root === null ? "." : normalizedRoot(coverage.root);
       if (resolved.coverageRoot !== undefined && resolved.coverageRoot !== theirs) {
-        ignored.push({ setting: "coverage.root", reason: "looser" });
+        ignored.push({
+          setting: "coverage.root",
+          reason: "looser",
+          layer: raw.coverageRoot !== undefined ? "input" : "config",
+        });
       }
       inputs.coverageRoot = theirs === "." ? undefined : theirs;
     } else {
@@ -159,10 +177,11 @@ function applySetup(
   // setup.require: true wins over any lower false; false changes nothing.
   if (setup.require !== undefined) {
     if (setup.require) {
-      // Only a false in force is beaten: when either layer says true, the requirement was already on.
-      const saidFalse = raw.requireAgentSetup === false || config.setup?.require === false;
-      if (app && !resolved.requireAgentSetup && saidFalse) {
-        ignored.push({ setting: "setup.require", reason: "looser" });
+      // Only a false in force is beaten: when either layer says true, the requirement was already on. The input's
+      // false is named first, as it was when both say false.
+      const layer = raw.requireAgentSetup === false ? "input" : config.setup?.require === false ? "config" : undefined;
+      if (app && !resolved.requireAgentSetup && layer !== undefined) {
+        ignored.push({ setting: "setup.require", reason: "looser", layer });
       }
       inputs.requireAgentSetup = true;
     } else if (!app && resolved.requireAgentSetup) {
@@ -194,7 +213,7 @@ function applyDependencies(
   const deps = document.dependencies;
   if (deps === undefined) return;
   const given = layers.resolved.dependencies;
-  if (app && given?.input === "never") ignored.push({ setting: "dependencies", reason: "looser" });
+  if (app && given?.input === "never") ignored.push({ setting: "dependencies", reason: "looser", layer: "input" });
   if (!app && deps.registries !== undefined) {
     ignored.push({ setting: "dependencies.registries", reason: "not-allowed" });
   }
@@ -204,7 +223,7 @@ function applyDependencies(
     if (app) {
       const named = deps.allowed_hosts.map((host) => host.toLowerCase());
       if ((given?.allowedHosts ?? []).some((host) => !named.includes(host))) {
-        ignored.push({ setting: "dependencies.allowed_hosts", reason: "looser" });
+        ignored.push({ setting: "dependencies.allowed_hosts", reason: "looser", layer: "input" });
       }
     } else if (deps.allowed_hosts.length > 0) {
       ignored.push({ setting: "dependencies.allowed_hosts", reason: "not-allowed" });
@@ -237,8 +256,11 @@ function applyMode(
   const mode = document.test_integrity?.mode;
   if (mode === undefined) return given;
   if (app) {
-    if ([given?.config, given?.input].some((value) => value !== undefined && STRICTNESS[value] < STRICTNESS[mode])) {
-      ignored.push({ setting: "test_integrity.mode", reason: "looser" });
+    for (const layer of ["config", "input"] as const) {
+      const value = given?.[layer];
+      if (value !== undefined && STRICTNESS[value] < STRICTNESS[mode]) {
+        ignored.push({ setting: "test_integrity.mode", reason: "looser", layer });
+      }
     }
   } else {
     // What the input and the config already give (the config can only raise the input, which defaults to warn).

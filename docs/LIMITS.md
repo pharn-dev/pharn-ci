@@ -1643,9 +1643,8 @@ applied once per run. What it does not do:
   be read an error. `agents.require_human_approval` and `policy.rules.P12` are validated and carried in the document,
   not applied: no P12 runs.
 - **What P09 sees, and what it misses.** P09 sees four kinds of edit in the diff: (1) the `file:` policy file itself,
-  edited or renamed away; (2) the config in use and (3) a file under `.github/workflows/`, while a workflow input or a
-  `.pharn/ci.yml` setting is looser than an app policy (which of the two gave the looser value is not recorded, so
-  either edit counts, even when the other file holds it); (4) `.claude/settings.json` or
+  edited or renamed away; (2) the config in use, while `.pharn/ci.yml` holds a setting looser than the policy; (3) a
+  file under `.github/workflows/`, while a workflow input is looser than the policy; (4) `.claude/settings.json` or
   `.claude/settings.local.json` and `.mcp.json`, `.cursor/mcp.json` or `.vscode/mcp.json`, at the root or nested. It
   cannot see a pull request that edits the workflow to `policy: never`, removes the pharn-ci step or changes
   `app-url`: the Action then does not run or does not ask for the policy, so nothing is checked against it. TI11 and

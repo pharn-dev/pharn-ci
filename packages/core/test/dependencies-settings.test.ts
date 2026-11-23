@@ -130,8 +130,8 @@ describe("the org policy", () => {
       input: "never",
       policy: { kind: "app", lookup: true, minAgeDays: 14, registries: ["npm"] },
     });
-    // CORE-123: a record names the setting and no layer.
-    expect(app.ignored).toEqual([{ setting: "dependencies", reason: "looser" }]);
+    // CORE-123: an app policy's record keeps the layer it beat; a policy file's has none (it was "policy-file").
+    expect(app.ignored).toEqual([{ setting: "dependencies", layer: "input", reason: "looser" }]);
     expect(resolveDependencySettings(app.inputs.dependencies).mode).toBe("lookup");
 
     const file = applyPolicy(layers, filePolicy({ lookup: true, registries: ["npm"] }));
@@ -184,8 +184,8 @@ describe("the allowed registry hosts", () => {
     );
   });
 
-  // CORE-123: by setting only (it was by setting and layer).
-  it("records the input hosts an app policy leaves out, and a policy file's list, by setting only", () => {
+  // CORE-123: a policy file's record has no layer (it was "policy-file").
+  it("records the input hosts an app policy leaves out, and a policy file's list, by setting and layer only", () => {
     const layers = layersWith(["a.example", "b.example"]);
     const app = applyPolicy(layers, appPolicy({ allowed_hosts: ["A.example", "b.EXAMPLE", "c.example"] }));
     expect(app.ignored).toEqual([]);
@@ -194,7 +194,7 @@ describe("the allowed registry hosts", () => {
       policy: { kind: "app", allowedHosts: ["A.example", "b.EXAMPLE", "c.example"] },
     });
     const narrower = applyPolicy(layers, appPolicy({ allowed_hosts: ["a.example"] }));
-    expect(narrower.ignored).toEqual([{ setting: "dependencies.allowed_hosts", reason: "looser" }]);
+    expect(narrower.ignored).toEqual([{ setting: "dependencies.allowed_hosts", layer: "input", reason: "looser" }]);
     expect(resolveDependencySettings(narrower.inputs.dependencies).allowedHosts).toEqual(["a.example"]);
     const file = applyPolicy(layers, filePolicy({ allowed_hosts: ["c.example"] }));
     expect(file.ignored).toEqual([{ setting: "dependencies.allowed_hosts", reason: "not-allowed" }]);
