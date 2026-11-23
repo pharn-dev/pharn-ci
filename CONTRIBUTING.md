@@ -62,6 +62,34 @@ The branch must be up to date with `main` before it can merge.
   why in the PR description.
 - Bug fixes include a regression test.
 
+### One test file per feature
+
+A feature is one behaviour with one name: a signal (`TI05`, `P13`), a message code, an input, a parser or a reader.
+Its tests live in one file, in the package whose code they exercise (`core` for pure logic, `node-io` for reading
+files, git and python3, `cli` and `action` for wiring), named after the feature. A new case or a new acceptance
+criterion for a feature that has a file is a new `it` (or `describe`) in that file, not a new file.
+
+A new file is justified only when:
+
+- the feature has no file yet;
+- the tests need a setup that would slow or change their neighbours: the real `python3`, a real git repository, a
+  timing or growth measurement, or a module-level `vi.mock` (it applies to the whole file);
+- the feature's file would pass about 1,000 lines; split it by aspect as `<feature>-<aspect>.test.ts`.
+
+Example: a new `@pytest.mark` form the Python test index must read is one more case in
+`packages/node-io/test/ac-py-index-marks.test.ts`, not a new `ac-py-index-marks-xfail.test.ts`.
+
+### Typed tests
+
+`pnpm lint` typechecks tests: a package's `typecheck` script also runs its `tsconfig.test.json`, which extends the
+package's `tsconfig.json` and includes `test/` (node-io today; core, cli and action follow). Core's own
+`tsconfig.json` keeps `"types": []`, so `packages/core/src` stays pure; its test config is separate. In a test:
+
+- import report and input types from `@pharn-ci/core`, or from `../../core/src/<module>.js` for one it does not
+  export; never copy a type into the test;
+- no `as unknown as`: a dynamic `await import(...)` is typed already. Keep a cast only where the test builds a
+  deliberately invalid or partial value, with a comment that says so.
+
 ## Agent skills
 
 The `pharn-ci` plugin in [pharn-dev/skills](https://github.com/pharn-dev/skills) branches on Report
