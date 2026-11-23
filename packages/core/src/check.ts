@@ -576,7 +576,9 @@ export function check(input: CheckInput): Report {
     ...(overridden?.lowered ?? []).map(
       (id): IgnoredSetting => ({ setting: `test_integrity.signals.${id}`, reason: "looser" }),
     ),
-    ...(policyEvaluation?.lowered ?? []).map((id): IgnoredSetting => ({ setting: `policy.rules.${id}`, reason: "looser" })),
+    ...(policyEvaluation?.lowered ?? []).map(
+      (id): IgnoredSetting => ({ setting: `policy.rules.${id}`, reason: "looser" }),
+    ),
     ...(policyEvaluation?.ignored ?? []),
   ];
   // The incomplete message is for a pull request that counts as an agent PR only because evidence could not be read,

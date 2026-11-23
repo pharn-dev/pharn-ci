@@ -237,10 +237,7 @@ describe("review 48: the tree-truncation warning names P08", () => {
 describe("review 28: an internal upload error", () => {
   const SECRET_TEXT = "clock exploded near the signed URL";
 
-  async function brokenClockRun(
-    debug: boolean | undefined,
-    thrown: () => unknown = () => new RangeError(SECRET_TEXT),
-  ) {
+  async function brokenClockRun(debug: boolean | undefined, thrown: () => unknown = () => new RangeError(SECRET_TEXT)) {
     const h = harness({ inputs: { threshold: "50", policy: "never" }, context: META_CONTEXT });
     h.deps.api = {
       ...h.deps.api,

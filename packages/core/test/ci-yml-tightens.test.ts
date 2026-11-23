@@ -114,7 +114,9 @@ describe("applyPolicy: the value an app policy beat is the one that was in force
     for (const [name, raw, given] of cases) {
       const application = applyPolicy(layers(STRICT, raw), policy);
       expect(application.inputs.threshold, name).toBe(90);
-      expect(application.ignored, name).toEqual([{ setting: "coverage.threshold", reason: "looser", given, applied: 90 }]);
+      expect(application.ignored, name).toEqual([
+        { setting: "coverage.threshold", reason: "looser", given, applied: 90 },
+      ]);
       const texts = overrideTexts(application, policy);
       expect(texts, name).toHaveLength(1);
       expect(texts[0], name).toContain(`coverage.threshold ${given} → 90`);
@@ -133,9 +135,7 @@ describe("applyPolicy: the value an app policy beat is the one that was in force
     for (const [name, config, raw, beaten] of cases) {
       const application = applyPolicy(layers(config, raw), policy);
       expect(application.inputs.requireAgentSetup, name).toBe(true);
-      expect(application.ignored, name).toEqual(
-        beaten === 0 ? [] : [{ setting: "setup.require", reason: "looser" }],
-      );
+      expect(application.ignored, name).toEqual(beaten === 0 ? [] : [{ setting: "setup.require", reason: "looser" }]);
       expect(overrideTexts(application, policy), name).toHaveLength(beaten);
     }
   });

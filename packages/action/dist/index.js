@@ -21234,9 +21234,6 @@ function setFailed(message) {
   process.exitCode = ExitCode.Failure;
   error(message);
 }
-function isDebug() {
-  return process.env["RUNNER_DEBUG"] === "1";
-}
 function debug(message) {
   issueCommand("debug", {}, message);
 }
@@ -31641,7 +31638,7 @@ function injectionSettingsOf(policy, base) {
   const basePhrases = base?.kind === "document" ? base.document.injection?.phrases : void 0;
   settings2.phrases = tidy(injection2.phrases, basePhrases);
   if (injection2.exempt !== void 0 && injection2.exempt.length > 0) {
-    settings2.ignored.push({ setting: "injection.exempt", layer: "policy-file", reason: "not-allowed" });
+    settings2.ignored.push({ setting: "injection.exempt", reason: "not-allowed" });
   }
   for (const id of INJECTION_SIGNAL_IDS) {
     const value = Object.hasOwn(wanted, id) ? wanted[id] : void 0;
@@ -31649,7 +31646,7 @@ function injectionSettingsOf(policy, base) {
     const fallback = DEFAULT_INJECTION_SEVERITIES[id];
     if (RANK[value] > RANK[fallback]) severities[id] = value;
     else if (RANK[value] < RANK[fallback]) {
-      settings2.ignored.push({ setting: `injection.signals.${id}`, layer: "policy-file", reason: "looser" });
+      settings2.ignored.push({ setting: `injection.signals.${id}`, reason: "looser" });
     }
   }
   return settings2;
@@ -32265,7 +32262,7 @@ function resolveKeyedSeverity(policy, id, keyed) {
     for (const value of [featureValue, ruleValue]) {
       if (value !== void 0 && RANK2[value] > RANK2[severity2]) severity2 = value;
     }
-    const ignored = featureValue !== void 0 && RANK2[featureValue] < RANK2[fallback] ? [{ setting: featureSetting, layer: "policy-file", reason: "looser" }] : [];
+    const ignored = featureValue !== void 0 && RANK2[featureValue] < RANK2[fallback] ? [{ setting: featureSetting, reason: "looser" }] : [];
     const lowered = ruleValue !== void 0 && RANK2[ruleValue] < RANK2[fallback];
     return { severity: severity2, ignored, lowered };
   }
@@ -32569,15 +32566,14 @@ function agentPrIncompleteMessage(reason) {
 function policyOverrideIgnoredMessage(ignored) {
   const seen = /* @__PURE__ */ new Set();
   const unique = ignored.filter((record) => {
-    const key = `${record.setting}\0${record.layer}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    if (seen.has(record.setting)) return false;
+    seen.add(record.setting);
     return true;
   });
-  unique.sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer, b.layer));
+  unique.sort((a, b) => byCodeUnit(a.setting, b.setting));
   const named = unique.slice(0, MAX_NAMED_SETTINGS).map((record) => {
     const numbers = record.given !== void 0 && record.applied !== void 0 ? ` ${formatNumber(record.given)} \u2192 ${formatNumber(record.applied)}` : "";
-    return `${record.setting} (${record.layer})${numbers}`;
+    return `${record.setting}${numbers}`;
   });
   const more = unique.length - MAX_NAMED_SETTINGS;
   const list = more > 0 ? `${named.join(", ")}, and ${String(more)} more` : named.join(", ");
@@ -33333,7 +33329,6 @@ function detectP02(model, forbidden) {
 // ../core/src/policy/rules/p03.ts
 function detectP03(model, required) {
   const findings = [];
-  const supplying = /* @__PURE__ */ new Set();
   const wanted = required.map((text) => ({ entry: preparePolicyEntry(text), family: ruleFamily(text) }));
   for (const unit of model.units) {
     const byFamily = /* @__PURE__ */ new Map();
@@ -33346,13 +33341,9 @@ function detectP03(model, required) {
     }
     for (const need of wanted) {
       const candidates = byFamily.get(need.family) ?? [];
-      let satisfied = false;
-      for (const candidate of candidates) {
-        if (coversPrepared(candidate.entry, need.entry, "p03")) {
-          satisfied = true;
-          supplying.add(candidate.path);
-        }
-      }
+      const satisfied = candidates.some(
+        (candidate) => coversPrepared(candidate.entry, need.entry, "p03")
+      );
       if (!satisfied) {
         findings.push({
           id: "P03",
@@ -33364,7 +33355,7 @@ function detectP03(model, required) {
       }
     }
   }
-  return { findings, supplying: [...supplying] };
+  return findings;
 }
 
 // ../core/src/policy/rules/p04.ts
@@ -33397,15 +33388,13 @@ function detectP04(model, allowed) {
 // ../core/src/policy/rules/p06.ts
 function detectP06(model, required) {
   const findings = [];
-  const supplying = /* @__PURE__ */ new Set();
   for (const unit of model.units) {
     const missing = [];
     for (const need of required) {
-      const hits = unit.hookGroups.filter(
+      const met = unit.hookGroups.some(
         (group) => group.counting && group.event === need.event && matcherCovers(group.matcher, need.matcher)
       );
-      for (const hit of hits) supplying.add(hit.path);
-      if (hits.length > 0) continue;
+      if (met) continue;
       const any = need.matcher === void 0 || need.matcher === "" || need.matcher === "*";
       missing.push({
         id: "P06",
@@ -33426,7 +33415,7 @@ function detectP06(model, required) {
       });
     } else findings.push(...missing);
   }
-  return { findings, supplying: [...supplying] };
+  return findings;
 }
 
 // ../core/src/policy/rules/p07.ts
@@ -33547,10 +33536,8 @@ var SETTINGS_LISTS = [
   "forbidden_mcp_servers",
   "required_hooks"
 ];
-function settings(ignored, layer) {
-  const names = [...new Set(ignored.filter((record) => record.layer === layer).map((record) => record.setting))].sort(
-    byCodeUnit
-  );
+function settings(looser) {
+  const names = [...new Set(looser.map((record) => record.setting))].sort(byCodeUnit);
   const shown2 = names.slice(0, MAX_SETTINGS).join(", ");
   return names.length > MAX_SETTINGS ? `${shown2}, and ${names.length - MAX_SETTINGS} more` : shown2;
 }
@@ -33572,17 +33559,18 @@ function detectP09(input, view) {
       detail: "this change edits the policy file it is checked against"
     });
   }
-  if (input.configPath !== null && touched.has(input.configPath) && input.ignored.some((record) => record.layer === "config")) {
+  const looser = policy.source === "app" ? input.ignored.filter((record) => record.reason === "looser") : [];
+  if (input.configPath !== null && touched.has(input.configPath) && looser.length > 0) {
     findings.push({
       id: "P09",
       fallback: "block",
       path: input.configPath,
       line: null,
-      detail: `this change edits the config, which sets ${settings(input.ignored, "config")} looser than the policy`
+      detail: `this change edits the config while a setting is looser than the policy (${settings(looser)})`
     });
   }
   const paths = [...touched].sort(byCodeUnit);
-  if (input.ignored.some((record) => record.layer === "input")) {
+  if (looser.length > 0) {
     for (const path of paths) {
       if (!path.startsWith(WORKFLOWS_DIR2)) continue;
       findings.push({
@@ -33590,7 +33578,7 @@ function detectP09(input, view) {
         fallback: "block",
         path,
         line: null,
-        detail: `this change edits a workflow while a workflow input is looser than the policy (${settings(input.ignored, "input")})`
+        detail: `this change edits a workflow while a setting is looser than the policy (${settings(looser)})`
       });
     }
   }
@@ -33626,15 +33614,6 @@ function detectP09(input, view) {
         path,
         line: null,
         detail: "this change edits a file the policy could not check"
-      });
-    } else if (guarded) {
-      const supplies = view.supplying.has(path);
-      findings.push({
-        id: "P09",
-        fallback: supplies ? "warn" : "info",
-        path,
-        line: null,
-        detail: supplies ? "this change edits a file that supplies a required deny rule or hook; a reviewer should confirm it" : "this change edits a file the policy checks; it complies"
       });
     }
   }
@@ -34727,7 +34706,6 @@ function evaluatePolicyRules(input) {
   const settingsFindings = [];
   let settings2;
   let view = null;
-  const supplying = /* @__PURE__ */ new Set();
   const sources = input.settingsSources;
   if (inForce && sources !== void 0) {
     const setup2 = document2.setup;
@@ -34754,18 +34732,10 @@ function evaluatePolicyRules(input) {
       const model = readSettingsModel(sources, document2);
       const over = compareUnits(model, setup2, { p02: active.P02, p03: active.P03, p05: active.P05 }) > COMPARE_BUDGET;
       if (active.P02 && !over) settingsFindings.push(...detectP02(model, setup2?.forbidden_permissions ?? []));
-      if (active.P03 && !over) {
-        const p03 = detectP03(model, setup2?.required_permissions_deny ?? []);
-        settingsFindings.push(...p03.findings);
-        for (const path of p03.supplying) supplying.add(path);
-      }
+      if (active.P03 && !over) settingsFindings.push(...detectP03(model, setup2?.required_permissions_deny ?? []));
       if (active.P04) settingsFindings.push(...detectP04(model, setup2?.allowed_mcp_servers ?? []));
       if (active.P05 && !over) settingsFindings.push(...detectP05(model, setup2?.forbidden_mcp_servers ?? []));
-      if (active.P06) {
-        const p06 = detectP06(model, setup2?.required_hooks ?? []);
-        settingsFindings.push(...p06.findings);
-        for (const path of p06.supplying) supplying.add(path);
-      }
+      if (active.P06) settingsFindings.push(...detectP06(model, setup2?.required_hooks ?? []));
       const readers = new Set(SETTINGS_READERS.filter((id) => active[id]));
       const problems = reportedProblems(model.problems, setup2, readers);
       if (over) problems.unshift({ path: null, line: null, reason: "compare-budget", level: "error" });
@@ -34773,7 +34743,7 @@ function evaluatePolicyRules(input) {
       const uncheckable = /* @__PURE__ */ new Set();
       for (const problem of problems)
         if (problem.path !== null && problem.level === "error") uncheckable.add(problem.path);
-      view = { failing: /* @__PURE__ */ new Map(), uncheckable, supplying };
+      view = { failing: /* @__PURE__ */ new Map(), uncheckable };
     }
   }
   const first = resolve2([
@@ -44362,10 +44332,10 @@ function check(input) {
     ...input.policyIgnored ?? [],
     ...injectionSettings.ignored,
     ...(overridden?.lowered ?? []).map(
-      (id) => ({ setting: `test_integrity.signals.${id}`, layer: "policy-file", reason: "looser" })
+      (id) => ({ setting: `test_integrity.signals.${id}`, reason: "looser" })
     ),
     ...(policyEvaluation?.lowered ?? []).map(
-      (id) => ({ setting: `policy.rules.${id}`, layer: "policy-file", reason: "looser" })
+      (id) => ({ setting: `policy.rules.${id}`, reason: "looser" })
     ),
     ...policyEvaluation?.ignored ?? []
   ];
@@ -45410,40 +45380,21 @@ function validatePolicyInto(value, errors, root = "") {
 var RESPONSE_MAX_QUARANTINE_ITEMS = 1e4;
 var QUARANTINE_ITEM_MAX_UNITS = 1024;
 var MAX_ITEM_UNITS = QUARANTINE_ITEM_MAX_UNITS;
-var MAX_ETAG_UNITS = 200;
 var MESSAGE_MAX_BYTES_MIN = 256;
 var MESSAGE_MAX_BYTES_MAX = 65536;
+var UNREAD_KEYS = ["etag", "updatedAt"];
+var UNREAD_SETTINGS_KEYS = ["redactMessages"];
 var MESSAGE_TEXT = {
   versionMin: "must be an integer of at least 1",
-  etag: "must be 1 to 200 printable ASCII characters",
-  updatedAt: "must be an RFC 3339 time such as 2026-01-31T09:30:00Z or 2026-01-31T09:30:00+00:00",
   quarantineItem: "must not contain a control character",
   quarantineTooMany: "must have at most 10000 items"
 };
-var UPDATED_AT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|[+-](\d{2}):(\d{2}))$/;
-function validUpdatedAt(value) {
-  const m = UPDATED_AT.exec(value);
-  if (m === null) return false;
-  const [year, month, day, hour, minute, second] = m.slice(1, 7).map(Number);
-  if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) return false;
-  if (m[7] !== void 0 && (Number(m[7]) > 23 || Number(m[8]) > 59)) return false;
-  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
-  return day >= 1 && day <= days;
-}
 function hasControl(text) {
   for (let i = 0; i < text.length; i++) {
     const code2 = text.charCodeAt(i);
     if (code2 <= 31 || code2 >= 127 && code2 <= 159 || code2 === 8232 || code2 === 8233) return true;
   }
   return false;
-}
-function isPrintableAscii(text) {
-  for (let i = 0; i < text.length; i++) {
-    const code2 = text.charCodeAt(i);
-    if (code2 < 32 || code2 > 126) return false;
-  }
-  return true;
 }
 function validatePolicyResponse(value) {
   const errors = new ErrorCollector(true);
@@ -45452,12 +45403,12 @@ function validatePolicyResponse(value) {
     return { ok: false, errors: errors.finish() };
   }
   const input = value;
-  const keys = ["version", "etag", "updatedAt", "policy", "quarantine", "settings"];
+  const keys = ["version", "policy", "quarantine", "settings"];
   for (const key of keys) {
     if (!Object.hasOwn(input, key)) errors.add(`/${key}`, MESSAGES.required);
   }
   for (const key of Object.keys(input)) {
-    if (!keys.includes(key)) errors.addUnknownKey("", key);
+    if (!keys.includes(key) && !UNREAD_KEYS.includes(key)) errors.addUnknownKey("", key);
   }
   let version2;
   if (Object.hasOwn(input, "version")) {
@@ -45465,22 +45416,6 @@ function validatePolicyResponse(value) {
     if (typeof v !== "number") errors.add("/version", MESSAGES.number);
     else if (!Number.isSafeInteger(v) || v < 1) errors.add("/version", MESSAGE_TEXT.versionMin);
     else version2 = v;
-  }
-  let etag;
-  if (Object.hasOwn(input, "etag")) {
-    const v = input.etag;
-    if (typeof v !== "string") errors.add("/etag", MESSAGES.string);
-    else if (v === "") errors.add("/etag", MESSAGES.empty);
-    else if (v.length > MAX_ETAG_UNITS) errors.add("/etag", maxCharsMessage(MAX_ETAG_UNITS));
-    else if (!isPrintableAscii(v)) errors.add("/etag", MESSAGE_TEXT.etag);
-    else etag = v;
-  }
-  let updatedAt;
-  if (Object.hasOwn(input, "updatedAt")) {
-    const v = input.updatedAt;
-    if (typeof v !== "string") errors.add("/updatedAt", MESSAGES.string);
-    else if (!validUpdatedAt(v)) errors.add("/updatedAt", MESSAGE_TEXT.updatedAt);
-    else updatedAt = v;
   }
   let policy;
   if (Object.hasOwn(input, "policy")) {
@@ -45518,23 +45453,18 @@ function validatePolicyResponse(value) {
     if (typeof v !== "object" || v === null || Array.isArray(v)) errors.add("/settings", MESSAGES.object);
     else {
       const s = v;
-      const known2 = ["uploadJunit", "redactMessages", "messageMaxBytes"];
+      const known2 = ["uploadJunit", "messageMaxBytes"];
       for (const key of known2) {
         if (!Object.hasOwn(s, key)) errors.add(`/settings/${key}`, MESSAGES.required);
       }
       for (const key of Object.keys(s)) {
-        if (!known2.includes(key)) errors.addUnknownKey("/settings", key);
+        if (!known2.includes(key) && !UNREAD_SETTINGS_KEYS.includes(key)) errors.addUnknownKey("/settings", key);
       }
       let uploadJunit;
-      let redactMessages;
       let messageMaxBytes;
       if (Object.hasOwn(s, "uploadJunit")) {
         if (typeof s.uploadJunit === "boolean") uploadJunit = s.uploadJunit;
         else errors.add("/settings/uploadJunit", MESSAGES.boolean);
-      }
-      if (Object.hasOwn(s, "redactMessages")) {
-        if (typeof s.redactMessages === "boolean") redactMessages = s.redactMessages;
-        else errors.add("/settings/redactMessages", MESSAGES.boolean);
       }
       if (Object.hasOwn(s, "messageMaxBytes")) {
         const n = s.messageMaxBytes;
@@ -45544,19 +45474,13 @@ function validatePolicyResponse(value) {
           errors.add("/settings/messageMaxBytes", rangeMessage(MESSAGE_MAX_BYTES_MIN, MESSAGE_MAX_BYTES_MAX));
         } else messageMaxBytes = n;
       }
-      if (uploadJunit !== void 0 && redactMessages !== void 0 && messageMaxBytes !== void 0) {
-        settings2 = { uploadJunit, redactMessages, messageMaxBytes };
-      }
+      if (uploadJunit !== void 0 && messageMaxBytes !== void 0) settings2 = { uploadJunit, messageMaxBytes };
     }
   }
-  if (errors.total > 0 || version2 === void 0 || etag === void 0 || updatedAt === void 0 || policy === void 0 || quarantine === void 0 || settings2 === void 0) {
+  if (errors.total > 0 || version2 === void 0 || policy === void 0 || quarantine === void 0 || settings2 === void 0) {
     return { ok: false, errors: errors.finish() };
   }
-  return {
-    ok: true,
-    response: { version: version2, etag, updatedAt, policy, quarantine, settings: settings2 },
-    unknown: errors.unknown()
-  };
+  return { ok: true, response: { version: version2, policy, quarantine, settings: settings2 }, unknown: errors.unknown() };
 }
 
 // ../core/src/junit/results.ts
@@ -45605,9 +45529,6 @@ function parseJunitSources(sources) {
 
 // ../core/src/policy/apply.ts
 var STRICTNESS2 = { off: 0, warn: 1, block: 2 };
-function rootKey(root) {
-  return root === void 0 || root === null ? "." : root;
-}
 function normalizedRoot(root) {
   return parseCoverageRoot(root, "the org policy's coverage.root");
 }
@@ -45615,7 +45536,6 @@ function applyPolicy(layers, policy) {
   const document2 = policy.document;
   if (policy.source === "none" || document2 === null) return { inputs: layers.resolved, ignored: [] };
   const app = policy.source === "app";
-  const policyLayer = "policy-file";
   const ignored = [];
   const inputs = { ...layers.resolved };
   applyCoverage(layers, document2, app, inputs, ignored);
@@ -45630,22 +45550,21 @@ function applyPolicy(layers, policy) {
   }
   if (integrity?.accept_label !== void 0) {
     if (app) result.acceptLabel = integrity.accept_label;
-    else ignored.push({ setting: "test_integrity.accept_label", layer: policyLayer, reason: "not-allowed" });
+    else ignored.push({ setting: "test_integrity.accept_label", reason: "not-allowed" });
   }
   if (!app && document2.policy?.required !== void 0) {
-    ignored.push({ setting: "policy.required", layer: policyLayer, reason: "not-allowed" });
+    ignored.push({ setting: "policy.required", reason: "not-allowed" });
   }
   const seen = /* @__PURE__ */ new Set();
   result.ignored = ignored.filter((record) => {
-    const key = `${record.setting}\0${record.layer}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    if (seen.has(record.setting)) return false;
+    seen.add(record.setting);
     return true;
-  }).sort((a, b) => byCodeUnit(a.setting, b.setting) || byCodeUnit(a.layer, b.layer));
+  }).sort((a, b) => byCodeUnit(a.setting, b.setting));
   return result;
 }
 function applyCoverage(layers, document2, app, inputs, ignored) {
-  const { config, raw, resolved } = layers;
+  const { resolved } = layers;
   const coverage2 = document2.coverage;
   if (coverage2 === void 0) return;
   if (coverage2.threshold !== void 0) {
@@ -45654,24 +45573,9 @@ function applyCoverage(layers, document2, app, inputs, ignored) {
     if (inForce === null) {
       inputs.threshold = theirs;
     } else {
-      if (app && inForce < theirs) {
-        const inputValue = raw.threshold === void 0 ? void 0 : Number(raw.threshold.trim());
-        const inputInForce = inputValue !== void 0 && !(inputValue < inForce);
-        ignored.push({
-          setting: "coverage.threshold",
-          layer: inputInForce ? "input" : "config",
-          reason: "looser",
-          given: inForce,
-          applied: theirs
-        });
-      } else if (!app && theirs < inForce) {
-        ignored.push({
-          setting: "coverage.threshold",
-          layer: "policy-file",
-          reason: "looser",
-          given: theirs,
-          applied: inForce
-        });
+      if (app ? inForce < theirs : theirs < inForce) {
+        const given = Math.min(theirs, inForce);
+        ignored.push({ setting: "coverage.threshold", reason: "looser", given, applied: Math.max(theirs, inForce) });
       }
       inputs.threshold = Math.max(theirs, inForce);
     }
@@ -45679,36 +45583,23 @@ function applyCoverage(layers, document2, app, inputs, ignored) {
   if (coverage2.exclude !== void 0) {
     if (app) {
       const theirs = coverage2.exclude;
-      const configCount = (config.coverage?.exclude ?? []).length;
-      const fromConfig = resolved.exclude.slice(0, configCount);
-      const fromInput = resolved.exclude.slice(configCount);
-      for (const [layer, patterns] of [
-        ["config", fromConfig],
-        ["input", fromInput]
-      ]) {
-        if (patterns.some((pattern) => !theirs.includes(pattern))) {
-          ignored.push({ setting: "coverage.exclude", layer, reason: "looser" });
-        }
+      if (resolved.exclude.some((pattern) => !theirs.includes(pattern))) {
+        ignored.push({ setting: "coverage.exclude", reason: "looser" });
       }
       inputs.exclude = [...theirs];
     } else if (coverage2.exclude.length > 0) {
-      ignored.push({ setting: "coverage.exclude", layer: "policy-file", reason: "not-allowed" });
+      ignored.push({ setting: "coverage.exclude", reason: "not-allowed" });
     }
   }
   if (coverage2.root !== void 0) {
     if (app) {
       const theirs = coverage2.root === null ? "." : normalizedRoot(coverage2.root);
-      const inputGiven = raw.coverageRoot !== void 0;
-      const configGiven = config.coverage?.root !== void 0;
-      if (inputGiven || configGiven) {
-        const today = inputGiven ? rootKey(resolved.coverageRoot) : rootKey(config.coverage?.root);
-        if (today !== theirs) {
-          ignored.push({ setting: "coverage.root", layer: inputGiven ? "input" : "config", reason: "looser" });
-        }
+      if (resolved.coverageRoot !== void 0 && resolved.coverageRoot !== theirs) {
+        ignored.push({ setting: "coverage.root", reason: "looser" });
       }
       inputs.coverageRoot = theirs === "." ? void 0 : theirs;
     } else {
-      ignored.push({ setting: "coverage.root", layer: "policy-file", reason: "not-allowed" });
+      ignored.push({ setting: "coverage.root", reason: "not-allowed" });
     }
   }
 }
@@ -45718,13 +45609,13 @@ function applySetup(layers, document2, app, inputs, ignored) {
   if (setup2 === void 0) return;
   if (setup2.require !== void 0) {
     if (setup2.require) {
-      if (app && !resolved.requireAgentSetup) {
-        const layer = raw.requireAgentSetup === false ? "input" : config.setup?.require === false ? "config" : void 0;
-        if (layer !== void 0) ignored.push({ setting: "setup.require", layer, reason: "looser" });
+      const saidFalse = raw.requireAgentSetup === false || config.setup?.require === false;
+      if (app && !resolved.requireAgentSetup && saidFalse) {
+        ignored.push({ setting: "setup.require", reason: "looser" });
       }
       inputs.requireAgentSetup = true;
     } else if (!app && resolved.requireAgentSetup) {
-      ignored.push({ setting: "setup.require", layer: "policy-file", reason: "looser" });
+      ignored.push({ setting: "setup.require", reason: "looser" });
     }
   }
   if (setup2.expect !== void 0) {
@@ -45736,18 +45627,18 @@ function applyDependencies(layers, document2, app, inputs, ignored) {
   const deps = document2.dependencies;
   if (deps === void 0) return;
   const given = layers.resolved.dependencies;
-  if (app && given?.input === "never") ignored.push({ setting: "dependencies", layer: "input", reason: "looser" });
+  if (app && given?.input === "never") ignored.push({ setting: "dependencies", reason: "looser" });
   if (!app && deps.registries !== void 0) {
-    ignored.push({ setting: "dependencies.registries", layer: "policy-file", reason: "not-allowed" });
+    ignored.push({ setting: "dependencies.registries", reason: "not-allowed" });
   }
   if (deps.allowed_hosts !== void 0) {
     if (app) {
       const named = deps.allowed_hosts.map((host) => host.toLowerCase());
       if ((given?.allowedHosts ?? []).some((host) => !named.includes(host))) {
-        ignored.push({ setting: "dependencies.allowed_hosts", layer: "input", reason: "looser" });
+        ignored.push({ setting: "dependencies.allowed_hosts", reason: "looser" });
       }
     } else if (deps.allowed_hosts.length > 0) {
-      ignored.push({ setting: "dependencies.allowed_hosts", layer: "policy-file", reason: "not-allowed" });
+      ignored.push({ setting: "dependencies.allowed_hosts", reason: "not-allowed" });
     }
   }
   inputs.dependencies = {
@@ -45767,19 +45658,14 @@ function applyMode(layers, document2, app, ignored) {
   const mode = document2.test_integrity?.mode;
   if (mode === void 0) return given;
   if (app) {
-    for (const [layer, value] of [
-      ["config", given?.config],
-      ["input", given?.input]
-    ]) {
-      if (value !== void 0 && STRICTNESS2[value] < STRICTNESS2[mode]) {
-        ignored.push({ setting: "test_integrity.mode", layer, reason: "looser" });
-      }
+    if ([given?.config, given?.input].some((value) => value !== void 0 && STRICTNESS2[value] < STRICTNESS2[mode])) {
+      ignored.push({ setting: "test_integrity.mode", reason: "looser" });
     }
   } else {
     const inForce = given?.input ?? "warn";
     const today = given?.config !== void 0 && STRICTNESS2[given.config] > STRICTNESS2[inForce] ? given.config : inForce;
     if (STRICTNESS2[mode] < STRICTNESS2[today]) {
-      ignored.push({ setting: "test_integrity.mode", layer: "policy-file", reason: "looser" });
+      ignored.push({ setting: "test_integrity.mode", reason: "looser" });
     }
   }
   return { ...given, policy: { mode, kind: app ? "app" : "file" } };
@@ -49276,19 +49162,11 @@ function parsePolicyInput(value) {
 var REPOSITORY = /^(?:[A-Za-z0-9-]{1,39}|(?=[A-Za-z0-9_-]{1,39}\/)[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z0-9]{3,8})\/[A-Za-z0-9._-]{1,100}$/;
 var JSON_CONTENT_TYPE = /^application\/json\s*(?:;|$)/i;
 async function fetchAppPolicy(deps, options) {
-  let settings2;
-  const policy = await requestPolicy(deps, options, (value) => {
-    settings2 = value;
-  });
-  const used = settings2;
-  return used === void 0 ? { policy } : { policy, ...used };
-}
-async function requestPolicy(deps, options, onSettings) {
   const required = options.mode === "required";
   const unavailable2 = (reason, extra = {}) => {
     if (extra.requestId !== void 0)
       deps.info(`pharn-ci: the org policy request failed (request id ${extra.requestId})`);
-    return {
+    const policy = {
       source: "none",
       version: null,
       document: null,
@@ -49301,13 +49179,16 @@ async function requestPolicy(deps, options, onSettings) {
         required
       }
     };
+    return { policy };
   };
   const silent = (extra = {}) => ({
-    source: "none",
-    version: null,
-    document: null,
-    ...extra.noApp === true ? { noApp: true } : {},
-    ...extra.noInstallation === true ? { noInstallation: true } : {}
+    policy: {
+      source: "none",
+      version: null,
+      document: null,
+      ...extra.noApp === true ? { noApp: true } : {},
+      ...extra.noInstallation === true ? { noInstallation: true } : {}
+    }
   });
   if (oidcOffered(deps) && !REPOSITORY.test(options.repository)) return unavailable2("no-repository");
   const tokenResult = await requestAppToken(deps);
@@ -49343,18 +49224,18 @@ async function requestPolicy(deps, options, onSettings) {
   }
   const validated = validatePolicyResponse(parsed);
   if (!validated.ok) return unavailable2("invalid-response", { status, ...id });
-  onSettings({
-    messageMaxBytes: validated.response.settings.messageMaxBytes,
-    quarantine: validated.response.quarantine,
-    uploadJunit: validated.response.settings.uploadJunit
-  });
-  const { unknown } = validated;
+  const { response, unknown } = validated;
   return {
-    source: "app",
-    version: validated.response.version,
-    fetchedAt: (deps.now?.() ?? /* @__PURE__ */ new Date()).toISOString(),
-    document: validated.response.policy,
-    ...unknown.total > 0 ? { unknownKeys: unknown } : {}
+    policy: {
+      source: "app",
+      version: response.version,
+      fetchedAt: (deps.now?.() ?? /* @__PURE__ */ new Date()).toISOString(),
+      document: response.policy,
+      ...unknown.total > 0 ? { unknownKeys: unknown } : {}
+    },
+    messageMaxBytes: response.settings.messageMaxBytes,
+    quarantine: response.quarantine,
+    uploadJunit: response.settings.uploadJunit
   };
 }
 
@@ -49600,25 +49481,16 @@ var UPLOAD_DEADLINE_MS = 9e4;
 var JSON_CONTENT_TYPE2 = /^application\/json\s*(?:;|$)/i;
 var OBJECT_KEY = /^[A-Za-z0-9/_.=-]{1,512}$/;
 var PUT_OK = [200, 201, 204];
-var ERROR_CLASS2 = /^[A-Za-z_$][A-Za-z0-9_$]{0,63}$/;
-function errorClassOf2(err) {
-  if (typeof err !== "object" || err === null) return typeof err;
-  const name = err.constructor?.name;
-  return typeof name === "string" && ERROR_CLASS2.test(name) ? name : "unknown";
-}
 async function runUpload(deps, input) {
   let step;
-  let thrown;
   try {
     const clock = () => (deps.now?.() ?? /* @__PURE__ */ new Date()).getTime();
     const deadlineAt = clock() + (deps.uploadDeadlineMs ?? UPLOAD_DEADLINE_MS);
     step = await uploadSteps(deps, input, () => deadlineAt - clock());
   } catch (err) {
-    step = { outcome: { status: "failed", reason: "internal" }, errorClass: errorClassOf2(err) };
-    thrown = { err };
+    step = { outcome: { status: "failed", reason: "internal" }, errorClass: errorClassOf(err) };
   }
   logOutcome(deps, step);
-  if (thrown !== void 0 && deps.debug === true) throw thrown.err;
   return step.outcome;
 }
 function logOutcome(deps, step) {
@@ -50703,8 +50575,6 @@ await run({
   hasOidcEnv: Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_URL) && Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN),
   now: () => /* @__PURE__ */ new Date(),
   sleep: (ms) => new Promise((resolve2) => setTimeout(resolve2, ms)),
-  // RUNNER_DEBUG=1: a run (or re-run) with debug logging, where an internal upload error fails the step (upload.ts).
-  debug: isDebug(),
   // The vendored TypeScript parser, loaded on the first parse of a test file: a failed load fails the step (run.ts).
   parserLoadFailure: vendoredTypeScriptFailure
 });
