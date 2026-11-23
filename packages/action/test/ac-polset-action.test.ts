@@ -17,7 +17,7 @@ import { harness } from "./harness.js";
 // coverage file are read from it) and a gitBatch that reads that repository and records every call. PR-number mode is
 // built as packages/action/test/ac-secrets-action.test.ts builds it.
 
-type Run = (deps: never) => Promise<unknown>;
+type Run = typeof import("../src/run.js").run;
 type Call = { args: string[]; input: string };
 
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);

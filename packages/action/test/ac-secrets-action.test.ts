@@ -29,7 +29,7 @@ function cut(n: number, seed: number): string {
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);
 const fixture = (path: string) => readFileSync(new URL(path, FIXTURES), "utf8");
 
-type Run = (deps: never) => Promise<unknown>;
+type Run = typeof import("../src/run.js").run;
 
 const SECRET = "ghp" + "_" + cut(36, 17);
 let dir: string;

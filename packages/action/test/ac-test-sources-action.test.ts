@@ -33,7 +33,7 @@ function expectValid(report: unknown, label: string) {
 /** A side of the sources as the assertions read it: either variant of core's TestSourceSide, its fields optional. */
 type Side = Partial<Extract<TestSourceSide, { files: unknown }>> & { unavailable?: string };
 type Input = Omit<CheckInput, "testSources"> & { testSources?: { base: Side; head: Side } };
-type Run = (deps: never) => Promise<unknown>;
+type Run = typeof import("../src/run.js").run;
 
 const MAIN_TEXT = 'import { it } from "vitest";\nit("adds", () => {});\n';
 const FEATURE_TEXT = 'import { expect, it } from "vitest";\nit("adds", () => expect(1 + 1).toBe(2));\n';
