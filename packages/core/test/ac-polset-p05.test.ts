@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report, ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -9,7 +10,7 @@ import { withoutFix } from "./without-fix.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-async function run(document: unknown, files: Record<string, string>): Promise<Report> {
+async function run(document: PolicyDocument, files: Record<string, string>): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -20,7 +21,7 @@ async function run(document: unknown, files: Record<string, string>): Promise<Re
     repoFiles: ["AGENTS.md", "src/a.ts", ...Object.keys(files)],
     policy: { source: "file", version: null, path: "policy/org.json", document },
     policySettingsSources: { files: Object.entries(files).map(([path, text]) => ({ path, text })), dropped: [] },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }
@@ -40,7 +41,7 @@ const PREFIX = "MCP server matches forbidden entry ";
 
 describe("org policy rule P05: forbidden MCP server", { timeout: 60_000 }, () => {
   it("AC-11: a server matching by key, command, command line or url is one P05 block at its key's line naming the first entry, env and headers are never read, a string-valued server counts by name, and an enabledMcpjsonServers name matches by name", async () => {
-    const document = {
+    const document: PolicyDocument = {
       version: 1,
       setup: { forbidden_mcp_servers: ["evil", "*/curl", "npx -y bad*", "https://bad.example/*"] },
     };

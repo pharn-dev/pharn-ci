@@ -65,15 +65,15 @@ describe("the raw Python index output: the optional imports field", () => {
     JSON.stringify([{ id: 0, parsed: true, normalized: "", tests: [], mocks: [], ...extra }]);
 
   it("AC-5: is mapped beside each result when present, and absent otherwise; a wrong one is bad-output", () => {
-    const mapped = pythonIndexFromRaw(entry({ imports: ["pkg.billing", ".sibling"] }), 1) as unknown as {
-      available: boolean;
-      results: unknown[];
-      imports?: Array<string[] | undefined>;
-    };
+    // Either result read through one view, so the expects below need no narrowing.
+    const mapped: { available: boolean; results?: unknown; imports?: unknown } = pythonIndexFromRaw(
+      entry({ imports: ["pkg.billing", ".sibling"] }),
+      1,
+    );
     expect(mapped.available).toBe(true);
     expect(mapped.results).toEqual([{ parsed: true, syntaxErrors: 0, tests: [], mocks: [] }]);
     expect(mapped.imports).toEqual([["pkg.billing", ".sibling"]]);
-    const without = pythonIndexFromRaw(entry({}), 1) as unknown as { imports?: unknown[] };
+    const without: { available: boolean; imports?: unknown } = pythonIndexFromRaw(entry({}), 1);
     expect(without.imports).toEqual([undefined]);
 
     const cases: Array<[unknown, string]> = [

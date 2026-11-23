@@ -47,7 +47,8 @@ describe("validatePolicy and parsePolicyJson on hostile values", () => {
     for (const [label, value] of notText) {
       let result: ReturnType<typeof parsePolicyJson> | undefined;
       expect(() => {
-        result = parsePolicyJson(value as unknown as string);
+        // Not text on purpose: the parser must refuse a value of any other type without throwing.
+        result = parsePolicyJson(value as string);
       }, label).not.toThrow();
       expect(result?.ok, `parsePolicyJson ${label}`).toBe(false);
     }

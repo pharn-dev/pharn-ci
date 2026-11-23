@@ -2,14 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // E3 item 24 (P07), AC-12. check() is loaded inside the test body and fixtures/policy-rules/p07/ is read there too: the
 // AC test is written before the build adds rule P07 and its fixtures, so nothing the build adds may run while this
 // file loads.
 
-type Sources =
-  | { files: { path: string; text: string }[]; dropped: { path: string; reason: string }[] }
-  | { unavailable: string };
+type Sources = NonNullable<TextCheckInput["agentInstructionSources"]>;
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const NOW = "2026-10-26T12:00:00.000Z";
@@ -41,7 +40,7 @@ async function run(policy: PolicyName, sources: Sources): Promise<Report> {
     repoFiles: ["AGENTS.md", "CLAUDE.md", "GEMINI.md", ".pharn/policy.json", "src/a.ts"],
     policy: POLICIES[policy],
     agentInstructionSources: sources,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

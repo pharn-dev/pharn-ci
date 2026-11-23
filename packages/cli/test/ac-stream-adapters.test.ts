@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { ActionDeps, GitHubApi } from "../../action/src/run.js";
 import type { Message } from "../../core/src/report.js";
 import { VERSION } from "../../core/src/version.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { requiredDeps } from "../../node-io/test/required-deps.js";
+import type { CliDeps } from "../src/main.js";
 
 // main() and run() are loaded inside each test body: the AC tests are written before the CLI and the Action stream
 // their diff and coverage files, so nothing that depends on that may run while the file loads. Both run against
@@ -86,6 +88,16 @@ interface Fakes {
   diffStream?: ChunkSource;
 }
 
+/** The fake implements only the GitHub API calls these runs make, as the Action tests' harness does. */
+const partialApi = (api: Partial<GitHubApi>) => api as GitHubApi;
+
+/** The deps the CLI and the Action both take, as the fake builds them. */
+type SharedDeps = Pick<
+  CliDeps,
+  "git" | "gitStream" | "gitBatch" | "readFile" | "readFileStream" | "resolvePath" | "lstat"
+> &
+  Pick<ActionDeps, "fetch">;
+
 function commonDeps(fakes: Fakes) {
   const at = (path: string) => resolve(REPO_ROOT, path);
   const files = new Map(Object.entries(fakes.files ?? {}).map(([path, value]) => [at(path), value]));
@@ -93,8 +105,8 @@ function commonDeps(fakes: Fakes) {
   const tracked = fixture("golden/files.txt").trim().split("\n");
   const streamCalls: string[][] = [];
 
-  const deps: Record<string, unknown> = {
-    ...requiredDeps(() => deps as never),
+  const deps: SharedDeps = {
+    ...requiredDeps(() => deps),
     git: async (args: string[]) => {
       // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.
       if (args.includes("HEAD^{commit}")) throw new Error("fatal: no history in this fake");
@@ -137,17 +149,19 @@ async function runCli(argv: string[], fakes: Fakes) {
   const { main } = await import("../src/main.js");
   const out: string[] = [];
   const err: string[] = [];
-  const { deps, streamCalls } = commonDeps(fakes);
-  Object.assign(deps, {
+  const { deps: shared, streamCalls } = commonDeps(fakes);
+  const deps: CliDeps = {
+    ...shared,
     cwd: REPO_ROOT,
+    listDir: () => Promise.reject(new Error("unexpected listDir")),
     stdout: (text: string) => {
       out.push(text);
     },
     stderr: (text: string) => {
       err.push(text);
     },
-  });
-  const code = await main(argv, deps as never);
+  };
+  const code = await main(argv, deps);
   const stderr = err.join("");
   return {
     code,
@@ -171,8 +185,10 @@ async function runAction(inputs: Record<string, string>, fakes: Fakes & { compar
   const outputs: Record<string, string> = {};
   const written = new Map<string, string>();
   const compareCalls: string[] = [];
-  const { deps, streamCalls } = commonDeps(fakes);
-  Object.assign(deps, {
+  const { deps: shared, streamCalls } = commonDeps(fakes);
+  const deps: ActionDeps = {
+    ...shared,
+    listDir: () => Promise.reject(new Error("unexpected listDir")),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",
@@ -187,7 +203,7 @@ async function runAction(inputs: Record<string, string>, fakes: Fakes & { compar
     },
     workspace: REPO_ROOT,
     tempDir: "/home/runner/work/_temp",
-    api: {
+    api: partialApi({
       compareDiff: async (basehead: string) => {
         compareCalls.push(basehead);
         if (fakes.compare instanceof Error) throw fakes.compare;
@@ -197,7 +213,7 @@ async function runAction(inputs: Record<string, string>, fakes: Fakes & { compar
       listComments: async () => [],
       createComment: async () => null,
       updateComment: async () => {},
-    },
+    }),
     writeFile: async (path: string, text: string) => {
       written.set(path, text);
     },
@@ -212,8 +228,8 @@ async function runAction(inputs: Record<string, string>, fakes: Fakes & { compar
       failed.push(message);
     },
     writeSummary: async () => {},
-  });
-  await run(deps as never);
+  };
+  await run(deps);
   return {
     failed,
     infos,

@@ -46,7 +46,6 @@ async function load() {
 }
 
 type Loaded = Awaited<ReturnType<typeof load>>;
-type Input = Parameters<Loaded["check"]>[0];
 
 /** Each golden's report, built from its inputs exactly as the test that writes that golden builds it. */
 function goldenReport({ check, parseConfig }: Loaded, golden: Golden) {
@@ -58,7 +57,7 @@ function goldenReport({ check, parseConfig }: Loaded, golden: Golden) {
         coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
         diff: { text: fixture("golden/pr.diff") },
         repoFiles: lines("golden/files.txt"),
-      } as Input);
+      });
     case "golden-multi":
       return check({
         ...base,
@@ -71,14 +70,14 @@ function goldenReport({ check, parseConfig }: Loaded, golden: Golden) {
         },
         diff: { text: fixture("golden-multi/pr.diff") },
         repoFiles: lines("golden-multi/files.txt"),
-      } as Input);
+      });
     case "golden-cobertura":
       return check({
         ...base,
         coverage: { text: fixture("golden-cobertura/coverage.xml"), format: "auto" },
         diff: { text: fixture("golden-cobertura/pr.diff") },
         repoFiles: lines("golden-cobertura/files.txt"),
-      } as Input);
+      });
     case "golden-exclusions": {
       const config = parseConfig(fixture("golden-exclusions/ci.yml")) as {
         coverage?: { exclude?: string[]; threshold?: number };
@@ -90,7 +89,7 @@ function goldenReport({ check, parseConfig }: Loaded, golden: Golden) {
         threshold: config.coverage?.threshold ?? null,
         repoFiles: lines("golden-exclusions/files.txt"),
         exclude: config.coverage?.exclude ?? [],
-      } as Input);
+      });
     }
     case "coverage-paths/package-relative":
       return check({
@@ -98,7 +97,7 @@ function goldenReport({ check, parseConfig }: Loaded, golden: Golden) {
         coverage: { text: fixture("coverage-paths/package-relative/coverage.info"), format: "lcov" },
         diff: { text: fixture("coverage-paths/package-relative/pr.diff") },
         repoFiles: lines("coverage-paths/package-relative/files.txt"),
-      } as Input);
+      });
   }
 }
 

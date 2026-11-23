@@ -4,6 +4,7 @@ import { parseConfig } from "../src/config.js";
 import { type InputErrorText, type RawInputs, resolveInputs } from "../src/inputs.js";
 import { applyPolicy } from "../src/policy/apply.js";
 import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
@@ -72,13 +73,12 @@ describe("resolveInputs: .pharn/ci.yml may only tighten the threshold and setup.
 
 // CORE-123 (R5.6): the record keeps the layer an app policy beat (P09 reads it); the message names no layer.
 describe("applyPolicy: the layer an app policy beat is the one whose value was in force", () => {
-  const app = (document: Record<string, unknown>): ResolvedPolicy =>
-    ({
-      source: "app",
-      version: 3,
-      fetchedAt: "2026-10-26T12:00:00.000Z",
-      document: { version: 1, ...document },
-    }) as ResolvedPolicy;
+  const app = (document: Omit<PolicyDocument, "version">): ResolvedPolicy => ({
+    source: "app",
+    version: 3,
+    fetchedAt: "2026-10-26T12:00:00.000Z",
+    document: { version: 1, ...document },
+  });
 
   const layers = (config: typeof STRICT, raw: RawInputs) => {
     const fullRaw = { coverageFile: "coverage/lcov.info", ...raw };
@@ -98,7 +98,7 @@ describe("applyPolicy: the layer an app policy beat is the one whose value was i
       requireAgentSetup: application.inputs.requireAgentSetup,
       policy,
       policyIgnored: application.ignored,
-    } as never);
+    });
     expectValidReport(report);
     return report.messages.filter((m) => m.code === "POLICY_OVERRIDE_IGNORED").map((m) => m.text);
   };

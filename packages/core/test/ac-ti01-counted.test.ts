@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
+import type { DiffFile } from "../src/diff/unified.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() and the fixtures are loaded inside each test body: the AC tests are written before TI01 and
 // fixtures/test-integrity/TI01/ exist, so nothing that depends on them may run while the file loads.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-type Diff = { text: string } | { parsed: unknown[] };
+type Diff = TextCheckInput["diff"];
 
 async function runCheck(diff: Diff) {
   const { check } = await import("./text-coverage.js");
-  const input = {
+  const input: TextCheckInput = {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },
     diff,
@@ -20,12 +22,12 @@ async function runCheck(diff: Diff) {
     repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
     testIntegrityMode: { input: "block" as const },
   };
-  const report = check(input as Parameters<typeof check>[0]);
+  const report = check(input);
   expectValidReport(report);
   return report;
 }
 
-const TRUNCATED = {
+const TRUNCATED: DiffFile = {
   path: "tests/t.test.ts",
   oldPath: "tests/t.test.ts",
   status: "deleted",

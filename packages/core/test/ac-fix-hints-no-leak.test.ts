@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { FixHint as Fix } from "../src/fix/table.js";
 import type { Report } from "../src/report.js";
 import { dependencyCase } from "./dependencies-helpers.js";
 import { fixture } from "./helpers.js";
@@ -13,8 +14,6 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const UNIQUE_NAME = "zqxFixHintLeak7731";
 const SECRET = ["gh", "p_", "Z9y8X7w6".repeat(4), "Q1r2"].join("");
 
-type Fix = { kind: string; target?: string; hint: string };
-
 async function run(input: TextCheckInput): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check(input);
@@ -24,12 +23,11 @@ async function run(input: TextCheckInput): Promise<Report> {
 
 /** Every fix of the report: on messages and on every finding array. */
 function fixesOf(report: Report): Fix[] {
-  const r = report as unknown as Record<string, { signals?: { fix?: Fix }[]; violations?: { fix?: Fix }[] }>;
   const findings = [
     ...report.testIntegrity.signals,
-    ...(r.policy?.violations ?? []),
-    ...((r.setupHealth as { stale?: { fix?: Fix }[] } | undefined)?.stale ?? []),
-    ...(r.injection?.signals ?? []),
+    ...(report.policy?.violations ?? []),
+    ...(report.setupHealth?.stale ?? []),
+    ...(report.injection?.signals ?? []),
     ...(report.dependencies?.signals ?? []),
   ];
   return [...report.messages, ...findings].flatMap((x) => (x.fix === undefined ? [] : [x.fix]));

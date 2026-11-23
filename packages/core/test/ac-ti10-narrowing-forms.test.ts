@@ -69,7 +69,7 @@ async function runDiff(diff: string, mode: Mode) {
     threshold: 80,
     repoFiles: REPO_FILES,
     testIntegrityMode: { input: mode },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return {
     signals: report.testIntegrity.signals.filter((signal) => String(signal.id) === "TI10"),

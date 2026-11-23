@@ -55,7 +55,7 @@ describe("a hostile allow entry with a long run of inner whitespace", () => {
         document: { version: 1, setup: { forbidden_permissions: ["Bash(curl:*)"] } },
       },
       policySettingsSources: { files: [{ path: ".claude/settings.json", text: settings }], dropped: [] },
-    } as never);
+    });
     expectValidReport(report);
     const p02 = (report.policy?.violations ?? []).filter((v) => v.id === "P02");
     expect(p02.map((v) => v.detail)).toEqual(["allow rule overlaps forbidden permission Bash(curl:*)"]);

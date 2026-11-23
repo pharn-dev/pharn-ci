@@ -22,7 +22,7 @@ describe("TI17 on the vitest Skylos case always-true-matcher", () => {
       threshold: 80,
       repoFiles: fixture(`${CASE}/files.txt`).trim().split("\n"),
       testIntegrityMode: { input: "block" },
-    } as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
 
     expect(

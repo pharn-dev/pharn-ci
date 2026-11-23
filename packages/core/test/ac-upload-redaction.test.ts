@@ -72,6 +72,8 @@ interface UploadCore {
   redactSecrets(text: string): string;
 }
 
+// A looser view on purpose: the reports are hand-built JSON with a secret seeded in every place, including a key Report
+// does not have (`testIntegrity.testChanges`), and the meta passed on may be null.
 const load = async () =>
   ({
     ...(await import("../src/secrets/redact.js")),

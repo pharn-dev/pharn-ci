@@ -8,7 +8,7 @@ import { validatePolicy } from "../src/policy/validate.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
-import { check } from "./text-coverage.js";
+import { check, type TextCheckInput } from "./text-coverage.js";
 import { withoutFix } from "./without-fix.js";
 
 // The `injection` policy key (schema/policy.v1.json, validatePolicy) and how each policy source applies it. Settings
@@ -21,7 +21,7 @@ const validateWithSchema = new Ajv2020({ strict: true, allErrors: true }).compil
 const app = (document: PolicyDocument) => ({ source: "app" as const, version: 3, document });
 const file = (document: PolicyDocument) => ({ source: "file" as const, version: null, path: "policy.json", document });
 
-function run(diffName: string, policy: unknown, over: Record<string, unknown> = {}): Report {
+function run(diffName: string, policy: TextCheckInput["policy"], over: Partial<TextCheckInput> = {}): Report {
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -31,7 +31,7 @@ function run(diffName: string, policy: unknown, over: Record<string, unknown> = 
     repoFiles: ["AGENTS.md", "src/a.ts"],
     policy,
     ...over,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

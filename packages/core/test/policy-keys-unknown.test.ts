@@ -5,7 +5,7 @@ import { validatePolicy } from "../src/policy/validate.js";
 import { hasUnsafeChar } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
-import { check } from "./text-coverage.js";
+import { check, type TextCheckInput } from "./text-coverage.js";
 
 // CORE-118 (R5.1): keys and ids a newer app serves are skipped and named, the rest of the policy applies. The inputs
 // start from fixtures/policy-api/newer/baseline.json (an envelope with nothing unknown in it); the hostile keys are added
@@ -193,7 +193,7 @@ describe("the POLICY_KEYS_UNKNOWN message (CORE-118)", () => {
       document: result.response.policy,
       unknownKeys: result.unknown,
     };
-    const input = {
+    const input: TextCheckInput = {
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" as const },
       diff: { text: fixture("golden/pr.diff") },
@@ -202,7 +202,7 @@ describe("the POLICY_KEYS_UNKNOWN message (CORE-118)", () => {
       repoFiles: fixture("golden/files.txt").trim().split("\n"),
       policy,
     };
-    const report = check(input as never);
+    const report = check(input);
     expectValidReport(report);
     const messages = report.messages.filter((m) => m.code === "POLICY_KEYS_UNKNOWN");
     expect(messages).toHaveLength(1);
@@ -215,10 +215,10 @@ describe("the POLICY_KEYS_UNKNOWN message (CORE-118)", () => {
     expect(markdown).not.toContain("@octocat ");
 
     // A file policy never carries skipped keys; even if a caller passed some, there is no message.
-    const fileReport = check({ ...input, policy: { ...policy, source: "file", version: null } } as never);
+    const fileReport = check({ ...input, policy: { ...policy, source: "file", version: null } });
     expect(fileReport.messages.some((m) => m.code === "POLICY_KEYS_UNKNOWN")).toBe(false);
     // Nothing skipped, no message.
-    const quiet = check({ ...input, policy: { ...policy, unknownKeys: { names: [], total: 0 } } } as never);
+    const quiet = check({ ...input, policy: { ...policy, unknownKeys: { names: [], total: 0 } } });
     expect(quiet.messages.some((m) => m.code === "POLICY_KEYS_UNKNOWN")).toBe(false);
   });
 });

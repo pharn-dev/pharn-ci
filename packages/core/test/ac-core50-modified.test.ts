@@ -2,9 +2,13 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Message, Report } from "../src/report.js";
+import type { PythonTestIndex } from "../src/testIndex/pythonSides.js";
+import type { PythonIndexFile } from "../src/testIndex/pythonTypes.js";
+import type { TestBlock } from "../src/testIndex/types.js";
 import type { TestSourceFile as SourceFile, TestSourceDrop, TestSourceDropReason } from "../src/testSources.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // CORE-50 (binary-diff-not-blind). check() and acceptTestIntegrity() are loaded inside each test body: the AC tests are
 // written before a modified test file that git shows as binary is named as made unreadable, so nothing the build changes
@@ -53,7 +57,7 @@ function loadCase(name: string): { diff: string; sources: Sources | undefined } 
   return { diff, sources: base === null && head === null ? undefined : { base: base ?? empty, head: head ?? empty } };
 }
 
-async function run(diff: string, mode: "block" | "warn" | "off", extra: Record<string, unknown> = {}): Promise<Report> {
+async function run(diff: string, mode: "block" | "warn" | "off", extra: Partial<TextCheckInput> = {}): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -79,13 +83,13 @@ function one(report: Report, name: string): Message {
 }
 
 /** A plain-data Python index for the `.py` files of each side: one test per `def test_…` line. */
-function pythonIndex(sources: Sources) {
+function pythonIndex(sources: Sources): PythonTestIndex {
   const side = (s: Side) =>
     s.files
       .filter((file) => file.path.endsWith(".py"))
-      .map((file) => {
+      .map((file): PythonIndexFile => {
         const lines = file.text.split("\n");
-        const tests = lines.flatMap((text, i) => {
+        const tests = lines.flatMap((text, i): TestBlock[] => {
           const def = /^def (test_\w+)\(/.exec(text);
           if (!def) return [];
           const name = def[1] as string;

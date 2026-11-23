@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PharnConfig } from "../src/config.js";
 import { fixture } from "./helpers.js";
 
 // resolveInputs, the config parser and the fixtures are loaded inside the test body: the AC tests are written before
@@ -39,16 +40,12 @@ function text(expectAgentSetup: string) {
   };
 }
 
-type Resolved =
-  | { ok: true; inputs: { expectAgentSetup?: unknown } }
-  | { ok: false; errors: { input: string; message: string }[] };
-
 describe("resolveInputs: expected agent tools", () => {
   it("AC-6: adds the input's tools after the config's, de-duplicated, and reports an unknown name as an input error under the given label", async () => {
     const { parseConfig } = await import("../src/config.js");
     const { resolveInputs } = await import("../src/inputs.js");
-    const resolve = (config: unknown, expectAgentSetup: string[], label: string) =>
-      resolveInputs(config as never, { expectAgentSetup } as never, text(label) as never) as unknown as Resolved;
+    const resolve = (config: PharnConfig, expectAgentSetup: string[], label: string) =>
+      resolveInputs(config, { expectAgentSetup }, text(label));
 
     // Config setup.expect is ["cursor"]; the input adds claude-code and repeats cursor.
     const config = parseConfig(fixture("setup-expect/ci-cursor.yml"));

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { Report } from "../src/report.js";
+import type { AgentPrFacts } from "../src/agents.js";
+import type { Report, ReportMeta } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 import { withoutFix } from "./without-fix.js";
 
 // E3 item 24a part B (P11), AC-7. check() is loaded inside the test body and fixtures/policy-rules/p11/ is read there
@@ -10,7 +12,7 @@ import { withoutFix } from "./without-fix.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const POLICY_PATH = ".pharn/policy.json";
-const META = {
+const META: ReportMeta = {
   event: "pull_request",
   repository: "pharn-dev/pharn-ci",
   repositoryId: 123,
@@ -24,16 +26,20 @@ const META = {
   upload: { status: "skipped" },
 };
 const human = (message: string) => ({ authorLogin: "octocat", committerLogin: "octocat", message });
-const AGENT_FACTS = {
+const AGENT_FACTS: AgentPrFacts = {
   pr: { author: { login: "claude[bot]", type: "Bot" }, labels: [], commits: [human("Fix the parser\n")] },
 };
-const HUMAN_FACTS = {
+const HUMAN_FACTS: AgentPrFacts = {
   pr: { author: { login: "octocat", type: "User" }, labels: [], commits: [human("Fix the parser\n")] },
 };
 const BASE_UNREADABLE_SENTENCE =
   "This agent pull request edits the policy file, and its version at the merge base could not be read, so the paths that version protects could not be checked.";
 
-async function run(agentPrFacts: unknown, policyFileBase: unknown, diffName: string): Promise<Report> {
+async function run(
+  agentPrFacts: AgentPrFacts,
+  policyFileBase: TextCheckInput["policyFileBase"],
+  diffName: string,
+): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -51,7 +57,7 @@ async function run(agentPrFacts: unknown, policyFileBase: unknown, diffName: str
     },
     agentPrFacts,
     policyFileBase,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

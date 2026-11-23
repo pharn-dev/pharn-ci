@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // E3 item 22 (policy rules), AC-17. check() and renderMarkdown() are loaded inside the test body and
 // fixtures/policy-rules/ is read there too: the AC test is written before the build adds the Policy column and the
@@ -35,7 +38,7 @@ describe("the summary table and the Messages section with a policy", { timeout: 
       check: (await import("./text-coverage.js")).check,
     };
     const goldenFiles = fixture("golden/files.txt").trim().split("\n");
-    const run = (extra: Record<string, unknown>) => {
+    const run = (extra: Partial<TextCheckInput>) => {
       const report = core.check({
         version: "0.1.0",
         coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -48,7 +51,7 @@ describe("the summary table and the Messages section with a policy", { timeout: 
       expectValidReport(report);
       return report;
     };
-    const app = (document: unknown) => ({
+    const app = (document: PolicyDocument): ResolvedPolicy => ({
       source: "app",
       version: 3,
       fetchedAt: "2026-10-26T12:00:00.000Z",

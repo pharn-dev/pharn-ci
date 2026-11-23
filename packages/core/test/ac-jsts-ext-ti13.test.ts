@@ -33,7 +33,7 @@ async function run(path: string) {
     threshold: 80,
     repoFiles: REPO_FILES,
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

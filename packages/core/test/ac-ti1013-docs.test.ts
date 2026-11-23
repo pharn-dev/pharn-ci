@@ -39,7 +39,7 @@ async function signalsOf(dir: string, name: string, repoFiles = filesFor(dir, na
     threshold: 80,
     repoFiles,
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report.testIntegrity.signals.filter((signal) => String(signal.id) === dir);
 }

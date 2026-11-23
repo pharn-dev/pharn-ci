@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts } from "../src/agents.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -8,7 +9,7 @@ import { expectValidReport } from "./schema.js";
 // this file loads.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const AGENT_FACTS = {
+const AGENT_FACTS: AgentPrFacts = {
   pr: {
     author: { login: "claude[bot]", type: "Bot" },
     labels: [],
@@ -32,7 +33,7 @@ async function run(diffName: string): Promise<Report> {
       document: JSON.parse(fixture("policy-rules/p11/globs/policy.json")),
     },
     agentPrFacts: AGENT_FACTS,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

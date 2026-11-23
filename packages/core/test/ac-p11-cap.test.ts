@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts } from "../src/agents.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -7,7 +8,7 @@ import { expectValidReport } from "./schema.js";
 // rule P11, so nothing the build adds may run while this file loads. The diffs are generated here.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const AGENT_FACTS = {
+const AGENT_FACTS: AgentPrFacts = {
   pr: {
     author: { login: "claude[bot]", type: "Bot" },
     labels: [],
@@ -44,7 +45,7 @@ async function run(count: number): Promise<{ report: Report; paths: string[] }> 
       document: { version: 1, agents: { protected_paths: ["gen/**"] } },
     },
     agentPrFacts: AGENT_FACTS,
-  } as never);
+  });
   expectValidReport(report);
   return { report: report, paths };
 }

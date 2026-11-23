@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // Skylos nine: the two cases the signals of this release do not catch (emptied-assertion and replaced-test moved out
 // when TI05 and TI02 shipped, edited-expected-value when TI07 shipped, loosened-assertion when TI06 shipped,
@@ -33,7 +34,7 @@ describe("Skylos nine: the four expected misses run cleanly and give no signal",
     it(`AC-3: ${name} — check() and the renderer do not throw, the report is valid and has no test-integrity signal`, async () => {
       const { check } = await import("./text-coverage.js");
       const { renderMarkdown } = await import("../src/render/markdown.js");
-      const input = {
+      const input: TextCheckInput = {
         version: "0.1.0",
         coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
         diff: { text: fixture(`skylos-nine/${name}/change.diff`) },
@@ -41,7 +42,7 @@ describe("Skylos nine: the four expected misses run cleanly and give no signal",
         threshold: 80,
         repoFiles: fixture(`skylos-nine/${name}/files.txt`).trim().split("\n"),
         testIntegrityMode: { input: "block" },
-      } as Parameters<typeof check>[0];
+      };
 
       let report: ReturnType<typeof check> | undefined;
       expect(() => {

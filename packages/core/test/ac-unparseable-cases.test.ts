@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { PolicySettingsDrop } from "../src/policy/settings/types.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report, ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -9,9 +11,9 @@ import { withoutFix } from "./without-fix.js";
 // edits); the test builds one "modify" hunk per edited path. check() and every fixture are loaded inside the test body,
 // the test-first convention.
 
-type Drop = { path: string; reason: string };
+type Drop = PolicySettingsDrop;
 type Case = {
-  document: unknown;
+  document: PolicyDocument;
   map: Record<string, string>;
   edits: string[];
   read: (file: string) => string;
@@ -57,7 +59,7 @@ async function run(c: Case, files: { path: string; text: string }[], dropped: Dr
     repoFiles: [...new Set(["AGENTS.md", "policy/org.json", "src/a.ts", ...Object.keys(c.map), ...c.edits])],
     policy: { source: "file", version: null, path: "policy/org.json", document: c.document },
     policySettingsSources: { files, dropped },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

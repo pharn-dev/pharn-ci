@@ -34,7 +34,7 @@ async function run(diff: string, mode: "block" | "warn" | "off") {
     threshold: 80,
     repoFiles: REPO_FILES,
     testIntegrityMode: { input: mode },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

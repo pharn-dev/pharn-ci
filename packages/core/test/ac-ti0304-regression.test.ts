@@ -92,7 +92,7 @@ async function run(diff: string, exclude: string[] = [], files = "test-files-del
     repoFiles: fixture(files).trim().split("\n"),
     exclude,
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

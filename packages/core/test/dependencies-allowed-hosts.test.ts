@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { DependencySettingsLayers } from "../src/dependencies/settings.js";
 import { dependencyCase, run } from "./dependencies-helpers.js";
 
 // Private registry allow-list (D05) through check(): the fixtures/dependencies/d05-private-host case adds, on the host
@@ -9,7 +10,7 @@ const HOST = "npm.corp.example";
 
 type Signals = Array<[string, string, number | null, string | undefined]>;
 
-function d05(settings?: Record<string, unknown>): Signals {
+function d05(settings?: DependencySettingsLayers): Signals {
   const report = run(
     dependencyCase("d05-private-host", settings === undefined ? {} : { dependencySettings: settings }),
   );

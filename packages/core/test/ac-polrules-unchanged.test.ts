@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // E3 item 22 (policy rules), AC-13. check() is loaded inside the test body: the AC test is written before the build
 // adds the rules, so nothing the build adds may run while this file loads. The golden inputs are passed as
@@ -16,7 +17,7 @@ describe("reports without a policy in force", { timeout: 60_000 }, () => {
   it("AC-13: no policy, a source-none policy and a source-none noApp policy write no policy key and match the golden byte for byte; an app policy writes one", async () => {
     const { check } = await import("./text-coverage.js");
     const golden = readFileSync(new URL("fixtures/golden/report.json", ROOT), "utf8");
-    const inputs = {
+    const inputs: TextCheckInput = {
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
       diff: { text: fixture("golden/pr.diff") },
@@ -25,7 +26,7 @@ describe("reports without a policy in force", { timeout: 60_000 }, () => {
       repoFiles: fixture("golden/files.txt").trim().split("\n"),
     };
 
-    const plain = check(inputs as never);
+    const plain = check(inputs);
     expectValidReport(plain);
     expect("policy" in plain).toBe(false);
     expect(asFile(plain)).toBe(golden);
@@ -34,14 +35,14 @@ describe("reports without a policy in force", { timeout: 60_000 }, () => {
       ["source none", { source: "none", version: null, document: null }],
       ["source none, noApp", { source: "none", version: null, document: null, noApp: true }],
     ] as const) {
-      const report = check({ ...inputs, policy } as never);
+      const report = check({ ...inputs, policy });
       expectValidReport(report);
       expect("policy" in report, name).toBe(false);
       expect(asFile(report), name).toBe(asFile(plain));
       expect(asFile(report), name).toBe(golden);
     }
 
-    const app = check({ ...inputs, policy: { source: "app", version: 3, document: { version: 1 } } } as never);
+    const app = check({ ...inputs, policy: { source: "app", version: 3, document: { version: 1 } } });
     expectValidReport(app);
     expect("policy" in app).toBe(true);
   });

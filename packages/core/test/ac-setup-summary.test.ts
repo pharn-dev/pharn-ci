@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import type { AgentSetupKind } from "../src/setup/scan.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport, validateReport } from "./schema.js";
@@ -6,13 +7,7 @@ import { expectValidReport, validateReport } from "./schema.js";
 // AC tests for agent-setup-inventory (AC-8, AC-9, AC-10, AC-14). Targets are imported inside each
 // test body so the file loads before the build; one `it` per AC.
 
-type Summary = { byKind: Record<string, unknown>; tools: unknown[] };
-type ReportLike = {
-  agentSetup: { files: { path: string; kind: string }[]; summary?: Summary };
-  messages: { code: string }[];
-};
-
-async function runCheck(repoFiles: string[]): Promise<ReportLike> {
+async function runCheck(repoFiles: string[]): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   return check({
     version: "0.1.0",
@@ -21,7 +16,7 @@ async function runCheck(repoFiles: string[]): Promise<ReportLike> {
     repoRoot: "/home/runner/work/demo/demo",
     threshold: 80,
     repoFiles,
-  }) as unknown as ReportLike;
+  });
 }
 
 describe("agent setup summary (agent-setup-inventory)", () => {
@@ -112,7 +107,7 @@ describe("agent setup summary (agent-setup-inventory)", () => {
         files: [{ path: "a.ts", percent: 90, coveredLines: 9, coverableLines: 10, uncoveredLines: [3] }],
         meetsThreshold: true,
       },
-    }) as unknown as ReportLike;
+    });
     const withSummary = (summary?: unknown) => ({
       ...built,
       agentSetup:

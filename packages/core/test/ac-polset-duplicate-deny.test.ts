@@ -36,7 +36,7 @@ describe("a repeated deny key: the last one counts", { timeout: 60_000 }, () => 
         document: { version: 1, setup: { required_permissions_deny: ["Bash(rm -rf:*)"] } },
       },
       policySettingsSources: { files: [{ path: ".claude/settings.json", text: `${lines.join("\n")}\n` }], dropped: [] },
-    } as never);
+    });
     expectValidReport(report);
 
     // fix-hints (H6): every finding now carries a `fix`; the pinned literal is unchanged, so it is read without it.

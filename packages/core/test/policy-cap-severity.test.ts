@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseUnifiedDiff } from "../src/index.js";
 import { evaluatePolicyRules, MAX_RULE_VIOLATIONS } from "../src/policy/rules/evaluate.js";
 import type { PolicyRuleInput } from "../src/policy/rules/types.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
@@ -18,7 +19,7 @@ const DIR = "policy-settings/cap-severity/";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const REAL = ".claude/settings.json";
 const POLICY_PATH = "policy/org.json";
-const POLICY_DOCUMENT = JSON.parse(fixture(`${DIR}policy.json`)) as unknown;
+const POLICY_DOCUMENT = JSON.parse(fixture(`${DIR}policy.json`)) as PolicyDocument;
 const REAL_TEXT = fixture(`${DIR}real-settings.json.txt`);
 const DECOY_TEXT = fixture(`${DIR}decoy-settings.json.txt`);
 const FILE_POLICY = { source: "file", version: null, path: POLICY_PATH, document: POLICY_DOCUMENT } as const;
@@ -66,7 +67,7 @@ function run(input: { diff: string; files: { path: string; text: string }[]; rep
     repoFiles: ["AGENTS.md", POLICY_PATH, "src/a.ts", ...input.repoFiles],
     policy: FILE_POLICY,
     policySettingsSources: { files: input.files, dropped: [] },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }
@@ -78,7 +79,7 @@ describe("the per-rule policy cap keeps blocking violations first", { timeout: 6
   it("60 violations of one rule: the single block one, last by path, is kept; omitted counts 10; within a severity the order is path, line, detail", () => {
     const decoys = decoyPaths(59);
     const files = [{ path: REAL, text: REAL_TEXT }, ...decoys.map((path) => ({ path, text: DECOY_TEXT }))];
-    const input = {
+    const input: PolicyRuleInput = {
       policy: { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: POLICY_DOCUMENT },
       agentSetupFileCount: 1,
       agentTools: [],
@@ -87,7 +88,7 @@ describe("the per-rule policy cap keeps blocking violations first", { timeout: 6
       configPath: null,
       ignored: [],
       settingsSources: { files, dropped: [] },
-    } as unknown as PolicyRuleInput;
+    };
     const evaluation = evaluatePolicyRules(input);
     const p02 = evaluation.violations.filter((v) => v.id === "P02");
 

@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
 import { codeRow } from "./codeTable.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // E3 item 23 (policy settings), AC-25. check() is loaded inside the test body: the AC test is written before the build
 // adds the settings rules, so nothing the build adds may run while this file loads. (CORE-132: the report.v1.json
@@ -12,7 +14,7 @@ const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 const CODES = ["POLICY_P02", "POLICY_P03", "POLICY_P04", "POLICY_P05", "POLICY_P06", "POLICY_SETTINGS_INVALID"];
 
-const DOCUMENT = {
+const DOCUMENT: PolicyDocument = {
   version: 1,
   setup: {
     forbidden_permissions: ["Bash(curl:*)"],
@@ -37,7 +39,7 @@ const MCP = '{\n  "mcpServers": {\n    "notes": { "command": "node" },\n    "evi
 describe("report v2 with the P02–P06 violations and the six codes", { timeout: 60_000 }, () => {
   it("AC-25: a report with P02–P06 violations on lines and each new code validates against schema/report.v2.json, and the codes are MessageCode members", async () => {
     const { check } = await import("./text-coverage.js");
-    const run = (sources: unknown) => {
+    const run = (sources: TextCheckInput["policySettingsSources"]) => {
       const report = check({
         version: "0.1.0",
         coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -47,7 +49,7 @@ describe("report v2 with the P02–P06 violations and the six codes", { timeout:
         repoFiles: [...fixture("golden/files.txt").trim().split("\n"), ".claude/settings.json", ".mcp.json"],
         policy: { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: DOCUMENT },
         policySettingsSources: sources,
-      } as never);
+      });
       expectValidReport(report);
       return report;
     };

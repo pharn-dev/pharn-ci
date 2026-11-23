@@ -330,7 +330,7 @@ describe("instruction files named like test files (CORE-93)", () => {
       repoRoot: "/home/runner/work/demo/demo",
       threshold: null,
       repoFiles: [".cursor/rules/a.test.mdc"],
-    } as never);
+    });
     expectValidReport(report);
     expect(report.verdict).toBe("fail");
     expect(report.injection?.signals.map((s) => [s.id, s.path, s.severity])).toEqual([

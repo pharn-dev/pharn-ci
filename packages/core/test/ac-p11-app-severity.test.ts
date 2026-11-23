@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts } from "../src/agents.js";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -8,7 +10,7 @@ import { expectValidReport } from "./schema.js";
 // this file loads.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const AGENT_FACTS = {
+const AGENT_FACTS: AgentPrFacts = {
   pr: {
     author: { login: "claude[bot]", type: "Bot" },
     labels: [],
@@ -17,7 +19,7 @@ const AGENT_FACTS = {
 };
 
 /** An app policy from workflows/policy.json with the given protected_paths_mode and policy.rules.P11. */
-function appPolicy(mode: string | undefined, rule: string | undefined) {
+function appPolicy(mode: string | undefined, rule: string | undefined): ResolvedPolicy {
   const base = JSON.parse(fixture("policy-rules/p11/workflows/policy.json"));
   const document = {
     ...base,
@@ -38,7 +40,7 @@ async function run(mode: string | undefined, rule: string | undefined): Promise<
     repoFiles: ["AGENTS.md", ".github/workflows/ci.yml", "src/a.ts"],
     policy: appPolicy(mode, rule),
     agentPrFacts: AGENT_FACTS,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

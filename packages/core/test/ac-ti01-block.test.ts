@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() and the fixtures are loaded inside each test body: the AC tests are written before TI01 and
 // fixtures/test-integrity/TI01/ exist, so nothing that depends on them may run while the file loads.
@@ -12,7 +13,7 @@ type Mode = "block" | "warn" | "off";
 
 async function runCheck(diff: string, mode?: Mode) {
   const { check } = await import("./text-coverage.js");
-  const input = {
+  const input: TextCheckInput = {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },
     diff: { text: fixture(`test-integrity/TI01/${diff}`) },
@@ -21,7 +22,7 @@ async function runCheck(diff: string, mode?: Mode) {
     repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
     ...(mode === undefined ? {} : { testIntegrityMode: { input: mode } }),
   };
-  const report = check(input as Parameters<typeof check>[0]);
+  const report = check(input);
   expectValidReport(report);
   return report;
 }

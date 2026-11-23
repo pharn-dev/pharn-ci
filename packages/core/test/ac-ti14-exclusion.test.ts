@@ -30,7 +30,7 @@ async function run(diff: string, exclude: string[]) {
     repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
     exclude,
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

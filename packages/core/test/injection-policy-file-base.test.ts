@@ -35,7 +35,7 @@ function run(head: string, policyFileBase: PolicyFileBase | undefined): Report {
     repoFiles: ["AGENTS.md", POLICY_PATH, "docs/notes.md", "src/a.ts"],
     policy: file(policyFixture(head)),
     ...(policyFileBase === undefined ? {} : { policyFileBase }),
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }
@@ -138,7 +138,7 @@ describe("agentPolicyOf has no such early return: a head copy without an agents 
           commits: [{ authorLogin: "octocat", committerLogin: "octocat", message: "Fix the parser\n" }],
         },
       },
-    } as never);
+    });
     expectValidReport(report);
     expect((report.policy?.violations ?? []).filter((v) => v.id === "P11").map((v) => v.path)).toContain(
       "migrations/002.sql",

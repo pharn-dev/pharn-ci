@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report, ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -10,7 +11,7 @@ import { withoutFix } from "./without-fix.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-async function run(document: unknown, files: Record<string, string>): Promise<Report> {
+async function run(document: PolicyDocument, files: Record<string, string>): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -21,7 +22,7 @@ async function run(document: unknown, files: Record<string, string>): Promise<Re
     repoFiles: ["AGENTS.md", "src/a.ts", ...Object.keys(files)],
     policy: { source: "file", version: null, path: "policy/org.json", document },
     policySettingsSources: { files: Object.entries(files).map(([path, text]) => ({ path, text })), dropped: [] },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }
@@ -43,7 +44,7 @@ const PREFIX = "allow rule overlaps forbidden permission ";
 
 describe("org policy rule P02: forbidden permission allowed", { timeout: 60_000 }, () => {
   it("AC-7: broader, equal and inside allow entries each give one P02 block at their line naming the first overlapping forbidden entry; inert, partial-overlap, unrelated and ask entries give none; deny excuses nothing", async () => {
-    const document = {
+    const document: PolicyDocument = {
       version: 1,
       setup: { forbidden_permissions: ["Bash(rm -rf:*)", "Bash(curl:*)", "WebFetch", "Bash(rm:*)"] },
     };

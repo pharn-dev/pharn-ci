@@ -54,7 +54,7 @@ describe("the renderer", () => {
       repoRoot: "/home/runner/work/demo/demo",
       threshold: 80,
       repoFiles: fixture("golden/files.txt").trim().split("\n"),
-    } as Parameters<typeof check>[0]);
+    });
     const report = {
       ...base,
       testIntegrity: {

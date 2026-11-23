@@ -1,4 +1,4 @@
-import type { Message } from "../src/report.js";
+import type { Message, Report } from "../src/report.js";
 // A8 step 1 (tests exercise the changed lines) re-pins the tests that compare a report made WITH test sources to a
 // committed golden made without them: with sources, check() now also runs the tests-exercise check, so a golden whose
 // diff changes a JS/TS source file that no changed test imports gains exactly one TESTS_NOT_EXERCISING_CHANGES warn
@@ -8,11 +8,9 @@ import type { Message } from "../src/report.js";
 /** The code the tests-exercise check adds. */
 export const EXERCISE_CODE = "TESTS_NOT_EXERCISING_CHANGES";
 
-type ReportLike = { verdict: string; messages: Message[]; testIntegrity?: Record<string, unknown> };
-
 /** The `TESTS_NOT_EXERCISING_CHANGES` messages of a report. */
-export function exerciseMessages(report: unknown): Message[] {
-  return (report as ReportLike).messages.filter((message) => message.code === EXERCISE_CODE);
+export function exerciseMessages(report: Report): Message[] {
+  return report.messages.filter((message) => message.code === EXERCISE_CODE);
 }
 
 /**
@@ -20,14 +18,14 @@ export function exerciseMessages(report: unknown): Message[] {
  * `testIntegrity.exercise`, and with the verdict worked out again from the other messages (fail on an error, warn on a
  * warn, else pass). Every other key keeps its value and its place.
  */
-export function withoutExerciseCheck<T>(report: T): T {
-  const copy = structuredClone(report) as unknown as ReportLike;
+export function withoutExerciseCheck(report: Report): Report {
+  const copy = structuredClone(report);
   copy.messages = copy.messages.filter((message) => message.code !== EXERCISE_CODE);
-  if (copy.testIntegrity !== undefined) delete copy.testIntegrity.exercise;
+  delete copy.testIntegrity.exercise;
   copy.verdict = copy.messages.some((m) => m.level === "error")
     ? "fail"
     : copy.messages.some((m) => m.level === "warn")
       ? "warn"
       : "pass";
-  return copy as unknown as T;
+  return copy;
 }

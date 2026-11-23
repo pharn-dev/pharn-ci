@@ -60,7 +60,7 @@ describe("CORE-69: a modified Python test file keeps the per-file warning unless
     expect(controlMessages[0]?.text, "the control is the whole-run form").toContain("TI02 and TI05 did not run");
     expect(controlMessages[0]?.level, "the control is an error").toBe("error");
 
-    const cases: [string, Record<string, unknown>][] = [
+    const cases: [string, Partial<TextCheckInput>][] = [
       [
         "no index, dropped as too-large on both sides",
         {

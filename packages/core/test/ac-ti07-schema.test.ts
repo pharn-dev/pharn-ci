@@ -63,7 +63,7 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
 
     // A report carrying a well-formed changes object validates; an extra key anywhere in it does not.
     const { check } = await import("./text-coverage.js");
-    const report = structuredClone(
+    const checked = structuredClone(
       check({
         version: "0.1.0",
         coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -73,7 +73,9 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
         repoFiles: fixture("golden/files.txt").trim().split("\n"),
         testIntegrityMode: { input: "warn" },
       }),
-    ) as unknown as { testIntegrity: Record<string, unknown> };
+    );
+    // The changes objects set below include invalid ones on purpose, so the report is held through a wider type.
+    const report: { testIntegrity: { changes?: unknown } } = checked;
     const entry = { path: "src/a.test.ts", name: "a › new one", line: 4 };
     const good = {
       totals: { added: 1, removed: 0, modified: 0, renamed: 0 },

@@ -1,11 +1,13 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { DiffFile } from "../src/diff/unified.js";
 import type { Report } from "../src/report.js";
 import { dependencyCase } from "./dependencies-helpers.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // fix-hints (H6), AC-6. check() and the core's fix table are loaded inside the test body: the AC test is written
 // before the build adds the table and the `fix` objects. The runs are the AC-5 fixtures, all of them existing ones;
@@ -31,7 +33,7 @@ function sideFiles(dir: string): Array<{ path: string; text: string }> {
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
-const tiInput = (text: string) => ({
+const tiInput = (text: string): TextCheckInput => ({
   version: "0.1.0",
   coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
   diff: { text },
@@ -41,7 +43,7 @@ const tiInput = (text: string) => ({
   testIntegrityMode: { input: "block" },
 });
 
-function ti05Input() {
+function ti05Input(): TextCheckInput {
   const root = `${FIXTURES}test-integrity/TI05/block-emptied/`;
   const base = sideFiles(`${root}base`);
   const head = sideFiles(`${root}head`);
@@ -59,7 +61,7 @@ function ti05Input() {
 
 const commit = (message: string) => ({ authorLogin: "octocat", committerLogin: "octocat", message });
 
-const policyInput = () => ({
+const policyInput = (): TextCheckInput => ({
   version: "0.1.0",
   coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
   diff: { text: fixture("policy-rules/p11/workflows/ci.diff") + fixture("policy-rules/p14/files/over-cap.diff") },
@@ -77,8 +79,8 @@ const policyInput = () => ({
   },
 });
 
-function staleInput() {
-  const modified = (path: string) => ({ path, oldPath: path, status: "modified", addedLines: [1] });
+function staleInput(): TextCheckInput {
+  const modified = (path: string): DiffFile => ({ path, oldPath: path, status: "modified", addedLines: [1] });
   return {
     version: "0.7.0",
     coverage: { text: "SF:src/index.ts\nDA:1,1\nend_of_record\n", format: "lcov" },
@@ -108,7 +110,7 @@ function staleInput() {
   };
 }
 
-const injectionInput = (name: string) => ({
+const injectionInput = (name: string): TextCheckInput => ({
   version: "0.1.0",
   coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
   diff: { text: injectionFixture(name) },
@@ -117,7 +119,7 @@ const injectionInput = (name: string) => ({
   repoFiles: ["AGENTS.md", "src/a.ts"],
 });
 
-const CASES: Array<[string, () => unknown]> = [
+const CASES: Array<[string, () => TextCheckInput]> = [
   ["TI01", () => tiInput(fixture("test-integrity/TI01/block-root-tests.diff"))],
   ["TI05", ti05Input],
   ["TI14", () => tiInput(fixture("test-integrity/TI14/block-threshold-lowered.diff"))],
@@ -131,10 +133,7 @@ const CASES: Array<[string, () => unknown]> = [
 ];
 
 async function reports(): Promise<{ all: Array<[string, Report]>; table: Record<string, Entry> }> {
-  const core = { ...(await import("./text-coverage.js")), ...(await import("../src/fix/table.js")) } as unknown as {
-    check(input: unknown): Report;
-    MESSAGE_FIXES?: Record<string, Entry>;
-  };
+  const core = { ...(await import("./text-coverage.js")), ...(await import("../src/fix/table.js")) };
   const all = CASES.map(([name, input]): [string, Report] => {
     const report = core.check(input());
     expectValidReport(report);

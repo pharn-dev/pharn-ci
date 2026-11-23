@@ -16,10 +16,11 @@ describe("the new P07 core modules are pure and exported", { timeout: 60_000 }, 
       expect(purityViolations(text), module).toEqual([]);
     }
 
-    const core = {
+    // Read by name: the export names are strings.
+    const core: Record<string, unknown> = {
       ...(await import("../src/policy/rules/p07.js")),
       ...(await import("../src/setup/instructions.js")),
-    } as unknown as Record<string, unknown>;
+    };
     expect(Array.isArray(core.INSTRUCTION_KINDS), "INSTRUCTION_KINDS").toBe(true);
     for (const name of [
       "instructionScope",

@@ -1,11 +1,15 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts } from "../src/agents.js";
+import type { DiffFile } from "../src/diff/unified.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report } from "../src/report.js";
 import { dependencyCase } from "./dependencies-helpers.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // fix-hints (H6), AC-5. check() and the core's fix table are loaded inside the test body: the AC test is written
 // before the build adds the table and the `fix` objects, so nothing the build adds may run while this file loads. Every
@@ -37,16 +41,14 @@ const EXPECTED_KIND: Record<string, string> = {
 };
 
 async function load() {
-  const core = { ...(await import("./text-coverage.js")), ...(await import("../src/fix/table.js")) } as unknown as {
-    check(input: unknown): Report;
-    SIGNAL_FIXES?: Record<string, Entry>;
-  };
-  const run = (input: unknown): Report => {
+  const core = { ...(await import("./text-coverage.js")), ...(await import("../src/fix/table.js")) };
+  const run = (input: TextCheckInput): Report => {
     const report = core.check(input);
     expectValidReport(report);
     return report;
   };
-  return { run, table: core.SIGNAL_FIXES ?? {} };
+  const table: Record<string, Entry> = core.SIGNAL_FIXES;
+  return { run, table };
 }
 
 /** The finding's own path, or path:line when the line is not null; no target for a finding with no path. */
@@ -87,7 +89,7 @@ function expectAllFindings(report: Report, table: Record<string, Entry>): number
 const ids = (findings: Finding[] | undefined) => [...new Set((findings ?? []).map((f) => f.id))].sort();
 
 /** A test-integrity fixture diff under fixtures/test-integrity/, with the coverage and files of test-files-deleted. */
-function tiInput(text: string, extra: Record<string, unknown> = {}) {
+function tiInput(text: string, extra: Partial<TextCheckInput> = {}): TextCheckInput {
   return {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -117,7 +119,7 @@ function sideFiles(dir: string): Array<{ path: string; text: string }> {
 }
 
 /** The TI05 case fixtures/test-integrity/TI05/block-emptied, with its test sources at base and head. */
-function ti05Input() {
+function ti05Input(): TextCheckInput {
   const root = `${FIXTURES}test-integrity/TI05/block-emptied/`;
   const base = sideFiles(`${root}base`);
   const head = sideFiles(`${root}head`);
@@ -134,13 +136,13 @@ function ti05Input() {
 }
 
 const commit = (message: string) => ({ authorLogin: "octocat", committerLogin: "octocat", message });
-const AGENT_FACTS = {
+const AGENT_FACTS: AgentPrFacts = {
   pr: { author: { login: "claude[bot]", type: "Bot" }, labels: [], commits: [commit("Add the feature\n")] },
 };
 
 /** An agent PR that changes a protected workflow (P11) and more files than the policy's cap (P14). */
-function policyInput() {
-  const document = {
+function policyInput(): TextCheckInput {
+  const document: PolicyDocument = {
     version: 1,
     agents: { protected_paths: [".github/workflows/**"], max_files: 3 },
   };
@@ -157,8 +159,8 @@ function policyInput() {
 }
 
 /** A change that touches CLAUDE.md, whose stale tokens give SI01, SI02 and SI03 findings. */
-function staleInput() {
-  const modified = (path: string) => ({ path, oldPath: path, status: "modified", addedLines: [1] });
+function staleInput(): TextCheckInput {
+  const modified = (path: string): DiffFile => ({ path, oldPath: path, status: "modified", addedLines: [1] });
   return {
     version: "0.7.0",
     coverage: { text: "SF:src/index.ts\nDA:1,1\nend_of_record\n", format: "lcov" },
@@ -188,7 +190,7 @@ function staleInput() {
   };
 }
 
-function injectionInput(name: string) {
+function injectionInput(name: string): TextCheckInput {
   return {
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -202,7 +204,7 @@ function injectionInput(name: string) {
 describe("fix hints on every finding of a report", { timeout: 120_000 }, () => {
   it("AC-5: test-integrity signals (TI01, TI05, TI14, TI11) carry the table's kind and hint and their path or path:line as target; the reports validate", async () => {
     const { run, table } = await load();
-    const cases: Array<[string, unknown]> = [
+    const cases: Array<[string, TextCheckInput]> = [
       ["TI01", tiInput(fixture("test-integrity/TI01/block-root-tests.diff"))],
       ["TI05", ti05Input()],
       ["TI14", tiInput(fixture("test-integrity/TI14/block-threshold-lowered.diff"))],

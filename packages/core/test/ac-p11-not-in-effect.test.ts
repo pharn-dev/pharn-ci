@@ -5,6 +5,7 @@ import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report, ReportMeta } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // E3 item 24a part B (P11), AC-8. check() and evaluatePolicyRules() are loaded inside the test body and
 // fixtures/policy-rules/p11/ is read there too: the AC test is written before the build adds rule P11 and its
@@ -53,7 +54,7 @@ describe("org policy rule P11: when it is not in effect", { timeout: 60_000 }, (
     const protecting = JSON.parse(fixture("policy-rules/p11/src/policy.json"));
     expect(protecting.agents.protected_paths).toEqual(["src/**"]);
 
-    const run = (extra: Record<string, unknown>) => {
+    const run = (extra: Partial<TextCheckInput>) => {
       const report = core.check({
         version: "0.1.0",
         coverage: { text: fixture("golden/coverage.info"), format: "lcov" },

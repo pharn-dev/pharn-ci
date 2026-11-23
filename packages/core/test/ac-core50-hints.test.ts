@@ -5,6 +5,7 @@ import type { Report, TestIntegritySignal as Signal } from "../src/report.js";
 import type { TestSourceDrop, TestSourceDropReason } from "../src/testSources.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // CORE-50 (binary-diff-not-blind). check() and renderMarkdown() are loaded inside each test body: the AC tests are
 // written before the binary findings and their hints exist, so nothing the build changes may run while the file loads.
@@ -60,7 +61,7 @@ function loadCase(name: string): { diff: string; sources: Sources | undefined } 
   };
 }
 
-async function run(diff: string, sources?: Sources, extra: Record<string, unknown> = {}): Promise<Report> {
+async function run(diff: string, sources?: Sources, extra: Partial<TextCheckInput> = {}): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",

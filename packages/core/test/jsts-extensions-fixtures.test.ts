@@ -56,7 +56,7 @@ describe("js-ts-extensions fixtures", () => {
   for (const c of CASES) {
     it(`${c.dir}: ${c.signal === null ? "no TI13 signal or message" : `${c.signal} at block naming ${c.path}`}`, () => {
       const report = run(c.dir);
-      const signals = report.testIntegrity.signals as unknown as Array<{ id: string; severity: string; path: string }>;
+      const signals = report.testIntegrity.signals;
       if (c.signal === null) {
         expect(signals.filter((s) => s.id === "TI13")).toEqual([]);
         expect(report.messages.filter((m) => String(m.code) === "TEST_INTEGRITY_TI13")).toEqual([]);

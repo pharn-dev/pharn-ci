@@ -19,7 +19,7 @@ export async function runDiff(text: string, mode: "block" | "warn" | "off" = "bl
     threshold: 80,
     repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
     testIntegrityMode: { input: mode },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

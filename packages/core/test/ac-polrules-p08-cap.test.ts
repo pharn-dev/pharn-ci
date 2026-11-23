@@ -23,7 +23,7 @@ async function run(repoFiles: string[], forbidden: string[]): Promise<Report> {
       fetchedAt: "2026-10-26T12:00:00.000Z",
       document: { version: 1, setup: { forbidden_files: forbidden } },
     },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

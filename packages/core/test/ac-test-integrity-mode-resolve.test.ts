@@ -19,7 +19,7 @@ async function run(testIntegrityMode?: Setting) {
     threshold: 80,
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     ...(testIntegrityMode === undefined ? {} : { testIntegrityMode }),
-  } as never);
+  });
 }
 
 const withCode = (report: Awaited<ReturnType<typeof run>>, code: string) =>

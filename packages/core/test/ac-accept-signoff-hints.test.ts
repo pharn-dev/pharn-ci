@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Message, Report, TestIntegritySignal } from "../src/report.js";
 import { fixture } from "./helpers.js";
 
 // check() and renderMarkdown() are loaded inside the test body: the AC tests are written before the accept label
@@ -38,16 +39,18 @@ async function reportWith(acceptLabel: string | undefined) {
     threshold: 80,
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
-  const signals = IDS.map((id, i) => ({
-    id,
-    severity: "block",
-    path: `src/f${i}.test.ts`,
-    line: i + 1,
-    detail: `detail-${id}`,
-  }));
-  const messages = IDS.map((id) => ({ level: "error", code: `TEST_INTEGRITY_${id}`, text: `text-${id}` }));
-  return {
+  });
+  const signals = IDS.map(
+    (id, i): TestIntegritySignal => ({
+      id,
+      severity: "block",
+      path: `src/f${i}.test.ts`,
+      line: i + 1,
+      detail: `detail-${id}`,
+    }),
+  );
+  const messages = IDS.map((id): Message => ({ level: "error", code: `TEST_INTEGRITY_${id}`, text: `text-${id}` }));
+  const report: Report = {
     ...base,
     verdict: "fail",
     messages: [...base.messages, ...messages],
@@ -57,7 +60,8 @@ async function reportWith(acceptLabel: string | undefined) {
       signals,
       ...(acceptLabel === undefined ? {} : { acceptLabel }),
     },
-  } as unknown as typeof base;
+  };
+  return report;
 }
 
 /** The lines of the Test integrity section: from its heading to the line before the next `### ` heading. */

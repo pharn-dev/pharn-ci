@@ -17,7 +17,7 @@ const base = check({
   repoRoot: "/home/runner/work/demo/demo",
   threshold: 80,
   repoFiles: fixture("golden/files.txt").trim().split("\n"),
-} as Parameters<typeof check>[0]);
+});
 
 const signal = (id: string, severity: TestIntegritySignal["severity"], path: string, line: number) =>
   ({ id, severity, path, line, detail: `${id} ${severity} finding.` }) as TestIntegritySignal;

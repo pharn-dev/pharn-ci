@@ -24,7 +24,7 @@ describe("golden: fixture diff + lcov + exclusions -> Report v2", () => {
       threshold: config.coverage?.threshold ?? null,
       repoFiles: fixture("golden-exclusions/files.txt").trim().split("\n"),
       exclude,
-    } as Parameters<typeof check>[0]);
+    });
 
     // Asserted before the snapshots, so a wrong report fails here instead of being written as a new snapshot.
     expectValidReport(report);

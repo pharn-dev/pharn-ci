@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts } from "../src/agents.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -16,9 +17,9 @@ const DIFF = [
   "",
 ].join("\n");
 const HUMAN_COMMITS = [{ authorLogin: "octocat", committerLogin: "octocat", message: "Fix the parser\n" }];
-const HUMAN = { login: "octocat", type: "User" };
+const HUMAN: { login: string; type: "User" } = { login: "octocat", type: "User" };
 
-async function p11Text(pr: unknown): Promise<string> {
+async function p11Text(pr: AgentPrFacts["pr"]): Promise<string> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -34,7 +35,7 @@ async function p11Text(pr: unknown): Promise<string> {
       document: { version: 1, agents: { protected_paths: ["infra/**"] } },
     },
     agentPrFacts: { pr },
-  } as never);
+  });
   expectValidReport(report);
   expect((report.policy?.violations ?? []).filter((v) => v.id === "P11").map((v) => v.path)).toEqual(["infra/main.tf"]);
   const messages = report.messages.filter((m) => m.code === "POLICY_P11");

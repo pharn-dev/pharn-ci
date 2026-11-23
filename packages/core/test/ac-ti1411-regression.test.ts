@@ -36,7 +36,7 @@ async function run(diff: string, files: string, coverage: string, mode: "block" 
     threshold: 80,
     repoFiles: fixture(files).trim().split("\n"),
     testIntegrityMode: { input: mode },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

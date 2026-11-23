@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -9,7 +10,7 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-async function run(extra: Record<string, unknown>): Promise<Report> {
+async function run(extra: Omit<PolicyDocument, "version">): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -26,7 +27,7 @@ async function run(extra: Record<string, unknown>): Promise<Report> {
       ],
       dropped: [],
     },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

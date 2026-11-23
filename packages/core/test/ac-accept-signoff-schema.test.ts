@@ -50,7 +50,7 @@ describe("Report v2 with the accept label", () => {
         threshold: 80,
         repoFiles: REPO_FILES,
         testIntegrityMode: { input: "block" },
-      } as Parameters<typeof check>[0]);
+      });
     const block = checkWith(fixture("golden/coverage.info"));
     const below = checkWith(UNCOVERED);
     expect(block.testIntegrity.signals.map((s) => `${s.id} ${s.severity}`)).toEqual(["TI10 block", "TI13 block"]);

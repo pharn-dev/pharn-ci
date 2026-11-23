@@ -19,7 +19,7 @@ async function run(diff: string, mode: Mode) {
     threshold: 80,
     repoFiles: ["package.json", "src/a.ts", "src/a.test.ts", "tools/run.py"],
     testIntegrityMode: { input: mode },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

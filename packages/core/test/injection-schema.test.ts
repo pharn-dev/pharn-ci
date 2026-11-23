@@ -33,7 +33,7 @@ function report(): Report {
     repoRoot: "/home/runner/work/demo/demo",
     threshold: null,
     repoFiles: ["AGENTS.md"],
-  } as never);
+  });
 }
 
 describe("schema/report.v2.json for the prompt-injection scan", () => {

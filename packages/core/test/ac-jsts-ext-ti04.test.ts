@@ -34,7 +34,7 @@ describe("check(): TI04 in a .test.mts test file", () => {
       threshold: 80,
       repoFiles: REPO_FILES,
       testIntegrityMode: { input: "block" },
-    } as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
 
     const signals = report.testIntegrity.signals.filter((s) => String(s.id) === "TI04");

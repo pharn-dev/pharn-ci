@@ -61,7 +61,7 @@ function p09(diff: string, ignored: ReturnType<typeof ignoredFor>) {
     configPath: ".pharn/ci.yml",
     policy: APP,
     policyIgnored: ignored,
-  } as never);
+  });
   expectValidReport(report);
   const violations = (report.policy?.violations ?? []) as Violation[];
   return {

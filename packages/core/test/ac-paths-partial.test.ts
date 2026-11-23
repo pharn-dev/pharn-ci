@@ -170,7 +170,7 @@ describe("check(): some coverage paths are not tracked files", () => {
       threshold: config.coverage?.threshold ?? null,
       repoFiles: lines("golden-exclusions/files.txt"),
       exclude: config.coverage?.exclude ?? [],
-    } as Parameters<typeof check>[0]);
+    });
     expectValidReport(exclusions);
     expect(partial(exclusions.messages)).toEqual([]);
     expect(asFile(exclusions)).toBe(fixture("golden-exclusions/report.json"));

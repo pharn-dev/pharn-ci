@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { AgentPrFacts } from "../src/agents.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -10,14 +11,14 @@ import { withoutFix } from "./without-fix.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const human = (message: string) => ({ authorLogin: "octocat", committerLogin: "octocat", message });
-const AGENT_FACTS = {
+const AGENT_FACTS: AgentPrFacts = {
   pr: { author: { login: "claude[bot]", type: "Bot" }, labels: [], commits: [human("Fix the parser\n")] },
 };
-const HUMAN_FACTS = {
+const HUMAN_FACTS: AgentPrFacts = {
   pr: { author: { login: "octocat", type: "User" }, labels: [], commits: [human("Fix the parser\n")] },
 };
 
-async function run(agentPrFacts: unknown): Promise<Report> {
+async function run(agentPrFacts: AgentPrFacts): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -33,7 +34,7 @@ async function run(agentPrFacts: unknown): Promise<Report> {
       document: JSON.parse(fixture("policy-rules/p11/workflows/policy.json")),
     },
     agentPrFacts,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

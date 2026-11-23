@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
 import { FIXTURES } from "./helpers.js";
 
 // The fixtures and the validator are read inside the test body: the build writes them, after this test.
@@ -21,7 +22,15 @@ const REQUIRED = [
   "boundaries-max.json",
 ];
 
-const SECTIONS = ["coverage", "setup", "test_integrity", "flaky", "policy", "agents", "dependencies"];
+const SECTIONS = [
+  "coverage",
+  "setup",
+  "test_integrity",
+  "flaky",
+  "policy",
+  "agents",
+  "dependencies",
+] as const satisfies readonly (keyof PolicyDocument)[];
 
 describe("validatePolicy and parsePolicyJson on fixtures/policy/valid/", () => {
   it("AC-2: every valid fixture is accepted by both, with a deep-equal policy in fresh objects", async () => {
@@ -42,7 +51,7 @@ describe("validatePolicy and parsePolicyJson on fixtures/policy/valid/", () => {
       if (!validated.ok) continue;
       expect(validated.policy, `validatePolicy ${name}`).toEqual(JSON.parse(text));
       expect(validated.policy).not.toBe(input);
-      const output = validated.policy as unknown as Record<string, unknown>;
+      const output = validated.policy;
       for (const section of SECTIONS) {
         if (!Object.hasOwn(output, section)) continue;
         expect(output[section], `${name} ${section}`).not.toBe(input[section]);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Message, Report } from "../src/report.js";
 import type { AgentConfigSources as Sources } from "../src/secrets/scan.js";
+import type { TestIntegrityModeSettings } from "../src/testIntegrityMode.js";
 import type { TestSourceFile as SourceFile, TestSourceDrop } from "../src/testSources.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -51,7 +52,7 @@ function goldenInput(extra: Partial<TextCheckInput> = {}): TextCheckInput {
 }
 
 /** A check input that passes on its own (threshold 70), with `paths` as the only agent setup files. */
-function passingInput(paths: string[], sources?: Sources, extra: Record<string, unknown> = {}) {
+function passingInput(paths: string[], sources?: Sources, extra: Partial<TextCheckInput> = {}) {
   return goldenInput({
     threshold: 70,
     repoFiles: [...paths, ...SOURCE_FILES],
@@ -329,7 +330,8 @@ describe("check A7: agent config secrets in the report", () => {
     const s01Levels = (report: Report) =>
       report.messages.filter((m) => m.code === "AGENT_CONFIG_SECRET_S01").map((m) => m.level);
 
-    for (const mode of [{ config: "off" }, { input: "off" }, { input: "off", config: "off" }]) {
+    const modes: TestIntegrityModeSettings[] = [{ config: "off" }, { input: "off" }, { input: "off", config: "off" }];
+    for (const mode of modes) {
       const label = JSON.stringify(mode);
       const report = check(passingInput([".mcp.json"], sources, { testIntegrityMode: mode }));
       expectValidReport(report);

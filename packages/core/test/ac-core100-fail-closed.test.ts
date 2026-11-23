@@ -3,7 +3,7 @@ import { type DiffFile, parseUnifiedDiff, type Report } from "../src/index.js";
 import { fixture } from "./helpers.js";
 import { addedFileDiff } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
-import { check } from "./text-coverage.js";
+import { check, type TextCheckInput } from "./text-coverage.js";
 
 // CORE-100 part 1 (R3.2, decision Q2: a cut the pull request can cause is an error where the check can block).
 // The diff reader keeps added text against two budgets of 8,000,000 code units: one for agent instruction and Markdown
@@ -16,7 +16,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const BUDGET = 8_000_000;
 const RLO = String.fromCharCode(0x202e);
 
-function run(diff: Parameters<typeof check>[0]["diff"], over: Record<string, unknown> = {}): Report {
+function run(diff: TextCheckInput["diff"], over: Partial<TextCheckInput> = {}): Report {
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -25,7 +25,7 @@ function run(diff: Parameters<typeof check>[0]["diff"], over: Record<string, unk
     threshold: null,
     repoFiles: ["AGENTS.md", "src/a.ts"],
     ...over,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }
@@ -84,7 +84,9 @@ describe("CORE-100: injection budgets and binary covered files fail closed", { t
   });
 
   it("AC-4: DIFF_BINARY_COVERED_FILE is an error under a threshold and a warning without one", () => {
-    const input = (threshold: number | null) => ({
+    const input = (
+      threshold: number | null,
+    ): Pick<TextCheckInput, "coverage" | "diff" | "threshold" | "repoFiles"> => ({
       coverage: { text: fixture("gate-tamper/coverage.info"), format: "lcov" },
       diff: { text: fixture("gate-tamper/binary.diff") },
       threshold,

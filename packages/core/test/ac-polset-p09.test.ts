@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { PolicySettingsDrop } from "../src/policy/settings/types.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report, ReportPolicyViolation as Violation } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -8,7 +10,7 @@ import { withoutFix } from "./without-fix.js";
 // the AC test is written before the build gives P09 class 4 its final levels, so nothing the build adds may run while
 // this file loads.
 
-type Drop = { path: string; reason: string };
+type Drop = PolicySettingsDrop;
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
@@ -39,7 +41,7 @@ const remove = (path: string) =>
 const diffOf = (...parts: string[]) => `${parts.join("\n")}\n`;
 
 async function run(input: {
-  document: unknown;
+  document: PolicyDocument;
   diff: string;
   files?: Record<string, string>;
   dropped?: Drop[];
@@ -63,7 +65,7 @@ async function run(input: {
             dropped: input.dropped ?? [],
           },
         }),
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }
@@ -86,7 +88,7 @@ const settings = (permissions: unknown) => `${JSON.stringify({ permissions }, nu
 // unchanged.
 describe("org policy rule P09: class 4 at its final level", { timeout: 60_000 }, () => {
   it("AC-22: an edited settings or MCP file is a block when it fails a rule or could not be checked and a warn when it only warns; a file that complies or supplies a requirement gives no entry; backup files are out and nested .mcp.json is in", async () => {
-    const forbid = { version: 1, setup: { forbidden_permissions: ["Bash(curl:*)"] } };
+    const forbid: PolicyDocument = { version: 1, setup: { forbidden_permissions: ["Bash(curl:*)"] } };
     const first = await run({
       document: forbid,
       diff: diffOf(

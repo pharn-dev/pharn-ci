@@ -66,7 +66,7 @@ describe("AI-agnostic agent setup in the report (ai-agnostic-inventory)", () => 
       threshold: null,
       missing: { reason: "diff-unavailable", detail: "no base" },
       agentSetup: { files: [{ path: "CLAUDE.md", kind: "claude-md" }] },
-    }) as unknown as Record<string, unknown>;
+    });
     expectValidReport(base);
 
     const withSetup = (files: { path: string; kind: string }[], byKind: Record<string, number>, tools: unknown[]) => ({

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -9,7 +10,12 @@ import { expectValidReport } from "./schema.js";
 type Source = { path: string; text: string };
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const APP = { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: { version: 1 } };
+const APP: ResolvedPolicy = {
+  source: "app",
+  version: 3,
+  fetchedAt: "2026-10-26T12:00:00.000Z",
+  document: { version: 1 },
+};
 /** `pnpm install` on line 3. */
 const AGENTS: Source = { path: "AGENTS.md", text: "# Agents\n\nRun `pnpm install`.\n" };
 /** `npm install` on line 1. */
@@ -29,7 +35,7 @@ async function run(files: Source[]): Promise<Report> {
     repoFiles: [...files.map((f) => f.path), "src/a.ts"],
     policy: APP,
     agentInstructionSources: { files, dropped: [] },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

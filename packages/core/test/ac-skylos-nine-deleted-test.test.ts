@@ -63,7 +63,7 @@ describe("Skylos nine: the deleted-test case is caught by TI01", () => {
       threshold: 80,
       repoFiles,
       testIntegrityMode: { input: "block" },
-    } as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
 
     const signals = report.testIntegrity.signals;

@@ -37,7 +37,7 @@ describe("TI06 and TI12: schema, exports and fixtures", () => {
     const core = {
       ...(await import("../src/signals/ti06.js")),
       ...(await import("../src/signals/ti12.js")),
-    } as unknown as Record<string, unknown>;
+    };
     expect(typeof core.detectTI06).toBe("function");
     expect(typeof core.detectTI12).toBe("function");
   });

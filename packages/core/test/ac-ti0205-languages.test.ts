@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Report } from "../src/report.js";
+import type { PythonTestIndex } from "../src/testIndex/pythonSides.js";
+import type { PythonIndexFile } from "../src/testIndex/pythonTypes.js";
+import type { TestSources } from "../src/testSources.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() and the test index are loaded inside the test body: the AC test is written before check() indexes test
 // sources, so nothing that depends on that may run while the file loads. Every input is written here. The five checks
@@ -47,13 +51,13 @@ const side = (ts: string, js: string, py: string) => ({
   ],
   dropped: [],
 });
-const SOURCES = {
+const SOURCES: TestSources = {
   base: side(jsText("adds"), jsText("adds"), pyText("test_adds")),
   head: side(jsText("adds up"), jsText("adds up"), pyText("test_adds_up")),
 };
 
 /** A plain-data Python index for the one .py file on each side, as the CLI and the Action pass it. */
-const pyIndex = (name: string, text: string) => {
+const pyIndex = (name: string, text: string): PythonIndexFile => {
   const body = "assert total([2, 3]) == 5";
   return {
     path: PY,
@@ -80,13 +84,13 @@ const pyIndex = (name: string, text: string) => {
     },
   };
 };
-const PYTHON_INDEX = {
+const PYTHON_INDEX: PythonTestIndex = {
   available: true,
   base: [pyIndex("test_adds", pyText("test_adds"))],
   head: [pyIndex("test_adds_up", pyText("test_adds_up"))],
 };
 
-async function run(input: Record<string, unknown>, mode: Mode = "block"): Promise<Report> {
+async function run(input: Partial<TextCheckInput>, mode: Mode = "block"): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",

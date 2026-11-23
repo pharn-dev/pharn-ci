@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { ReportPolicyViolation as Violation } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
@@ -10,7 +11,7 @@ import { withoutFix } from "./without-fix.js";
 // unit (a `.claude/` directory), and every unit but the case's one requirement satisfies the other two.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const DOCUMENT = {
+const DOCUMENT: PolicyDocument = {
   version: 1,
   setup: {
     required_hooks: [
@@ -77,7 +78,7 @@ describe("org policy rule P06: required hook missing", { timeout: 60_000 }, () =
       repoFiles: ["AGENTS.md", "src/a.ts", ...Object.keys(files)],
       policy: { source: "file", version: null, path: "policy/org.json", document: DOCUMENT },
       policySettingsSources: { files: Object.entries(files).map(([path, text]) => ({ path, text })), dropped: [] },
-    } as never);
+    });
     expectValidReport(report);
     // fix-hints (H6): every finding now carries a `fix`; the pinned literals are unchanged, so they are read without it.
     const p06 = withoutFix((report.policy?.violations ?? []).filter((v) => v.id === "P06"));

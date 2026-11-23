@@ -36,7 +36,7 @@ async function run(options: {
     repoRoot: REPO_ROOT,
     threshold: options.threshold,
     repoFiles,
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

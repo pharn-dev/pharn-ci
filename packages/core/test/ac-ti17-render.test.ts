@@ -23,7 +23,7 @@ async function report(diff: string) {
     threshold: 80,
     repoFiles: fixture(`${CASE}/files.txt`).trim().split("\n"),
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(result);
   return result;
 }

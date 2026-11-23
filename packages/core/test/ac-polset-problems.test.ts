@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { PolicySettingsDrop } from "../src/policy/settings/types.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Message } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
@@ -8,10 +10,10 @@ import { expectValidReport } from "./schema.js";
 // adds the settings rules, so nothing the build adds may run while this file loads.
 
 type Problem = { path: string | null; line: number | null; reason: string };
-type Drop = { path: string; reason: string };
+type Drop = PolicySettingsDrop;
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const FULL = {
+const FULL: PolicyDocument = {
   version: 1,
   setup: {
     forbidden_permissions: ["Bash(curl:*)"],
@@ -21,9 +23,13 @@ const FULL = {
     required_hooks: [{ event: "Stop" }],
   },
 };
-const P02_ONLY = { version: 1, setup: { forbidden_permissions: ["Bash(curl:*)"] } };
+const P02_ONLY: PolicyDocument = { version: 1, setup: { forbidden_permissions: ["Bash(curl:*)"] } };
 
-async function invalidOf(document: unknown, files: Record<string, string>, dropped: Drop[] = []): Promise<Message[]> {
+async function invalidOf(
+  document: PolicyDocument,
+  files: Record<string, string>,
+  dropped: Drop[] = [],
+): Promise<Message[]> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -34,7 +40,7 @@ async function invalidOf(document: unknown, files: Record<string, string>, dropp
     repoFiles: ["AGENTS.md", "src/a.ts", ...Object.keys(files), ...dropped.map((d) => d.path)],
     policy: { source: "file", version: null, path: "policy/org.json", document },
     policySettingsSources: { files: Object.entries(files).map(([path, text]) => ({ path, text })), dropped },
-  } as never);
+  });
   expectValidReport(report);
   return report.messages.filter((m) => m.code === "POLICY_SETTINGS_INVALID");
 }

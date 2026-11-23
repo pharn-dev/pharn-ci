@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
+import type { PolicyResponseValidation as Validation } from "../src/policy/response.js";
+import type { PolicyError } from "../src/policy/types.js";
 import { fixture } from "./helpers.js";
 
 // validatePolicyResponse() and the fixtures under fixtures/policy-response/ are loaded inside the test body: the AC
 // test is written before the response validator exists, so nothing the build adds may run while the file loads.
 // fixtures/policy-response/invalid.json maps a case name to an invalid envelope; the three large cases are built here
 // from valid.json.
-
-type PolicyError = { path: string; message: string };
-type Validation = { ok: true; response: Record<string, unknown> } | { ok: false; errors: PolicyError[] };
 
 /** RFC 6901: "" or a sequence of `/`-prefixed reference tokens, `~` only as `~0` or `~1`. */
 const POINTER = /^(\/([^~/]|~[01])*)*$/;
@@ -95,9 +94,6 @@ describe("the policy response envelope", () => {
     const { validatePolicyResponse, POLICY_MAX_ERRORS } = {
       ...(await import("../src/policy/limits.js")),
       ...(await import("../src/policy/response.js")),
-    } as unknown as {
-      validatePolicyResponse: (value: unknown) => Validation;
-      POLICY_MAX_ERRORS: number;
     };
     const valid = JSON.parse(fixture("policy-response/valid.json"));
     expect(Object.keys(valid).sort()).toEqual(["etag", "policy", "quarantine", "settings", "updatedAt", "version"]);
@@ -114,7 +110,7 @@ describe("the policy response envelope", () => {
       [...SMALL_CASES, ...UNREAD_CASES, ...Object.keys(SKIPPED_CASES)].sort(),
     );
     for (const [name, unknownName] of Object.entries(SKIPPED_CASES)) {
-      const skipped = validatePolicyResponse(invalid[name]) as Validation & { unknown?: unknown };
+      const skipped = validatePolicyResponse(invalid[name]);
       expect(skipped.ok, name).toBe(true);
       if (skipped.ok) {
         expect(skipped.response, `${name}: the unknown key is left out`).toEqual(asRead(valid));
@@ -122,7 +118,7 @@ describe("the policy response envelope", () => {
       }
     }
     for (const name of UNREAD_CASES) {
-      const unread = validatePolicyResponse(invalid[name]) as Validation & { unknown?: unknown };
+      const unread = validatePolicyResponse(invalid[name]);
       expect(unread.ok, name).toBe(true);
       if (unread.ok) {
         expect(unread.response, `${name}: only the keys the Action reads`).toEqual(asRead(valid));

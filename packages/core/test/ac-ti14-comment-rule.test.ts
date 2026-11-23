@@ -41,7 +41,7 @@ async function ti14(diff: string) {
     threshold: 80,
     repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report.testIntegrity.signals.filter((signal) => String(signal.id) === "TI14");
 }

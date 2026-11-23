@@ -2,11 +2,13 @@ import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { GITHUB_LOGIN } from "../src/acceptLabel.js";
-import { agentPrMetaFields } from "../src/agents.js";
+import { type AgentPrFacts, agentPrMetaFields } from "../src/agents.js";
 import { decideAcceptLabel, detectAgentPr, LOGIN_PATTERN, validatePolicyResponse } from "../src/index.js";
 import { POLICY_PATTERNS } from "../src/policy/grammar.js";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import { validatePolicy } from "../src/policy/validate.js";
-import type { Report } from "../src/report.js";
+import type { Report, ReportMeta } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { check } from "./text-coverage.js";
@@ -19,7 +21,7 @@ import { check } from "./text-coverage.js";
 type Case = { name: string; login: string; user: boolean; author: boolean };
 
 const CASES = (JSON.parse(fixture("emu-logins/logins.json")) as { cases: Case[] }).cases;
-const POLICY = JSON.parse(fixture("emu-logins/policy.json")) as Record<string, unknown>;
+const POLICY = JSON.parse(fixture("emu-logins/policy.json")) as PolicyDocument;
 const SCHEMA = JSON.parse(readFileSync(new URL("../../../schema/policy.v1.json", import.meta.url), "utf8")) as object;
 const validateSchema = new Ajv2020({ strict: true, allErrors: true }).compile(SCHEMA);
 const POLICY_LOGIN = new RegExp(POLICY_PATTERNS.LOGIN, "u");
@@ -30,7 +32,7 @@ const labeled = (login: string) => [
 ];
 const extraLogins = (login: string) => ({ version: 1, agents: { extra_logins: [login] } });
 
-const META = {
+const META: ReportMeta = {
   event: "pull_request",
   repository: "acme/widgets",
   repositoryId: 123,
@@ -43,17 +45,17 @@ const META = {
   actor: "mona-lisa_acme",
   upload: { status: "skipped" },
 };
-const prBy = (login: string) => ({
+const prBy = (login: string): AgentPrFacts => ({
   pr: {
     author: { login, type: "User" },
     labels: [],
     commits: [{ authorLogin: login, committerLogin: login, message: "Refactor the parser\n" }],
   },
 });
-const app = { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: POLICY };
-const file = { source: "file", version: null, path: ".pharn/policy.json", document: POLICY };
+const app: ResolvedPolicy = { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: POLICY };
+const file: ResolvedPolicy = { source: "file", version: null, path: ".pharn/policy.json", document: POLICY };
 
-function run(policy: unknown, agentPrFacts: unknown): Report {
+function run(policy: ResolvedPolicy, agentPrFacts: AgentPrFacts): Report {
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
@@ -64,7 +66,7 @@ function run(policy: unknown, agentPrFacts: unknown): Report {
     meta: META,
     policy,
     agentPrFacts,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

@@ -70,7 +70,7 @@ async function runAll(): Promise<Map<string, string[]>> {
       repoFiles: fixture(`skylos-nine/${name}/files.txt`).trim().split("\n"),
       testIntegrityMode: { input: "block" },
       ...sources,
-    } as Parameters<typeof check>[0]);
+    });
     expectValidReport(report);
     out.set(
       name,

@@ -33,7 +33,7 @@ async function run(diff: string) {
     threshold: 80,
     repoFiles: REPO_FILES,
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }
@@ -102,7 +102,8 @@ function forbiddenText(diffs: string[]): string[] {
       out.add(line);
       const pair = /^"([^"]+)":\s*"((?:[^"\\]|\\.)*)"/.exec(line);
       if (pair === null) continue;
-      const [, key, value] = pair as unknown as [string, string, string];
+      // Both groups always take part in a match; the defaults only give them the type string.
+      const [, key = "", value = ""] = pair;
       out.add(`"${key}"`);
       if (key !== "test") out.add(key);
       out.add(value);

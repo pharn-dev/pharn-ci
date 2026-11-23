@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -9,7 +10,12 @@ import { withoutFix } from "./without-fix.js";
 // while this file loads.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const FILE_POLICY = { source: "file", version: null, path: "policy/org.json", document: { version: 1 } };
+const FILE_POLICY: ResolvedPolicy = {
+  source: "file",
+  version: null,
+  path: "policy/org.json",
+  document: { version: 1 },
+};
 const CLASS_1 = {
   id: "P09",
   severity: "block",
@@ -28,7 +34,7 @@ async function run(diffFixture: string): Promise<Report> {
     threshold: null,
     repoFiles: ["AGENTS.md", "policy/org.json", "src/a.ts"],
     policy: FILE_POLICY,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

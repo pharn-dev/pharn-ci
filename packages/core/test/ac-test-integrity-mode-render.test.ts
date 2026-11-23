@@ -17,7 +17,7 @@ async function render(mode?: "block" | "warn" | "off") {
     threshold: 80,
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     ...(mode === undefined ? {} : { testIntegrityMode: { input: mode } }),
-  } as never);
+  });
   return { report, markdown: renderMarkdown(report) };
 }
 

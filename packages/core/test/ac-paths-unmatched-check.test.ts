@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Message } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check(), the renderer and the fixtures are loaded inside each test body: the AC tests are written before the
 // coverage path check and fixtures/coverage-paths/ exist, so nothing that depends on them may run while the file loads.
@@ -15,7 +16,7 @@ const asFile = (report: unknown) => `${JSON.stringify(report, null, 2)}\n`;
 
 async function runCheck(dir: string, options: CheckOptions) {
   const { check } = await import("./text-coverage.js");
-  const input = {
+  const input: TextCheckInput = {
     version: "0.1.0",
     coverage: { text: fixture(`coverage-paths/${dir}/coverage.info`), format: "lcov" as const },
     diff: { text: fixture(`coverage-paths/${dir}/pr.diff`) },
@@ -24,7 +25,7 @@ async function runCheck(dir: string, options: CheckOptions) {
     repoFiles: options.repoFiles ?? lines(`coverage-paths/${dir}/files.txt`),
     ...(options.coverageRoot === undefined ? {} : { coverageRoot: options.coverageRoot }),
   };
-  return check(input as Parameters<typeof check>[0]);
+  return check(input);
 }
 
 const withCode = (messages: readonly Message[], code: string) => messages.filter((message) => message.code === code);

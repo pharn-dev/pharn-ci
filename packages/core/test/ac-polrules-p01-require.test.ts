@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -12,7 +13,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const ORG_TEXT =
   "No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found, and agent setup is required by the org policy.";
 
-async function run(repoFiles: string[], document: unknown): Promise<Report> {
+async function run(repoFiles: string[], document: PolicyDocument): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -22,7 +23,7 @@ async function run(repoFiles: string[], document: unknown): Promise<Report> {
     threshold: null,
     repoFiles,
     policy: { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

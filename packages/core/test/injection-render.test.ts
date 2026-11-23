@@ -18,7 +18,7 @@ function run(diff: string): Report {
     repoRoot: "/home/runner/work/demo/demo",
     threshold: null,
     repoFiles: ["AGENTS.md", "src/a.ts"],
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

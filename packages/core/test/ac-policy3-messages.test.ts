@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import type { Message } from "../src/report.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() is loaded inside the test body: the AC test is written before CheckInput has `policy` and `policyIgnored`,
 // so nothing the build adds may run while the file loads. The ignored settings are passed to check() directly, in a
@@ -44,7 +46,7 @@ const shuffled = IGNORED.map((record, i) => ({ record, key: (i * 7919) % IGNORED
   .sort((a, b) => a.key - b.key)
   .map(({ record }) => record);
 
-async function checkWith(extra: Record<string, unknown>) {
+async function checkWith(extra: Partial<TextCheckInput>) {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -54,12 +56,17 @@ async function checkWith(extra: Record<string, unknown>) {
     threshold: 80,
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     ...extra,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }
 
-const APP = { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: { version: 1 } };
+const APP: ResolvedPolicy = {
+  source: "app",
+  version: 3,
+  fetchedAt: "2026-10-26T12:00:00.000Z",
+  document: { version: 1 },
+};
 
 describe("the two policy messages", () => {
   it("AC-25: one POLICY_OVERRIDE_IGNORED lists the first 20 settings sorted with no duplicate, then the count of the rest; POLICY_UNAVAILABLE comes directly before it, after every other message", async () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -10,7 +11,7 @@ import { withoutFix } from "./without-fix.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-async function run(policy: unknown): Promise<Report> {
+async function run(policy: ResolvedPolicy): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -20,7 +21,7 @@ async function run(policy: unknown): Promise<Report> {
     threshold: null,
     repoFiles: ["AGENTS.md", "src/a.ts"],
     policy,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

@@ -78,7 +78,7 @@ describe("TI08, TI15 and TI16 leave the earlier outputs alone", () => {
         threshold: 80,
         repoFiles: fixture(`skylos-nine/${name}/files.txt`).trim().split("\n"),
         testIntegrityMode: { input: "block" },
-      } as Parameters<typeof check>[0]);
+      });
       expectValidReport(report);
       none(report, `skylos-nine/${name}`);
     }

@@ -3,9 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Report } from "../src/report.js";
 import type { TestBlock as Block } from "../src/testIndex/types.js";
-import type { TestSourceFile as SourceFile } from "../src/testSources.js";
+import type { TestSourceFile as SourceFile, TestSources } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check(), the test index and the fixtures are loaded inside each test body: the AC tests are written before the TI01
 // moved-names rule and fixtures/test-integrity-precision/ exist, so nothing that depends on them may run while the
@@ -84,7 +85,7 @@ async function freshTests(c: Case): Promise<Block[]> {
   ];
 }
 
-async function run(c: Case, extra: Record<string, unknown>): Promise<Report> {
+async function run(c: Case, extra: Partial<TextCheckInput>): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -100,7 +101,7 @@ async function run(c: Case, extra: Record<string, unknown>): Promise<Report> {
   return report;
 }
 
-const withSources = (c: Case) => ({
+const withSources = (c: Case): Partial<TextCheckInput> => ({
   testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
 });
 
@@ -166,7 +167,7 @@ describe("TI01 precision: the moved-names rule falls back to today's block", () 
         c.base.some((f) => f.path === path),
         `${path} has base text`,
       ).toBe(true);
-    const testSources = {
+    const testSources: TestSources = {
       base: {
         files: c.base.filter((f) => !DELETED.includes(f.path)),
         dropped: DELETED.map((path) => ({ path, reason: "too-large" })),

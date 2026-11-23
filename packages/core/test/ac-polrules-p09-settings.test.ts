@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -12,7 +14,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const DETAIL = "this change edits a file the policy checks; its direction is not judged yet";
 const PATHS = [".claude/settings.json", ".mcp.json", "packages/a/.claude/settings.local.json"];
 
-async function run(policy: unknown): Promise<Report> {
+async function run(policy: ResolvedPolicy): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -22,12 +24,12 @@ async function run(policy: unknown): Promise<Report> {
     threshold: null,
     repoFiles: ["AGENTS.md", "src/a.ts"],
     policy,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }
 
-const app = (document: unknown) => ({
+const app = (document: PolicyDocument): ResolvedPolicy => ({
   source: "app",
   version: 3,
   fetchedAt: "2026-10-26T12:00:00.000Z",

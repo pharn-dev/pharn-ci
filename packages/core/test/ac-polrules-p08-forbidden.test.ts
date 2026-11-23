@@ -25,7 +25,7 @@ async function run(filesFixture: string): Promise<Report> {
       fetchedAt: "2026-10-26T12:00:00.000Z",
       document: JSON.parse(fixture("policy-rules/p08-violates/policy.json")),
     },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

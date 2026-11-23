@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { RenderMarkdownOptions } from "../src/render/markdown.js";
+import type { Report, ReportTestChanges, ReportTestChangesFile } from "../src/report.js";
 import { fixture } from "./helpers.js";
 
 // check() and the renderer are loaded inside each test body: the AC tests are written before the Tests changed table
@@ -9,24 +11,8 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const SUMMARY = "<details><summary>Tests changed";
 
 type Mode = "block" | "warn" | "off";
-interface FileRow {
-  path: string;
-  language: string;
-  added: unknown;
-  removed: unknown;
-  modified: unknown;
-  renamed: unknown;
-}
-interface Changes {
-  totals: { added: number; removed: number; modified: number; renamed: number };
-  files: FileRow[];
-  added: unknown[];
-  removed: unknown[];
-  modified: unknown[];
-  renamed: unknown[];
-}
 
-async function baseReport(mode: Mode): Promise<{ testIntegrity: Record<string, unknown> }> {
+async function baseReport(mode: Mode): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -37,12 +23,12 @@ async function baseReport(mode: Mode): Promise<{ testIntegrity: Record<string, u
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     testIntegrityMode: { input: mode },
   });
-  return structuredClone(report) as unknown as { testIntegrity: Record<string, unknown> };
+  return structuredClone(report);
 }
 
 /** `count` files `src/fNN.test.ts`, each with its own counts; totals sum them. */
-function changesOf(count: number): Changes {
-  const files: FileRow[] = Array.from({ length: count }, (_, i) => ({
+function changesOf(count: number): ReportTestChanges {
+  const files: ReportTestChangesFile[] = Array.from({ length: count }, (_, i) => ({
     path: `src/f${String(i).padStart(2, "0")}.test.ts`,
     language: "ts",
     added: i % 4,
@@ -50,7 +36,7 @@ function changesOf(count: number): Changes {
     modified: 1,
     renamed: i % 2,
   }));
-  const sum = (key: "added" | "removed" | "modified" | "renamed") => files.reduce((n, f) => n + (f[key] as number), 0);
+  const sum = (key: "added" | "removed" | "modified" | "renamed") => files.reduce((n, f) => n + f[key], 0);
   return {
     totals: { added: sum("added"), removed: sum("removed"), modified: sum("modified"), renamed: sum("renamed") },
     files,
@@ -73,9 +59,9 @@ function block(markdown: string): string[] {
 
 const fileRows = (lines: string[]) => lines.filter((line) => /^\| `[^`]+` \|/.test(line));
 
-async function render(report: unknown, options?: { maxRows?: number }): Promise<string> {
+async function render(report: Report, options?: RenderMarkdownOptions): Promise<string> {
   const { renderMarkdown } = await import("../src/render/markdown.js");
-  return renderMarkdown(report as never, options as never);
+  return renderMarkdown(report, options);
 }
 
 describe("renderMarkdown(): the Tests changed table's row cap and guards", () => {
@@ -95,7 +81,7 @@ describe("renderMarkdown(): the Tests changed table's row cap and guards", () =>
       expect(rows.map((row) => /^\| `([^`]+)` \|/.exec(row)?.[1])).toEqual(
         changes.files.slice(0, shown).map((f) => f.path),
       );
-      const first = changes.files[0] as FileRow;
+      const first = changes.files[0] as ReportTestChangesFile;
       expect(rows[0]).toBe(
         `| \`${first.path}\` | ${first.added} | ${first.removed} | ${first.modified} | ${first.renamed} |`,
       );
@@ -107,8 +93,9 @@ describe("renderMarkdown(): the Tests changed table's row cap and guards", () =>
   it("AC-12: a count cell that is not a number renders as 0", async () => {
     const report = await baseReport("warn");
     const changes = changesOf(2);
-    (changes.files[0] as FileRow).added = "<b>7</b>";
-    (changes.files[1] as FileRow).renamed = null;
+    // Count cells that are not numbers, on purpose: the wider row type lets the test set them.
+    (changes.files[0] as { added: unknown }).added = "<b>7</b>";
+    (changes.files[1] as { renamed: unknown }).renamed = null;
     report.testIntegrity.changes = changes;
     const lines = block(await render(report));
     const rows = fileRows(lines);

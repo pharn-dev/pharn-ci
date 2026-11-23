@@ -23,7 +23,7 @@ async function run(diff: string, configPath?: string) {
     repoFiles: fixture("test-files-deleted/files.txt").trim().split("\n"),
     testIntegrityMode: { input: "block" },
     ...(configPath === undefined ? {} : { configPath }),
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

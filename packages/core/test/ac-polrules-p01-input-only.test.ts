@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // E3 item 22 (policy rules), AC-3. check() is loaded inside the test body and fixtures/policy-rules/ is read there
 // too: the AC test is written before the build adds the rules and the fixtures, so nothing the build adds may run
@@ -9,7 +10,7 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-async function run(extra: Record<string, unknown>): Promise<Report> {
+async function run(extra: Partial<TextCheckInput>): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -21,7 +22,7 @@ async function run(extra: Record<string, unknown>): Promise<Report> {
     requireAgentSetup: true,
     expectAgentSetup: ["cursor"],
     ...extra,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

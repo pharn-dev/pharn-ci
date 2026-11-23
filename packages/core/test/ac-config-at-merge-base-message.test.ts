@@ -25,7 +25,7 @@ function run(diff: string, extra: Partial<Input> = {}) {
     threshold: null,
     repoFiles: fixture("config-at-merge-base/files.txt").trim().split("\n"),
     ...extra,
-  } as Input);
+  });
   expectValidReport(report);
   return report;
 }

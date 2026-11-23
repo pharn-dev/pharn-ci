@@ -28,7 +28,7 @@ async function goldenReport() {
     repoRoot: "/home/runner/work/demo/demo",
     threshold: 80,
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
-  }) as unknown as Record<string, unknown>;
+  });
 }
 
 describe("schema/report.v2.json", () => {
@@ -48,7 +48,7 @@ describe("schema/report.v2.json", () => {
     const report = await goldenReport();
     expect(validate(report), JSON.stringify(validate.errors)).toBe(true);
 
-    const testIntegrity = report.testIntegrity as Record<string, unknown>;
+    const testIntegrity = report.testIntegrity;
     expect(validate({ ...report, schemaVersion: "2" }), 'schemaVersion "2"').toBe(false);
     expect(validate({ ...report, schemaVersion: "1" }), 'schemaVersion "1"').toBe(false);
     expect(validate({ ...report, testIntegrity: { ...testIntegrity, extra: true } }), "unknown key").toBe(false);

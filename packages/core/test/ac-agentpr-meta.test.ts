@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { AgentPrFacts as Facts } from "../src/agents.js";
-import type { Report } from "../src/report.js";
+import type { Report, ReportMeta } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // The agents module and check() are loaded inside each test body, and fixtures/agent-pr/ is read there too: the AC
 // tests are written before the build adds them, so nothing the build adds may run while this file loads.
@@ -22,7 +23,7 @@ const humanPr = (commits: Commit[], extra: Partial<Facts> = {}): Facts => ({
   ...extra,
 });
 
-const META = {
+const META: ReportMeta = {
   event: "pull_request",
   repository: "pharn-dev/pharn-ci",
   repositoryId: 123,
@@ -36,9 +37,9 @@ const META = {
   upload: { status: "skipped" },
 };
 
-async function goldenReport(extra: Record<string, unknown> = {}): Promise<Report> {
+async function goldenReport(extra: Partial<TextCheckInput> = {}): Promise<Report> {
   const { check } = await import("./text-coverage.js");
-  const input = {
+  const input: TextCheckInput = {
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
     diff: { text: fixture("golden/pr.diff") },
@@ -47,7 +48,7 @@ async function goldenReport(extra: Record<string, unknown> = {}): Promise<Report
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     ...extra,
   };
-  return check(input as Parameters<typeof check>[0]);
+  return check(input);
 }
 
 // The first test of a file loads core's index cold, which can take seconds on a loaded host.

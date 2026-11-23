@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -11,7 +12,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const BUDGET = 2 ** 26;
 
 async function run(forbidden: string[], allow: string[]): Promise<Report> {
-  const document = {
+  const document: PolicyDocument = {
     version: 1,
     setup: {
       forbidden_permissions: forbidden,
@@ -39,7 +40,7 @@ async function run(forbidden: string[], allow: string[]): Promise<Report> {
       ],
       dropped: [],
     },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

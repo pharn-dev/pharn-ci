@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 import { withoutFix } from "./without-fix.js";
 
 // E3 item 22 (policy rules), AC-9. check() is loaded inside the test body and fixtures/policy-rules/ is read there
@@ -9,9 +11,14 @@ import { withoutFix } from "./without-fix.js";
 // while this file loads.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const APP = { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: { version: 1 } };
+const APP: ResolvedPolicy = {
+  source: "app",
+  version: 3,
+  fetchedAt: "2026-10-26T12:00:00.000Z",
+  document: { version: 1 },
+};
 
-async function run(extra: Record<string, unknown>): Promise<Report> {
+async function run(extra: Partial<TextCheckInput>): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -22,7 +29,7 @@ async function run(extra: Record<string, unknown>): Promise<Report> {
     repoFiles: ["AGENTS.md", ".pharn/ci.yml", ".github/workflows/ci.yml", "policy/org.json", "src/a.ts"],
     policy: APP,
     ...extra,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

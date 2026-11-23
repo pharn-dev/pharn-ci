@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Message } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() and the fixtures are loaded inside each test body: the AC tests are written before the coverage root and
 // fixtures/coverage-paths/ exist, so nothing that depends on them may run while the file loads.
@@ -10,7 +11,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 
 async function runCheck(coverage: { text: string; format: "lcov" | "cobertura" }, diffPath: string) {
   const { check } = await import("./text-coverage.js");
-  const input = {
+  const input: TextCheckInput = {
     version: "0.1.0",
     coverage,
     diff: { text: fixture(diffPath) },
@@ -19,7 +20,7 @@ async function runCheck(coverage: { text: string; format: "lcov" | "cobertura" }
     repoFiles: fixture("coverage-paths/package-relative/files.txt").trim().split("\n"),
     coverageRoot: "packages/core",
   };
-  return check(input as Parameters<typeof check>[0]);
+  return check(input);
 }
 
 const pathCodes = (messages: readonly Message[]) =>

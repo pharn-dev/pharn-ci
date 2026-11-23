@@ -103,8 +103,8 @@ describe("TI08, TI15 and TI16 in the three modes and through the streaming reade
       testIntegrityMode: { input: "block" as const },
     };
     const parsed = await readDiffChunks(chunksOf(DIFF, 7));
-    const streamed = check({ ...base, diff: { parsed } } as Parameters<typeof check>[0]);
-    const whole = check({ ...base, diff: { text: DIFF } } as Parameters<typeof check>[0]);
+    const streamed = check({ ...base, diff: { parsed } });
+    const whole = check({ ...base, diff: { text: DIFF } });
     expectValidReport(streamed);
     expectValidReport(whole);
     // CORE-144: TI15 is not emitted, so only TI08 and TI16 give a severity.

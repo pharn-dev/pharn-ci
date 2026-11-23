@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -20,7 +21,6 @@ const KINDS = [
   "none",
 ];
 
-type Fix = { kind: string; hint: string; target?: string };
 type Entry = { kind: string; hint: string };
 
 /** One sentence: a non-empty text with exactly one sentence end, at its end. */
@@ -35,12 +35,13 @@ function expectOneSentence(hint: string, label: string): void {
 describe("fix hints for TI17", () => {
   it("AC-18: the TI17 signal and the TEST_INTEGRITY_TI17 message each carry a restore-assertion fix with one fixed sentence of at most 200 characters, the signal's target is its path:line, and the fix kinds are the same eight", async () => {
     const { check } = await import("./text-coverage.js");
-    const core = { ...(await import("../src/fix/attach.js")), ...(await import("../src/fix/table.js")) } as unknown as {
-      withFixHints(report: unknown): unknown;
+    // The tables are read by a string key: ID and CODE are built at run time.
+    const core: {
+      withFixHints(report: Report): Report;
       FIX_KINDS: readonly string[];
-      SIGNAL_FIXES: Record<string, Entry>;
-      MESSAGE_FIXES: Record<string, Entry>;
-    };
+      SIGNAL_FIXES: Readonly<Record<string, Entry>>;
+      MESSAGE_FIXES: Readonly<Record<string, Entry>>;
+    } = { ...(await import("../src/fix/attach.js")), ...(await import("../src/fix/table.js")) };
     const raw = check({
       version: "0.1.0",
       coverage: { text: "SF:src/cart.ts\nDA:1,1\nend_of_record\n", format: "lcov" },
@@ -49,20 +50,20 @@ describe("fix hints for TI17", () => {
       threshold: 80,
       repoFiles: fixture(`${CASE}/files.txt`).trim().split("\n"),
       testIntegrityMode: { input: "block" },
-    } as Parameters<typeof check>[0]);
-    const report = core.withFixHints(raw) as typeof raw;
+    });
+    const report = core.withFixHints(raw);
     expectValidReport(report);
 
     const signals = report.testIntegrity.signals.filter((s) => String(s.id) === ID);
     expect(signals).toHaveLength(1);
-    const signalFix = (signals[0] as unknown as { fix?: Fix }).fix;
+    const signalFix = signals[0]?.fix;
     expect(signalFix?.kind).toBe("restore-assertion");
     expectOneSentence(signalFix?.hint ?? "", "signal hint");
     expect(signalFix?.target).toBe("src/cart.test.ts:9");
 
     const messages = report.messages.filter((m) => String(m.code) === CODE);
     expect(messages).toHaveLength(1);
-    const messageFix = (messages[0] as unknown as { fix?: Fix }).fix;
+    const messageFix = messages[0]?.fix;
     expect(messageFix?.kind).toBe("restore-assertion");
     expectOneSentence(messageFix?.hint ?? "", "message hint");
 

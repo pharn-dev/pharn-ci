@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import type { ReportMeta } from "../src/report.js";
 import { fixture } from "./helpers.js";
+import type { TextCheckInput } from "./text-coverage.js";
 import { withoutFix } from "./without-fix.js";
 
 const ROOT = new URL("../../../", import.meta.url);
@@ -33,7 +35,7 @@ function v2Validator() {
   return ajv.compile(JSON.parse(readRoot("schema/report.v2.json")));
 }
 
-const META = {
+const META: ReportMeta = {
   event: "pull_request",
   repository: "pharn-dev/pharn-ci",
   repositoryId: 123,
@@ -47,9 +49,9 @@ const META = {
   upload: { status: "skipped" },
 };
 
-async function goldenReport(extra: Record<string, unknown> = {}) {
+async function goldenReport(extra: Partial<TextCheckInput> = {}) {
   const { check } = await import("./text-coverage.js");
-  const input = {
+  const input: TextCheckInput = {
     version: "0.1.0",
     coverage: { text: fixture("golden/coverage.info"), format: "lcov" },
     diff: { text: fixture("golden/pr.diff") },
@@ -58,7 +60,7 @@ async function goldenReport(extra: Record<string, unknown> = {}) {
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     ...extra,
   };
-  return check(input as Parameters<typeof check>[0]) as unknown as Record<string, unknown>;
+  return check(input);
 }
 
 describe("check() emits Report v2", () => {

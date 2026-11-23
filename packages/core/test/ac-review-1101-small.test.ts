@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { ConfigError, parseConfig } from "../src/config.js";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // Small fixes from the 2026-11-01 review: findings 26 (__proto__ in the config), 32 (the accepted line shown twice),
 // 48 (the mode message names the config in use; upload keys are redacted).
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-async function golden(extra: Record<string, unknown> = {}) {
+async function golden(extra: Partial<TextCheckInput> = {}) {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -18,7 +20,7 @@ async function golden(extra: Record<string, unknown> = {}) {
     threshold: 80,
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     ...extra,
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }
@@ -38,7 +40,7 @@ describe("review 2026-11-01, small fixes", { timeout: 60_000 }, () => {
   });
 
   it("48: TEST_INTEGRITY_MODE_IGNORED names the config in use; the default keeps its text", async () => {
-    const mode = { testIntegrityMode: { input: "block", config: "warn" } };
+    const mode: Partial<TextCheckInput> = { testIntegrityMode: { input: "block", config: "warn" } };
     const custom = await golden({ ...mode, configPath: "ci/pharn.yml" });
     const named = custom.messages.find((m) => m.code === "TEST_INTEGRITY_MODE_IGNORED");
     expect(named?.text.startsWith("`ci/pharn.yml` sets test_integrity.mode to warn")).toBe(true);
@@ -65,8 +67,10 @@ describe("review 2026-11-01, small fixes", { timeout: 60_000 }, () => {
     const { buildUploadBundle } = await import("../src/upload/bundle.js");
     const token = `ghp_${"a".repeat(36)}`;
     const report = await golden();
-    const withKey = { ...report, extra: { [token]: "x" } } as unknown as typeof report;
-    const bundle = buildUploadBundle(withKey, { schemaVersion: 1 } as never) as unknown as { report: string };
+    // A report with a key Report does not have: a wider object is still a Report, so no cast is needed.
+    const extended = { ...report, extra: { [token]: "x" } };
+    const withKey: Report = extended;
+    const bundle = buildUploadBundle(withKey, { schemaVersion: 1 } as never);
     expect(JSON.stringify(bundle)).not.toContain(token);
   });
 });

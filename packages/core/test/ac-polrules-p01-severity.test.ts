@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -9,7 +10,7 @@ import { expectValidReport } from "./schema.js";
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
-async function run(policy: unknown): Promise<Report> {
+async function run(policy: ResolvedPolicy | undefined): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -20,7 +21,7 @@ async function run(policy: unknown): Promise<Report> {
     repoFiles: fixture("policy-rules/p01-violates/files.txt").trim().split("\n"),
     requireAgentSetup: true,
     ...(policy === undefined ? {} : { policy }),
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }
@@ -32,7 +33,7 @@ describe("org policy rule P01: severity from policy.rules", { timeout: 60_000 },
   it("AC-4: app warn lowers P01 and NO_AGENT_SETUP_FILES to warn, app off removes the violation and keeps today's level, a file warn stays block and is reported ignored", async () => {
     const document = JSON.parse(fixture("policy-rules/p01-violates/policy.json"));
     const rules = (P01: string) => ({ ...document, policy: { rules: { P01 } } });
-    const app = (P01: string) => ({
+    const app = (P01: string): ResolvedPolicy => ({
       source: "app",
       version: 3,
       fetchedAt: "2026-10-26T12:00:00.000Z",

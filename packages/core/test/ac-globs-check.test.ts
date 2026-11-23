@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 import { withoutFix } from "./without-fix.js";
 
 // check() and the fixtures are loaded inside each test body: the AC tests are written before the multi-file coverage
@@ -17,7 +18,7 @@ const lines = (path: string) => fixture(path).trim().split("\n");
 async function runCheck(files: FileInput[], format: Selection, options: Options = {}) {
   const { check } = await import("./text-coverage.js");
   const dir = options.dir ?? "golden";
-  const input = {
+  const input: TextCheckInput = {
     version: "0.1.0",
     coverage: { files, format },
     diff: { text: fixture(`${dir}/pr.diff`) },
@@ -26,7 +27,7 @@ async function runCheck(files: FileInput[], format: Selection, options: Options 
     repoFiles: lines(`${dir}/files.txt`),
     ...(options.coverageRoot === undefined ? {} : { coverageRoot: options.coverageRoot }),
   };
-  return check(input as Parameters<typeof check>[0]);
+  return check(input);
 }
 
 const codes = (report: { messages: { code: string }[] }) => report.messages.map((message) => message.code);

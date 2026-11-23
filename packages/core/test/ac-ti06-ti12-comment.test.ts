@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TestIntegritySignal as Signal } from "../src/report.js";
+import type { Report, TestIntegritySignal as Signal } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -91,7 +91,7 @@ describe("renderMarkdown(): TI06 and TI12 in the Test integrity section", () => 
       threshold: 80,
       repoFiles: fixture("golden/files.txt").trim().split("\n"),
       testIntegrityMode: { input: "block" },
-    } as Parameters<typeof check>[0]);
+    });
     const signalMessages = testIntegritySignalMessages(SIGNALS);
     for (const code of ["TEST_INTEGRITY_TI02", "TEST_INTEGRITY_TI06", "TEST_INTEGRITY_TI12"]) {
       expect(
@@ -104,12 +104,12 @@ describe("renderMarkdown(): TI06 and TI12 in the Test integrity section", () => 
     }
     const others = base.messages.filter((m) => !/^TEST_INTEGRITY_TI\d\d$/.test(String(m.code)));
     const messages = [...others, ...signalMessages];
-    const report = {
+    const report: Report = {
       ...base,
       verdict: verdictOf(messages),
       messages,
       testIntegrity: { ...base.testIntegrity, mode: "block", source: "input", verdict: "fail", signals: SIGNALS },
-    } as unknown as typeof base;
+    };
     expectValidReport(report);
 
     const { renderMarkdown } = await import("../src/render/markdown.js");

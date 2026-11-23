@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -9,7 +10,7 @@ import { withoutFix } from "./without-fix.js";
 // setup.expect, as the adapters pass it after applyPolicy.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const DOCUMENT = { version: 1, setup: { expect: ["cursor"] } };
+const DOCUMENT: PolicyDocument = { version: 1, setup: { expect: ["cursor"] } };
 
 async function run(repoFiles: string[]): Promise<Report> {
   const { check } = await import("./text-coverage.js");
@@ -22,7 +23,7 @@ async function run(repoFiles: string[]): Promise<Report> {
     repoFiles,
     expectAgentSetup: ["cursor"],
     policy: { source: "app", version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document: DOCUMENT },
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -19,8 +20,8 @@ async function reportWith(accepted: { label: string; by: string } | null) {
     threshold: 80,
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
-  const report = {
+  });
+  const report: Report = {
     ...base,
     messages: [
       ...base.messages,
@@ -36,7 +37,7 @@ async function reportWith(accepted: { label: string; by: string } | null) {
       ],
       accepted,
     },
-  } as unknown as typeof base;
+  };
   expectValidReport(report);
   return report;
 }

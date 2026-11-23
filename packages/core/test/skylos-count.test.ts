@@ -72,7 +72,7 @@ describe("release-readiness-v020: the LIMITS 2-of-9 figure matches check()", () 
         repoFiles: fixture(`skylos-nine/${name}/files.txt`).trim().split("\n"),
         testIntegrityMode: { input: "block" },
         ...sources,
-      } as Parameters<typeof check>[0]);
+      });
       expectValidReport(report);
       live.set(
         name,

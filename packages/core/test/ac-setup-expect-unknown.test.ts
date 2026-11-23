@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // check() is loaded inside the test body: the AC tests are written before setup.expect exists.
 
@@ -31,7 +32,7 @@ describe("check(): an unknown expected agent tool", () => {
   it("AC-5: throws a ConfigError that quotes the unknown name and lists every valid tool name", async () => {
     const { check } = await import("./text-coverage.js");
     const { ConfigError } = await import("../src/config.js");
-    const input = {
+    const input: TextCheckInput = {
       version: "0.1.0",
       coverage: { text: fixture("golden/coverage.info"), format: "lcov", file: "coverage/lcov.info" },
       diff: { text: fixture("golden/pr.diff") },
@@ -43,7 +44,7 @@ describe("check(): an unknown expected agent tool", () => {
 
     let thrown: unknown;
     try {
-      check(input as Parameters<typeof check>[0]);
+      check(input);
     } catch (error) {
       thrown = error;
     }

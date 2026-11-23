@@ -37,7 +37,7 @@ function reportWith(signals: TestIntegritySignal[]): Report {
     threshold: 80,
     repoFiles: fixture("golden/files.txt").trim().split("\n"),
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
+  });
   const others = base.messages.filter((m) => !/^TEST_INTEGRITY_TI\d\d$/.test(String(m.code)));
   const messages = [...others, ...testIntegritySignalMessages(signals)];
   const blocks = signals.some((s) => s.severity === "block");

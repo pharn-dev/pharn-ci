@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { InputErrorText, RawInputs } from "../src/inputs.js";
+import type { PolicyApplication } from "../src/policy/apply.js";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyTestIntegrity } from "../src/policy/types.js";
 import type { Report } from "../src/report.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -8,15 +12,9 @@ import { expectValidReport } from "./schema.js";
 // may run while the file loads. The fixture is written by the build, so the test first checks that, in mode block and
 // with no policy, it gives TI01 at block and TI06 at warn (and, since CORE-144, no TI15: it is no longer emitted).
 
-type Application = {
-  inputs: { threshold: number | null; testIntegrityMode?: unknown };
-  signalOverrides?: unknown;
-  ignored: unknown[];
-};
-
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const DIR = "policy-precedence/signals";
-const TEXT = {
+const TEXT: InputErrorText = {
   coverageFormat: () => "unsupported coverage format",
   threshold: "threshold",
   exclude: "exclude",
@@ -24,13 +22,13 @@ const TEXT = {
   noCoverageFile: "no coverage file",
 };
 
-const app = (testIntegrity: Record<string, unknown>) => ({
+const app = (testIntegrity: PolicyTestIntegrity): ResolvedPolicy => ({
   source: "app",
   version: 3,
   fetchedAt: "2026-10-26T12:00:00.000Z",
   document: { version: 1, test_integrity: testIntegrity },
 });
-const file = (testIntegrity: Record<string, unknown>) => ({
+const file = (testIntegrity: PolicyTestIntegrity): ResolvedPolicy => ({
   source: "file",
   version: null,
   path: "policy/org.json",
@@ -38,21 +36,22 @@ const file = (testIntegrity: Record<string, unknown>) => ({
 });
 
 /** check() on the signals fixture, with the input mode given and the policy applied through applyPolicy(). */
-async function signalsRun(policy: unknown, inputMode: string | undefined): Promise<Report> {
+async function signalsRun(policy: ResolvedPolicy | undefined, inputMode: string | undefined): Promise<Report> {
   const core = {
     ...(await import("@pharn-ci/core")),
     check: (await import("./text-coverage.js")).check,
-  } as unknown as {
-    resolveInputs: (config: unknown, raw: unknown, text: unknown) => { ok: boolean; inputs: Record<string, unknown> };
-    applyPolicy: (layers: unknown, policy: unknown) => Application;
-    check: (input: unknown) => Report;
   };
-  const raw = { coverageFile: "coverage/lcov.info", ...(inputMode === undefined ? {} : { testIntegrity: inputMode }) };
+  const raw: RawInputs = {
+    coverageFile: "coverage/lcov.info",
+    ...(inputMode === undefined ? {} : { testIntegrity: inputMode }),
+  };
   const resolved = core.resolveInputs({}, raw, TEXT);
   expect(resolved.ok).toBe(true);
-  const application =
+  // Narrows the type only: the expect above has already failed the test when resolveInputs did not succeed.
+  if (!resolved.ok) throw new Error("resolveInputs failed");
+  const application: PolicyApplication =
     policy === undefined
-      ? ({ inputs: resolved.inputs, ignored: [] } as unknown as Application)
+      ? { inputs: resolved.inputs, ignored: [] }
       : core.applyPolicy({ config: {}, raw, resolved: resolved.inputs }, policy);
   const report = core.check({
     version: "0.1.0",

@@ -37,7 +37,7 @@ async function ti03(path: string): Promise<Signal[]> {
     threshold: 80,
     repoFiles: REPO_FILES,
     testIntegrityMode: { input: "block" },
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report.testIntegrity.signals.filter((s) => String(s.id) === "TI03");
 }

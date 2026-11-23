@@ -69,7 +69,7 @@ async function checkWith(application: Application, policy: Policy) {
     exclude: application.inputs.exclude,
     policy,
     policyIgnored: application.ignored,
-  } as never);
+  });
   expectValidReport(report);
   return report;
 }

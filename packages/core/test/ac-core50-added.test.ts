@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Report } from "../src/report.js";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
+import type { TextCheckInput } from "./text-coverage.js";
 
 // CORE-50 (binary-diff-not-blind). check() is loaded inside the test body: the AC test is written before an added test
 // file that git shows as binary is named, so nothing the build changes may run while the file loads. The case is read
@@ -14,7 +15,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 const CODE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const PATH = "src/new.test.ts";
 
-async function run(diff: string, extra: Record<string, unknown>): Promise<Report> {
+async function run(diff: string, extra: Partial<TextCheckInput>): Promise<Report> {
   const { check } = await import("./text-coverage.js");
   const report = check({
     version: "0.1.0",
@@ -40,7 +41,7 @@ describe("CORE-50: an added test file that git shows as binary is named as a war
     const headText = join(dir, "head", `${PATH}.txt`);
     expect(existsSync(headText), "the case holds the head text of the added file").toBe(true);
 
-    const runs = [
+    const runs: [string, Partial<TextCheckInput>][] = [
       [
         "with head sources",
         {
@@ -51,7 +52,7 @@ describe("CORE-50: an added test file that git shows as binary is named as a war
         },
       ],
       ["without sources", {}],
-    ] as const;
+    ];
     for (const [name, extra] of runs) {
       const report = await run(diff, extra);
       const messages = report.messages.filter((m) => m.code === CODE);

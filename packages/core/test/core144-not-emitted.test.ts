@@ -3,6 +3,9 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { DiffFile } from "../src/diff/unified.js";
 import { renderMarkdown, type StaleInstructionSources } from "../src/index.js";
+import type { InputErrorText, RawInputs } from "../src/inputs.js";
+import type { ResolvedPolicy } from "../src/policy/resolved.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import type { Report } from "../src/report.js";
 import { runDiff, signalsOf } from "./ac-e1-fix-shared.js";
 import { codeRow } from "./codeTable.js";
@@ -99,35 +102,26 @@ describe("CORE-144: TI15 and SI04 are not emitted", () => {
       ...(await import("../src/inputs.js")),
       ...(await import("../src/policy/apply.js")),
       ...(await import("../src/policy/validate.js")),
-    } as unknown as {
-      validatePolicy: (value: unknown) => { ok: boolean };
-      resolveInputs: (config: unknown, raw: unknown, text: unknown) => { ok: boolean; inputs: Record<string, unknown> };
-      applyPolicy: (
-        layers: unknown,
-        policy: unknown,
-      ) => { inputs: Record<string, unknown>; signalOverrides?: unknown; ignored: unknown[] };
-      check: (input: unknown) => {
-        messages: { code: string }[];
-        testIntegrity: { signals: { id: string; severity: string }[] };
-      };
     };
-    const document = { version: 1, test_integrity: { signals: { TI15: "block", TI06: "block" } } };
+    const document: PolicyDocument = { version: 1, test_integrity: { signals: { TI15: "block", TI06: "block" } } };
     expect(core.validatePolicy(document).ok).toBe(true);
     const validate = new Ajv2020({ strict: true, allErrors: true }).compile(JSON.parse(read("schema/policy.v1.json")));
     expect(validate(document)).toBe(true);
 
     const DIR = "policy-precedence/signals";
-    const TEXT = {
+    const TEXT: InputErrorText = {
       coverageFormat: () => "unsupported coverage format",
       threshold: "threshold",
       exclude: "exclude",
       coverageRoot: "coverage root",
       noCoverageFile: "no coverage file",
     };
-    const run = (policy: unknown) => {
-      const raw = { coverageFile: "coverage/lcov.info", testIntegrity: "block" };
+    const run = (policy: ResolvedPolicy | undefined) => {
+      const raw: RawInputs = { coverageFile: "coverage/lcov.info", testIntegrity: "block" };
       const resolved = core.resolveInputs({}, raw, TEXT);
       expect(resolved.ok).toBe(true);
+      // Narrows the type only: the expect above has already failed the test when resolveInputs did not succeed.
+      if (!resolved.ok) throw new Error("resolveInputs failed");
       const application =
         policy === undefined
           ? { inputs: resolved.inputs, ignored: [], signalOverrides: undefined }
@@ -155,7 +149,7 @@ describe("CORE-144: TI15 and SI04 are not emitted", () => {
     expect(new Set(severities(base, "TI06"))).toEqual(new Set(["warn"]));
     const count = severities(base, "TI06").length;
     for (const source of ["app", "file"] as const) {
-      const policy =
+      const policy: ResolvedPolicy =
         source === "app"
           ? { source, version: 3, fetchedAt: "2026-10-26T12:00:00.000Z", document }
           : { source, version: null, path: "policy/org.json", document };
