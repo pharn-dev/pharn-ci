@@ -1,19 +1,12 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// E3 item 23 (policy settings), AC-32. The tree, fixtures/policy-settings/ and the AC test files are read inside the
-// test body, and findSecretSpans() is loaded there: the build adds the fixtures after this test is written. The base is
-// main at 93376a9 (E3 item 22 merged), read with git.
+// E3 item 23 (policy settings), AC-32. fixtures/policy-settings/ and the AC test files are read inside the test body,
+// and findSecretSpans() is loaded there: the build adds the fixtures after this test is written.
 
-const BASE = "93376a9";
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const git = (...args: string[]) =>
-  execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
-// This committed PHARN workflow guard is not a product fixture added by E3 item 23.
-const PHARN_WORKFLOW_SETTINGS = ".claude/settings.json";
 const AGENT_SETTINGS =
   /(?:^|\/)(?:\.claude\/settings\.json|\.claude\/settings\.local\.json|\.mcp\.json|\.cursor\/mcp\.json|\.vscode\/mcp\.json)$/;
 const FIXTURES = "fixtures/policy-settings";
@@ -27,22 +20,9 @@ function walk(dir: string): string[] {
 }
 
 describe("the fixtures of E3 item 23", () => {
-  it("AC-32: no new agent-settings path in the tree, a must-trigger and a must-not-trigger case with files.json for each of P02–P06, and no secret-shaped value in a new fixture or test", async () => {
-    // The tree after the increment: tracked and untracked, ignored files left out.
-    const now = git("ls-files", "-z", "--cached", "--others", "--exclude-standard")
-      .split("\0")
-      .filter((p) => p !== "");
-    const before = new Set(
-      git("ls-tree", "-r", "--name-only", "-z", BASE)
-        .split("\0")
-        .filter((p) => p !== ""),
-    );
-    expect(now.length).toBeGreaterThan(0);
-    expect(
-      now.filter((p) => AGENT_SETTINGS.test(p) && p !== PHARN_WORKFLOW_SETTINGS && !before.has(p)),
-      "no new path ends in an agent settings or MCP file name",
-    ).toEqual([]);
-
+  // CORE-132: the comparison of the tree with an old commit (no new agent-settings path) was a history pin and is
+  // removed.
+  it("AC-32: a must-trigger and a must-not-trigger case with files.json for each of P02–P06, and no secret-shaped value in a new fixture or test", async () => {
     // A must-trigger (violates-*) and a must-not-trigger (complies-*) case for each rule, each with a files.json.
     expect(existsSync(join(ROOT, FIXTURES)), `${FIXTURES} exists`).toBe(true);
     for (const rule of ["p02", "p03", "p04", "p05", "p06"]) {
@@ -74,8 +54,9 @@ describe("the fixtures of E3 item 23", () => {
     );
     // Re-pinned for CORE-133 (one docs-contract test replaces the doc pins): ac-polset-docs.test.ts and
     // ac-polset-readme.test.ts, which asserted only on THREAT-MODEL, LIMITS, CHANGELOG and README wording, are deleted,
-    // so 30 of the 32 AC test files are left to scan.
-    expect(tests.length, "the AC test files").toBe(30);
+    // so 30 of the 32 AC test files are left to scan. Re-pinned for CORE-132 (the history pins are deleted):
+    // ac-polset-pins.test.ts is deleted, so 29 are left.
+    expect(tests.length, "the AC test files").toBe(29);
     for (const path of [...walk(FIXTURES), ...tests]) {
       const spans = findSecretSpans(readFileSync(join(ROOT, path), "utf8"));
       expect(

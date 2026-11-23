@@ -40,7 +40,7 @@ that worked on the previous release. Before 1.0 the rules are:
 - **Never removed.** No Action input or output, CLI flag or report message code is removed in 0.x.
   `packages/action/test/input-aliases.test.ts` lists every shipped input and output and fails when
   one disappears from `action.yml`; message codes are held by `schema/report.v1.json`,
-  `schema/report.v2.json` and the golden tests.
+  `schema/report.v2.json`, the append-only `fixtures/release/codes.txt` and the golden tests.
 - **Renames keep the old name for at least one minor release.** A renamed input stays declared in
   `action.yml` and is mapped to its new name in `INPUT_ALIASES` (`packages/action/src/run.ts`). The
   old name keeps working and logs a `core.warning` saying to rename it; when both names are set, the
@@ -76,6 +76,10 @@ that worked on the previous release. Before 1.0 the rules are:
      "Fork PRs: comment from workflow_run") and every other pin under `docs/` and `examples/`, and rewrite
      the **Status** note under the badges so it no longer says the release has not been cut. The
      docs tests fail when a pin disagrees with the package version.
+   - **Append the new message codes.** Add every Report v2 message code this release adds to
+     `fixtures/release/codes.txt`, under a `# vX.Y.Z` line, and never remove or reorder an earlier line.
+     `packages/core/test/report-v2-compat.test.ts` fails when `report.ts` or `schema/report.v2.json` stops naming a
+     listed code.
    - Run `pnpm build` (the version is compiled into `packages/action/dist`) and commit the result.
    - Merge with all required checks green, then dispatch `release.yml` (steps 2 and 3). The release PR is the
      last change merged before the dispatch: a PR merged in between lands in the tag but not in its dated

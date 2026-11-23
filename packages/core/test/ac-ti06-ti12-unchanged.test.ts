@@ -1,8 +1,6 @@
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withCore95Ti14Before } from "./core95-ti14.js";
 import { exerciseMessages, withoutExerciseCheck } from "./exercise-repin.js";
@@ -16,12 +14,9 @@ import { withoutFix } from "./v090-codes.js";
 // What stays: every golden report, with and without sources; every earlier diff-only signal fixture gives the signals
 // and messages it gave before (the digest ac-ti0205-regression.test.ts pins); and every TI02 and TI05 case, with its
 // base and head text, gives the signals and messages it gave at the base commit 98693cf (a digest taken there), so none
-// gains a TI06 or TI12. What changes on purpose: the six Skylos test files AC-19 names now pin 8 of 9 (with
-// loosened-assertion caught by TI06, since TI09 deselect-setting by TI09 and, since ti17-always-true-matcher-2,
-// always-true-matcher by TI17), and every one of their test titles is the one it had at the base commit apart from the
-// RENAMED_TITLES.
+// gains a TI06 or TI12. (CORE-132: the second AC-19 test, which compared the six Skylos test files' titles with an old
+// commit and checked literals in those files, was a history pin and is removed.)
 
-const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const EARLIER_DIRS = ["TI01", "TI03", "TI04", "TI10", "TI11", "TI13", "TI14"];
 /** Fixtures the 2026-11-01 review fixes add (TI10 no-op script, TI14 comment rule); left out of the digest. */
@@ -102,40 +97,6 @@ const asBefore = (json: string) => json.split(TI03_ADDS_NOW).join(TI03_ADDS_BEFO
 // Re-pinned by the name-only-moves change: only TI02/pass-moved-to-other-file changed (it now gives one TI02 block),
 // because TI02's phase-2 leaf pick now needs body evidence, not a name alone.
 const PAIR_DIGEST = "129d9dbe605feab5c7cd65df323ee57ca43e4cb19a1142f99402c8048073d867";
-/** The main commit this change was rebased onto (after #94); the Skylos test titles are compared with it. */
-const TITLES_BASE = "2fd75371e9e27c80c0df7a81ba3077f2d896cb22";
-/** The titles that name the Skylos count, as they were at TITLES_BASE and as they are now. */
-const RENAMED_TITLES: ReadonlyMap<string, string> = new Map([
-  [
-    '"AC-17: emptied-assertion gives a block TI05, replaced-test a block TI02, edited-expected-value a warn TI07, deleted-test and added-skip their TI01 and TI03 as before, and the other four no signal"',
-    // TI09 (after TI06) moved deselect-setting to caught as well, and ti17-always-true-matcher-2 moved
-    // always-true-matcher to caught by TI17, so these four titles name 8 of 9 now.
-    '"AC-17: emptied-assertion gives a block TI05, replaced-test a block TI02, edited-expected-value a warn TI07, loosened-assertion a warn TI06, deselect-setting a block TI09, deleted-test and added-skip their TI01 and TI03 as before, always-true-matcher a warn TI17, and the other one no signal"',
-  ],
-  [
-    '"AC-17: docs/LIMITS.md and the README state that 5 of 9 are caught and list those five cases with their signal ids"',
-    '"AC-17: docs/LIMITS.md and the README state that 8 of 9 are caught and list those eight cases with their signal ids"',
-  ],
-  [
-    '"AC-4: exactly the five caught cases give a signal, each only its table id, and the other four give none"',
-    '"AC-4: exactly the eight caught cases give a signal, each only its table id, and the other one gives none"',
-  ],
-  [
-    '"AC-4: the headline — nine cases, 5 caught, 4 expected misses"',
-    '"AC-4: the headline — nine cases, 8 caught, 1 expected miss"',
-  ],
-  [
-    '"AC-4: the table maps the nine cases to TI01, TI03, TI05, TI09, TI15, none, TI02, TI06 and TI07, one entry per fixture directory"',
-    '"AC-4: the table maps the nine cases to TI01, TI03, TI05, TI09, TI15, TI17, TI02, TI06 and TI07, one entry per fixture directory"',
-  ],
-]);
-/**
- * Re-pinned for CORE-133 (one docs-contract test replaces the doc pins): the titles of the document-wording tests it
- * removed from these files, as they were at TITLES_BASE. They are expected to be gone; every other title stays.
- */
-const CORE133_REMOVED_TITLES: ReadonlySet<string> = new Set([
-  '"AC-17: docs/LIMITS.md and the README state that 5 of 9 are caught and list those five cases with their signal ids"',
-]);
 const NEW_IDS = ["TI06", "TI12"];
 const NEW_CODES = ["TEST_INTEGRITY_TI06", "TEST_INTEGRITY_TI12"];
 
@@ -182,37 +143,6 @@ function expectNoNewSignal(report: Report, label: string): void {
     `${label}: no TEST_INTEGRITY_TI06 or TEST_INTEGRITY_TI12 message`,
   ).toEqual([]);
 }
-
-/** The `it(` and `describe(` titles of a test file, as written in the source (the first argument's literal). */
-function titles(text: string): string[] {
-  const out: string[] = [];
-  const pattern =
-    /\b(?:it|describe|test)(?:\.[A-Za-z]+)*(?:\([^()]*\))?\(\s*(`(?:[^`\\]|\\.)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
-  for (const m of text.matchAll(pattern)) out.push(m[1] as string);
-  return out;
-}
-
-/** The text of the array literal `const <name> = [ … ]` (or `… : Type = [ … ]`) in `text`. */
-function arrayLiteral(text: string, name: string): string {
-  const found = new RegExp(`const ${name}\\b[^=]*= \\[`).exec(text);
-  expect(found, `const ${name}`).not.toBeNull();
-  const open = (found as RegExpExecArray).index + (found as RegExpExecArray)[0].length - 1;
-  let depth = 0;
-  for (let i = open; i < text.length; i++) {
-    if (text[i] === "[") depth++;
-    else if (text[i] === "]" && --depth === 0) return text.slice(open, i + 1);
-  }
-  throw new Error(`const ${name} is not closed`);
-}
-
-// Re-pinned for CORE-133: ac-v020-limits.test.ts and ac-v020-readme.test.ts, which pinned the count in docs/LIMITS.md
-// and the README, are deleted, so four of the six files are left to check.
-const SIX = [
-  "packages/core/test/ac-ti0205-skylos.test.ts",
-  "packages/core/test/ac-skylos-nine-table.test.ts",
-  "packages/core/test/ac-v020-skylos-count.test.ts",
-  "packages/core/test/ac-skylos-nine-misses.test.ts",
-] as const;
 
 describe("TI06 and TI12 change the earlier outputs and tests only where they mean to", () => {
   it("AC-19: the goldens stay byte-identical, the earlier diff-only fixtures and the TI02 and TI05 cases with their sources give what they gave before, and none of them gives a TI06 or TI12", async () => {
@@ -379,41 +309,4 @@ describe("TI06 and TI12 change the earlier outputs and tests only where they mea
       "the TI02 and TI05 cases give what they gave at the base commit",
     ).toBe(PAIR_DIGEST);
   }, 60_000);
-
-  it("AC-19: the six Skylos test files now pin 6 of 9 with loosened-assertion caught by TI06, and keep every test title they had at the base commit but the count", () => {
-    // Rebased onto main after TI07 (#94), which caught edited-expected-value first: the count is now 6 of 9, and the
-    // titles are compared with that main commit, where only the titles that name the count change, as listed.
-    for (const path of SIX) {
-      const now = readFileSync(join(ROOT, path), "utf8");
-      const before = execFileSync("git", ["show", `${TITLES_BASE}:${path}`], { cwd: ROOT, encoding: "utf8" });
-      expect(titles(before).length, `${path}: titles at the base commit`).toBeGreaterThan(0);
-      const expected = titles(before)
-        .filter((title) => !CORE133_REMOVED_TITLES.has(title))
-        .map((title) => RENAMED_TITLES.get(title) ?? title);
-      expect(titles(now), `${path}: every it( and describe( title byte-identical`).toEqual(expected);
-    }
-    const file = (path: (typeof SIX)[number]) => readFileSync(join(ROOT, path), "utf8");
-
-    const ti0205 = file("packages/core/test/ac-ti0205-skylos.test.ts");
-    // Re-pinned for CORE-133: the "8 of 9" literal sat in the LIMITS and README wording test CORE-133 removed; the
-    // file's check() test still pins the eight caught cases through CAUGHT (asserted below and in that test).
-    expect(ti0205).not.toContain('"4 of 9"');
-    expect(ti0205).toMatch(/\["loosened-assertion",\s*"TI06"\]/);
-
-    const table = file("packages/core/test/ac-skylos-nine-table.test.ts");
-    expect(table).toMatch(/name: "loosened-assertion",\s*signal: "TI06",\s*caught: true/);
-    expect(table).not.toMatch(/name: "loosened-assertion",\s*signal: "TI06",\s*caught: false/);
-    expect(table).toContain('"8/9"');
-    expect(table).not.toContain('"4/9"');
-
-    const count = file("packages/core/test/ac-v020-skylos-count.test.ts");
-    expect(count).toContain('"8 of 9"');
-    expect(count).not.toContain('"4 of 9"');
-    expect(count, "loosened-assertion is run with its sources").toContain('"loosened-assertion"');
-
-    const misses = file("packages/core/test/ac-skylos-nine-misses.test.ts");
-    expect(arrayLiteral(misses, "MISSES"), "loosened-assertion leaves the miss list").not.toContain(
-      "loosened-assertion",
-    );
-  });
 });

@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -8,8 +7,6 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(new URL(path, `file://${ROOT}`), "utf8");
-const atCommit = (commit: string, path: string) =>
-  execFileSync("git", ["show", `${commit}:${path}`], { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 
 const DESCRIPTION =
   "true when the pull request counts as an agent PR, including when detection could not read all of its evidence; false when the run has no pull request.";
@@ -22,9 +19,10 @@ const INSERTED_LINES = [
   "        },",
 ];
 
-// Core's index loads cold and git is spawned, either of which can take seconds on a loaded host.
+// Core's index loads cold, which can take seconds on a loaded host. (CORE-132: the report.v1.json comparison with an
+// old commit was a history pin and is removed.)
 describe("agent-pr-detection: schemas, purity and exports", { timeout: 60_000 }, () => {
-  it("AC-9: report.v2.json gains meta.properties.isAgentPr as given and report.v1.json is byte-identical to 3ed722f", () => {
+  it("AC-9: report.v2.json gains meta.properties.isAgentPr as given", () => {
     const v2Text = read("schema/report.v2.json");
     const v2 = JSON.parse(v2Text);
     expect(v2.properties.meta.properties.isAgentPr).toEqual({ description: DESCRIPTION, type: "boolean" });
@@ -33,8 +31,6 @@ describe("agent-pr-detection: schemas, purity and exports", { timeout: 60_000 },
     const at = lines.indexOf(AGENT_HINT_LINE);
     expect(at, "the agentHint line of meta.properties").toBeGreaterThan(-1);
     expect(lines.slice(at + 1, at + 1 + INSERTED_LINES.length)).toEqual(INSERTED_LINES);
-
-    expect(read("schema/report.v1.json")).toBe(atCommit("3ed722f", "schema/report.v1.json"));
   });
 
   it("AC-9: packages/core/src/agents.ts passes core's purity check", async () => {

@@ -1,16 +1,14 @@
-import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 // The schemas document TI02, TI05 and their three message codes, and the new fixture directories hold must-trigger and
-// must-not-trigger cases in the agreed shape. Files only; nothing the build adds is imported. The base commit is the
-// main commit this increment starts from. (CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks
-// moved out; docs-contract.test.ts checks the README code rows.)
+// must-not-trigger cases in the agreed shape. Files only; nothing the build adds is imported. (CORE-133: the
+// CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out; docs-contract.test.ts checks the README code
+// rows. CORE-132: the report.v1.json comparison with an old commit was a history pin and is removed.)
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const BASE = "ad8277c42ca0123fb129d8f9a079ee2b25950025";
 const CODES = ["TEST_INTEGRITY_TI02", "TEST_INTEGRITY_TI05", "TEST_INTEGRITY_INDEX_UNAVAILABLE"];
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
@@ -31,14 +29,11 @@ function walk(dir: string): string[] {
 }
 
 describe("TI02 and TI05: schema and fixtures", () => {
-  it("AC-20: schema/report.v2.json names the three codes in its message-code description, and schema/report.v1.json is byte-identical to the base commit", () => {
+  it("AC-20: schema/report.v2.json names the three codes in its message-code description", () => {
     const schema = JSON.parse(read("schema/report.v2.json")) as unknown;
     const description = strings(schema).find((s) => s.includes("Known codes") && s.includes("TEST_INTEGRITY_TI01"));
     expect(description, "the message-code description").toBeDefined();
     for (const code of CODES) expect(description, code).toContain(code);
-
-    const before = execFileSync("git", ["show", `${BASE}:schema/report.v1.json`], { cwd: ROOT, encoding: "utf8" });
-    expect(read("schema/report.v1.json")).toBe(before);
   });
 
   it("AC-20: fixtures/test-integrity/TI02/ and TI05/ each hold must-trigger and must-not-trigger cases, text files ending .txt and diffs ending .diff of fewer than 1000 lines", () => {

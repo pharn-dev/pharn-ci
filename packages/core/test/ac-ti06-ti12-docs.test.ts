@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,16 +5,15 @@ import { describe, expect, it } from "vitest";
 
 // The schemas and the core entry point document TI06, TI12 and their message codes, and the new fixture directories
 // hold must-trigger and must-not-trigger cases in the agreed shape. Files are read and the core entry point is loaded
-// inside each test body. The base commit is the main commit this increment starts from. (CORE-133: the CHANGELOG,
-// README, LIMITS and THREAT-MODEL wording checks moved out; docs-contract.test.ts checks the README code rows.)
+// inside each test body. (CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out;
+// docs-contract.test.ts checks the README code rows. CORE-132: the report.v1.json comparison with an old commit was a
+// history pin and is removed.)
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const BASE = "98693cf95fa521affc2d0a2eec1a7ae0f312b8cb";
 const CODES = ["TEST_INTEGRITY_TI06", "TEST_INTEGRITY_TI12"];
 const NEW_CODES = "New codes may be added within v2";
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
-const readBase = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT, encoding: "utf8" });
 
 /** Every string value in a JSON document. */
 function strings(value: unknown): string[] {
@@ -33,7 +31,7 @@ function walk(dir: string): string[] {
 }
 
 describe("TI06 and TI12: schema, exports and fixtures", () => {
-  it("AC-18: schema/report.v2.json names TEST_INTEGRITY_TI06 and TEST_INTEGRITY_TI12 in its message-code description before 'New codes may be added within v2', and schema/report.v1.json is byte-identical to the base commit", () => {
+  it("AC-18: schema/report.v2.json names TEST_INTEGRITY_TI06 and TEST_INTEGRITY_TI12 in its message-code description before 'New codes may be added within v2'", () => {
     const schema = JSON.parse(read("schema/report.v2.json")) as unknown;
     const description = strings(schema).find((s) => s.includes("Known codes") && s.includes(NEW_CODES));
     expect(description, "the message-code description").toBeDefined();
@@ -43,7 +41,6 @@ describe("TI06 and TI12: schema, exports and fixtures", () => {
       expect(at, code).toBeGreaterThan(-1);
       expect(at, `${code} before "${NEW_CODES}"`).toBeLessThan(cut);
     }
-    expect(read("schema/report.v1.json")).toBe(readBase("schema/report.v1.json"));
   });
 
   it("AC-18: @pharn-ci/core exports the functions detectTI06 and detectTI12", async () => {

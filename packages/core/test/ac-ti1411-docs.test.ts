@@ -1,14 +1,10 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
-/** The commit before this increment. */
-const BEFORE = "54804ba8c6e67f6bb757a97a04c1691431cd2c90";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
 const TI14 = [
@@ -66,17 +62,13 @@ async function signalsOf(dir: string, name: string, exclude: string[] = []) {
   return report.testIntegrity.signals.filter((signal) => String(signal.id) === dir);
 }
 
-// CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out.
+// CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out. CORE-132: the report.v1.json
+// comparison with an old commit was a history pin and is removed.
 describe("TI14 and TI11: schema and fixtures", () => {
-  it("AC-15: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's", () => {
+  it("AC-15: the v2 schema names both message codes", () => {
     const schema = read("schema/report.v2.json");
     expect(schema).toContain("TEST_INTEGRITY_TI14");
     expect(schema).toContain("TEST_INTEGRITY_TI11");
-    const before = execFileSync("git", ["show", `${BEFORE}:schema/report.v1.json`], {
-      cwd: fileURLToPath(ROOT),
-      encoding: "utf8",
-    });
-    expect(read("schema/report.v1.json")).toBe(before);
   });
 
   it("AC-15: at least five must-trigger and five must-not-trigger diffs exist for each id, and they behave", async () => {

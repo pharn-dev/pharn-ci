@@ -1,26 +1,27 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
-import { V080_CODE_TEXT, V080_FLAKY_CODES, V080_FLAKY_SCHEMA_TEXT, V080_FLAKY_TEXT } from "./v080-codes.js";
 
-// Flaky tests (A6): the schema names the four codes and describes `flaky` exactly once. (CORE-133: the README, LIMITS,
-// THREAT-MODEL, SECURITY, CHANGELOG and action.yml wording checks moved out; docs-contract.test.ts checks the README
-// input and code rows.)
+// Flaky tests (A6): the schema names the four codes and describes `flaky`. (CORE-133: the README, LIMITS, THREAT-MODEL,
+// SECURITY, CHANGELOG and action.yml wording checks moved out; docs-contract.test.ts checks the README input and code
+// rows. CORE-132: the byte-for-byte pins of the v0.8.0 code text and the flaky description, kept valid by the
+// schema-text helpers of the history pins, are removed; the codes and the description are checked as they are.)
 
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
+/** The flaky-test message codes. */
+const FLAKY_CODES = ["FLAKY_QUARANTINED_FAILURES", "JUNIT_INVALID", "JUNIT_NOT_FOUND", "JUNIT_TOO_LARGE"];
 
 describe("flaky tests: schema", () => {
-  it("report.v2.json carries the v0.8.0 code text and the flaky description once, and report.ts the codes", () => {
-    // Re-pinned for the R3 schema text follow-up: its six description edits (one inside the v0.8.0 code text) are put
-    // back first (r3-schema-text.ts pins them exactly).
-    const schema = withoutR3SchemaTextEdits(read("schema/report.v2.json"));
-    expect(schema.split(V080_FLAKY_SCHEMA_TEXT)).toHaveLength(2);
-    expect(schema.split(V080_CODE_TEXT)).toHaveLength(2);
-    expect(V080_CODE_TEXT).toContain(V080_FLAKY_TEXT);
+  it("report.v2.json names the four codes and describes flaky, and report.ts has the codes", () => {
+    const schema = JSON.parse(read("schema/report.v2.json")) as {
+      properties: { flaky: { description?: string } };
+      $defs: { message: { properties: { code: { description: string } } } };
+    };
+    expect(typeof schema.properties.flaky.description, "the flaky description").toBe("string");
+    const description = schema.$defs.message.properties.code.description;
     const report = read("packages/core/src/report.ts");
-    for (const code of V080_FLAKY_CODES) {
-      expect(V080_FLAKY_TEXT, code).toContain(code);
+    for (const code of FLAKY_CODES) {
+      expect(description, code).toContain(code);
       expect(report, code).toContain(`| "${code}"`);
     }
   });

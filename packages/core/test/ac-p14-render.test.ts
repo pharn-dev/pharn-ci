@@ -10,7 +10,6 @@ import {
 } from "../src/index.js";
 import { AGENT_FACTS, appPolicy, p14Messages, policyFixture, runP14 } from "./p14-run.js";
 import { purityViolations } from "./purity-check.js";
-import { V060_CODE_TEXT } from "./v060-codes.js";
 
 // Policy rule P14 (agent PR size cap): the PR comment's Policy section, the code in the report schema, and the purity
 // of the new module. (CORE-133: the README wording checks moved out; docs-contract.test.ts checks the README code row.)
@@ -71,9 +70,8 @@ describe("org policy rule P14 in the PR comment, the schema and the docs", () =>
   it("schema/report.v2.json names POLICY_P14 among the codes added in v0.6.0, and schema/policy.v1.json describes the caps", () => {
     const schema = JSON.parse(read("schema/report.v2.json"));
     const description: string = schema.$defs.message.properties.code.description;
-    // Re-pinned when main (P14) was merged with policy-p13: the one v0.6.0 sentence lists POLICY_P13 first, then
-    // POLICY_P14 with P14's own words (v060-codes.ts pins the whole sentence).
-    expect(description).toContain(V060_CODE_TEXT);
+    // CORE-132: the byte-for-byte pin of the whole v0.6.0 sentence (v060-codes.ts, a history-pin helper) is removed.
+    expect(description).toContain(" Codes added in v0.6.0: POLICY_P13 (");
     expect(description).toContain(", POLICY_P14 (error, or the level the org policy sets for P14:");
     const policySchema = JSON.parse(read("schema/policy.v1.json"));
     for (const key of ["max_files", "max_changed_lines"]) {

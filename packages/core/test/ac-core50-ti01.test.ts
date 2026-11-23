@@ -1,6 +1,4 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { FIXTURES } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
@@ -11,8 +9,6 @@ import { expectValidReport } from "./schema.js";
 // diff lines the acceptance criterion names (git's `Binary files … differ` line), so the input is pinned here.
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const REPO_ROOT_DIR = fileURLToPath(new URL("../../../", import.meta.url));
-const BASE_COMMIT = "0942691";
 const DELETED = "Test file deleted; git shows it as binary, so its text was not read.";
 const RENAMED = "Test file renamed away; git shows it as binary, so its text was not read.";
 
@@ -160,11 +156,9 @@ describe("CORE-50: TI01 counts a deleted or renamed-away test file that git show
     ]);
   });
 
-  it("AC-16: the unedited fixture TI01/pass-binary.diff (a deleted binary tests/img.test.ts) now gives one TI01 block with the binary deleted detail", async () => {
-    const path = "fixtures/test-integrity/TI01/pass-binary.diff";
+  // CORE-132: the comparison of the fixture with its bytes at an old commit was a history pin and is removed.
+  it("AC-16: the fixture TI01/pass-binary.diff (a deleted binary tests/img.test.ts) gives one TI01 block with the binary deleted detail", async () => {
     const now = readFileSync(`${FIXTURES}test-integrity/TI01/pass-binary.diff`);
-    const atBase = execFileSync("git", ["show", `${BASE_COMMIT}:${path}`], { cwd: REPO_ROOT_DIR });
-    expect(Buffer.compare(now, atBase), "the fixture's bytes equal those at the base commit").toBe(0);
 
     const report = await run(now.toString("utf8"), "block", ["src/app.ts"]);
     expect(ti01(report)).toEqual([

@@ -1,26 +1,14 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
-import { withoutCore50SchemaEdits } from "./core50-schema.js";
-import { withoutCore69SchemaEdits } from "./core69-schema.js";
-import { withoutSchemaLevelEdits } from "./level-edits.js";
-import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
-import { withoutTi17SchemaEdits } from "./ti17-schema.js";
-import { V060_CODE_TEXT, V060_CODES } from "./v060-codes.js";
-import { V070_CODE_TEXT, V070_CODES, withoutV070Properties } from "./v070-codes.js";
-import { V080_CODE_TEXT, V080_CODES, withoutV080Properties } from "./v080-codes.js";
-import { withoutV090SchemaEdits } from "./v090-codes.js";
 
 // The schemas, report.ts and fixtures/upload/bundle-golden/meta.json are read inside each test body: the build writes
-// or changes them after this test. The base is main at f563d7d, read with git.
+// or changes them after this test. (CORE-132: the comparisons of report.v1.json, report.v2.json and report.ts with an
+// old commit were history pins and are removed.)
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(new URL(path, `file://${ROOT}`), "utf8");
-const BASE = "f563d7d";
-const atBase = (path: string) =>
-  execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 
 type Json = Record<string, unknown>;
 
@@ -40,35 +28,6 @@ const REQUIRED = [
   "commentUrl",
 ];
 
-const SENTENCE =
-  " UPLOAD_TOO_LARGE (warn: the run was not uploaded because the report is larger than the upload limit; the check ran in full).";
-// Re-pinned for E3 item 22 (policy rules): the same description then gains exactly this text, which names the two rule
-// codes POLICY_P08 and POLICY_P09; report.ts gains those two MessageCode members. Nothing else may change.
-const POLICY_RULES_TEXT =
-  " POLICY_P08 (error, or the level the org policy sets for P08: tracked files match a forbidden file pattern of the org policy; the message names up to 20 paths and the count) and POLICY_P09 (error, or warn for an agent settings file whose direction is not judged yet: the change edits a file the org policy guards; the message names up to 20 paths and the count; each reason is in policy.violations).";
-const POLICY_RULE_CODES = ["POLICY_P08", "POLICY_P09"];
-// Re-pinned for E3 item 24a part B (P11): the same description then gains exactly this text, which names the two codes
-// POLICY_P11 and AGENT_PR_DETECTION_INCOMPLETE; report.ts gains those two MessageCode members. Nothing else may change.
-const P11_TEXT =
-  " POLICY_P11 (error, or warn when the org policy sets agents.protected_paths_mode or the rule to warn: an agent pull request changes paths the org policy protects, or could not be checked because the diff, or the policy file at the merge base, could not be read; the message names up to 20 paths and the evidence as fixed words, never a pattern, label or login) and AGENT_PR_DETECTION_INCOMPLETE (warn: the pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths; the message names the reason as one fixed word).";
-const P11_CODES = ["POLICY_P11", "AGENT_PR_DETECTION_INCOMPLETE"];
-// Re-pinned for E3 item 23 (policy settings): the same description then gains exactly this text, which names the five
-// rule codes POLICY_P02 to POLICY_P06 and POLICY_SETTINGS_INVALID; report.ts gains those six MessageCode members.
-const POLICY_SETTINGS_TEXT =
-  " POLICY_P02, POLICY_P03, POLICY_P04, POLICY_P05 and POLICY_P06 (error, or warn for the additionalDirectories check of P02, or the level the org policy sets for the rule: the committed agent settings or MCP files break org policy rule P02, P03, P04, P05 or P06; the message names up to 20 locations as path and line, and the count; each reason is in policy.violations) and POLICY_SETTINGS_INVALID (warn, or error for a file pharn-ci could not read or a problem a required list depends on: the rules P02 to P06 could not fully use an agent settings or MCP file, or did not run; the message names up to 20 problems as path, line and reason, never file text).";
-const POLICY_SETTINGS_CODES = [
-  "POLICY_P02",
-  "POLICY_P03",
-  "POLICY_P04",
-  "POLICY_P05",
-  "POLICY_P06",
-  "POLICY_SETTINGS_INVALID",
-];
-// Re-pinned for E3 item 24 (P07): the same description then gains exactly this text, which names the code POLICY_P07;
-// report.ts gains that MessageCode member. Nothing else may change.
-const P07_TEXT =
-  " POLICY_P07 (warn by default, error when the org policy sets setup.consistency or the rule to block, info when it sets info or the agent instruction files could not be read: agent instruction files in the same directory name different package managers or JavaScript test runners, or some of them could not be compared; the message names up to 20 files, and each violation a path, a line and the tools as fixed words, never the file's text).";
-
 /** Every object schema inside a JSON Schema document (by `type` naming object, or by `properties`). */
 function objectSchemas(value: unknown, path = "$", out: Array<[string, Json]> = []): Array<[string, Json]> {
   if (Array.isArray(value)) {
@@ -86,20 +45,6 @@ function objectSchemas(value: unknown, path = "$", out: Array<[string, Json]> = 
   return out;
 }
 
-/** Every string in a JSON value. */
-function strings(value: unknown, out: string[] = []): string[] {
-  if (typeof value === "string") out.push(value);
-  else if (Array.isArray(value)) for (const v of value) strings(v, out);
-  else if (value !== null && typeof value === "object") for (const v of Object.values(value)) strings(v, out);
-  return out;
-}
-
-const codeWords = (text: string) =>
-  [...new Set([...text.matchAll(/\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/g)].map((m) => m[0]))].sort();
-const upperWords = (text: string) => [...new Set([...text.matchAll(/\b[A-Z][A-Z0-9_]+\b/g)].map((m) => m[0]))].sort();
-const added = (head: string[], base: string[]) => head.filter((w) => !base.includes(w));
-
-// git is spawned for the base texts, which can take seconds on a loaded host.
 describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }, () => {
   it("AC-10: upload-meta.v1.json compiles strictly, is closed everywhere, accepts the golden meta.json and rejects each malformed copy", () => {
     const schema = JSON.parse(read("schema/upload-meta.v1.json")) as Json;
@@ -149,98 +94,8 @@ describe("schema/upload-meta.v1.json and the report schema", { timeout: 60_000 }
     expect(validate({ ...golden, prNumber: null, baseSha: null, mergeBase: null, commentUrl: null })).toBe(true);
   });
 
-  it("AC-11: report.v1.json is byte-identical, report.v2.json gains only the UPLOAD_TOO_LARGE sentence, and report.ts only the MessageCode member", () => {
-    expect(read("schema/report.v1.json")).toBe(atBase("schema/report.v1.json"));
-
-    const v2Base = atBase("schema/report.v2.json");
-    // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
-    // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
-    // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the optional testIntegrity.exercise property is taken out
-    // too (v070-codes.ts pins it exactly), and the v0.7.0 code text joins the description and its code the added words.
-    // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same
-    // way; its codes join V070_CODES and report.ts also gains the SI ids below.
-    // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way, and the v0.8.0 code text
-    // (v080-codes.ts) joins the description and its codes the added words.
-    // Re-pinned for dependency safety (A13, v0.8.0): withoutV080Properties also takes out its top-level `dependencies`
-    // object, and its part of the v0.8.0 code text and its codes (in V080_CODES) join the same way.
-    // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
-    // (v090-codes.ts pins them exactly).
-    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
-    const v2 = withoutSchemaLevelEdits(
-      withoutV080Properties(
-        // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
-        // Re-pinned for the R3 schema text follow-up: its six description edits are put back first (r3-schema-text.ts).
-        withoutV070Properties(
-          withoutV090SchemaEdits(
-            withoutTi17SchemaEdits(
-              withoutCore69SchemaEdits(
-                withoutCore50SchemaEdits(withoutR3SchemaTextEdits(read("schema/report.v2.json"))),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    const baseDescription = strings(JSON.parse(v2Base)).find((s) => s.includes(" Codes added in v0.4.0:"));
-    expect(baseDescription, "control: the base has the v0.4.0 text").toBeDefined();
-    const description = strings(JSON.parse(v2)).find((s) => s.includes(" Codes added in v0.4.0:"));
-    // Re-pinned for policy-p13 (Horizon 2 item H1) and policy rule P14 (agent PR size cap): the one v0.6.0 code text
-    // (POLICY_P13, POLICY_P14, v060-codes.ts) follows P07_TEXT, and both codes join the added code words of the schema
-    // and report.ts below.
-    expect(description).toBe(
-      `${baseDescription}${SENTENCE}${POLICY_RULES_TEXT}${P11_TEXT}${POLICY_SETTINGS_TEXT}${P07_TEXT}${V060_CODE_TEXT}${V070_CODE_TEXT}${V080_CODE_TEXT}`,
-    );
-    expect(v2.split(" Codes added in v0.4.0:").length - 1).toBe(1);
-
-    // Every other line is the base's.
-    const baseLines = v2Base.split("\n");
-    const lines = v2.split("\n");
-    expect(lines).toHaveLength(baseLines.length);
-    const changed = lines.flatMap((line, i) => (line === baseLines[i] ? [] : [i]));
-    expect(changed).toHaveLength(1);
-    // The parsed documents differ only in that one description.
-    const swap = (text: string, from: string, to: string) =>
-      JSON.parse(text, (_key, value) => (value === from ? to : value)) as unknown;
-    expect(swap(v2, description as string, "X")).toEqual(swap(v2Base, baseDescription as string, "X"));
-
-    expect(added(codeWords(v2), codeWords(v2Base))).toEqual(
-      [
-        ...POLICY_RULE_CODES,
-        ...P11_CODES,
-        ...POLICY_SETTINGS_CODES,
-        "POLICY_P07",
-        ...V060_CODES,
-        ...V070_CODES,
-        ...V080_CODES,
-        "UPLOAD_TOO_LARGE",
-      ].sort(),
-    );
-
-    const reportTsBase = atBase("packages/core/src/report.ts");
+  it("AC-11: report.ts has the UPLOAD_TOO_LARGE MessageCode member", () => {
     const reportTs = read("packages/core/src/report.ts");
-    expect(added(upperWords(reportTs), upperWords(reportTsBase))).toEqual(
-      [
-        ...POLICY_RULE_CODES,
-        ...P11_CODES,
-        ...POLICY_SETTINGS_CODES,
-        "POLICY_P07",
-        ...V060_CODES,
-        ...V070_CODES,
-        ...V080_CODES,
-        "SI01",
-        "SI02",
-        "SI03",
-        "SI04",
-        // Re-pinned for ti17-always-true-matcher-2: report.ts gains the TI17 signal id and its message code (the schema
-        // part is taken out above, so it does not join the schema comparison).
-        "TI17",
-        "TEST_INTEGRITY_TI17",
-        // Re-pinned for CORE-118 (R5.1): report.ts gains the POLICY_KEYS_UNKNOWN message code; its schema sentence is
-        // taken out with the R3 passages above (r3-schema-text.ts).
-        "POLICY_KEYS_UNKNOWN",
-        "UPLOAD_TOO_LARGE",
-      ].sort(),
-    );
     const declaration = reportTs.slice(reportTs.indexOf("type MessageCode"));
     const union = declaration.slice(0, declaration.indexOf(";"));
     expect(union.length).toBeGreaterThan(0);

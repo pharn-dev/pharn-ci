@@ -1,23 +1,17 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport, validateReport } from "./schema.js";
-import { withoutTi17SchemaEdits } from "./ti17-schema.js";
-import { withoutV090SchemaEdits } from "./v090-codes.js";
 
-// The schema files are read inside each test body and compared with the base commit d73684d through git (CI checks
-// out the full history). check() is loaded inside the body too: the AC tests are written before
-// testIntegrity.changes exists in the schema.
+// The schema files are read inside each test body. check() is loaded inside the body too: the AC tests are written
+// before testIntegrity.changes exists in the schema.
 
-const BASE = "d73684d7b8c7841e28611758dd510f06aea35335";
 const ROOT = new URL("../", `file://${FIXTURES}`).pathname;
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type Obj = { [key: string]: Json };
 
-const atBase = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT, encoding: "utf8" });
 const live = (path: string) => readFileSync(`${ROOT}${path}`, "utf8");
 const isObj = (v: Json | undefined): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 
@@ -110,42 +104,14 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
     }
   });
 
-  it("AC-13: the message-code description names TEST_INTEGRITY_TI07 with its level warn, every other v2 text is unchanged, and v1 is byte-identical to the base commit", () => {
-    // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
-    // (v090-codes.ts pins them exactly).
-    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
-    const head = JSON.parse(withoutV090SchemaEdits(withoutTi17SchemaEdits(live("schema/report.v2.json")))) as Obj;
-    const base = JSON.parse(atBase("schema/report.v2.json")) as Obj;
+  // CORE-132: the comparisons of the rest of report.v2.json and of report.v1.json with an old commit were history pins
+  // and are removed.
+  it("AC-13: the message-code description names TEST_INTEGRITY_TI07 with its level warn", () => {
+    const head = JSON.parse(live("schema/report.v2.json")) as Obj;
     const code = (s: Obj) => ((((s.$defs as Obj).message as Obj).properties as Obj).code as Obj).description as string;
 
     const description = code(head);
-    expect(code(base)).not.toContain("TEST_INTEGRITY_TI07");
     expect(description).toContain("TEST_INTEGRITY_TI07");
     expect(ti07Entry(description), "the TI07 entry names its level").toMatch(/\bwarn\b/);
-
-    // Set aside the message-code description and the new changes property; everything else is the base's.
-    const strip = (s: Obj) => {
-      const copy = structuredClone(s) as Obj;
-      ((((copy.$defs as Obj).message as Obj).properties as Obj).code as Obj).description = "<set aside>";
-      delete (((copy.properties as Obj).testIntegrity as Obj).properties as Obj).changes;
-      // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property
-      delete (((copy.properties as Obj).meta as Obj).properties as Obj).isAgentPr;
-      // A8 step 1 (TESTS_NOT_EXERCISING_CHANGES) adds the optional testIntegrity.exercise property
-      delete (((copy.properties as Obj).testIntegrity as Obj).properties as Obj).exercise;
-      // Re-pinned for stale instructions (Horizon 2 item H3), which adds the optional top-level setupHealth object.
-      delete (copy.properties as Obj).setupHealth;
-      // Re-pinned for H4 (prompt-injection scan), which adds the optional top-level injection object.
-      delete (copy.properties as Obj).injection;
-      // Re-pinned for flaky tests (A6), which gives the flaky object a description.
-      delete ((copy.properties as Obj).flaky as Obj).description;
-      // Re-pinned for dependency safety (A13, v0.8.0), which adds the optional top-level dependencies object.
-      delete (copy.properties as Obj).dependencies;
-      return copy;
-    };
-    expect(strip(head)).toEqual(strip(base));
-
-    expect(live("schema/report.v1.json"), "schema/report.v1.json is byte-identical").toBe(
-      atBase("schema/report.v1.json"),
-    );
   });
 });

@@ -6,11 +6,9 @@ import { runFixture, signalsOf } from "./ac-e1-fix-shared.js";
 import { FIXTURES } from "./helpers.js";
 
 // ti17-always-true-matcher-2, AC-24. git, the fixture directory and check() (through runFixture) are used inside the
-// test body: the build writes fixtures/test-integrity/TI17/ after this test is written. The benchmark under
-// fixtures/skylos-nine*/ must be byte-identical to the base commit: changing the benchmark to fit the detector is the
-// failure this product exists to catch.
+// test body: the build writes fixtures/test-integrity/TI17/ after this test is written. Changing the benchmark under
+// fixtures/skylos-nine*/ to fit the detector is the failure this product exists to catch.
 
-const BASE = "12036e8c485a656eeb9a4a9beb869e51e37b7d80";
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const BENCHMARK = ["fixtures/skylos-nine", "fixtures/skylos-nine-pytest", "fixtures/skylos-nine-sources"];
 const ID = ["TI", "17"].join("");
@@ -20,8 +18,9 @@ const NAME = /^(warn|pass)-(matcher|helper|wildcard)-[a-z0-9-]+\.diff$/;
 const git = (...args: string[]) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
 
 describe("the TI17 fixtures, and the benchmark left as it was", () => {
-  it("AC-24: every file under the Skylos benchmark is byte-identical to the base commit, there are no always-true-matcher sources, and fixtures/test-integrity/TI17/ holds a warn and a pass case per detection, each giving a TI17 signal for warn cases only", async () => {
-    expect(git("diff", "--name-only", BASE, "--", ...BENCHMARK).trim(), "no benchmark file changed").toBe("");
+  // CORE-132: the comparison of the benchmark with an old commit was a history pin and is removed;
+  // ac-skylos-nine-fixture-pins.test.ts pins every benchmark file by sha256.
+  it("AC-24: no untracked file sits under the Skylos benchmark, there are no always-true-matcher sources, and fixtures/test-integrity/TI17/ holds a warn and a pass case per detection, each giving a TI17 signal for warn cases only", async () => {
     expect(
       git("ls-files", "--others", "--exclude-standard", "--", ...BENCHMARK).trim(),
       "no benchmark file added",

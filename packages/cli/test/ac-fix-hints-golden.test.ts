@@ -1,10 +1,8 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
-import { foldLogoPin } from "../../core/test/helpers.js";
 import { expectValidReport } from "../../core/test/schema.js";
 
 // fix-hints (H6), AC-9. main(), the renderer and the core's fix table are loaded inside the test body: the AC test is
@@ -12,10 +10,7 @@ import { expectValidReport } from "../../core/test/schema.js";
 // in-memory deps: a fake repo rooted at REPO_ROOT whose git returns the golden directory's diff and files list.
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const BASE = "7d88076280ec86435c3f84ad3c6102e272ab64d5";
 const REPO_ROOT = "/home/runner/work/demo/demo";
-const git = (...args: string[]) =>
-  execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 const fixture = (path: string) => readFileSync(`${ROOT}fixtures/${path}`, "utf8");
 
 type Fix = { kind: string; target?: string; hint: string };
@@ -81,7 +76,7 @@ const GOLDENS: Array<{ dir: string; argv: string[]; files: Record<string, string
 ];
 
 describe("the goldens with fix hints", { timeout: 120_000 }, () => {
-  it("AC-9: pharn-ci check --format json on each golden fixture equals its regenerated report.json, every message carries fix, and every golden markdown is byte-identical to the base commit", async () => {
+  it("AC-9: pharn-ci check --format json on each golden fixture equals its regenerated report.json, every message carries fix, and the rendered report equals each golden markdown", async () => {
     const core = (await import("@pharn-ci/core")) as unknown as {
       renderMarkdown(report: unknown): string;
       MESSAGE_FIXES?: Record<string, { kind: string; hint: string }>;
@@ -99,34 +94,12 @@ describe("the goldens with fix hints", { timeout: 120_000 }, () => {
 
       for (const message of report.messages) messages.push([dir, message]);
 
-      // The comment is unchanged: the rendered report equals the golden markdown at the base commit, byte for byte.
-      // Re-pinned for CORE-124: the logo line's raw URL names a commit SHA instead of `main` on purpose; it is folded
-      // back to the `main` URL, so every other byte is still compared with the base.
+      // The comment: the rendered report equals the committed golden markdown, byte for byte. (CORE-132: it was
+      // compared with the golden markdown at an old commit, a history pin, and every .md under fixtures/ with its copy
+      // there; both are removed.)
       const rendered = core.renderMarkdown({ ...report, tool: { ...report.tool, version: "0.1.0" } });
-      expect(foldLogoPin(rendered), `${dir}/report.md`).toBe(git("show", `${BASE}:fixtures/${dir}/report.md`));
-      expect(foldLogoPin(fixture(`${dir}/report.md`)), `${dir}/report.md on disk`).toBe(
-        git("show", `${BASE}:fixtures/${dir}/report.md`),
-      );
+      expect(rendered, `${dir}/report.md`).toBe(fixture(`${dir}/report.md`));
     }
-    // No rendered golden anywhere under fixtures/ changed.
-    // Re-pinned for CORE-53: PYTEST-OUTCOMES.md, a hand-written note added (never modified) beside the
-    // python-switch-off cases, is not a rendered golden; every other .md under fixtures/ is still checked.
-    const added = git("diff", "--name-only", "--diff-filter=A", BASE, "--", "fixtures/").split("\n");
-    const changed = git("diff", "--name-only", BASE, "--", "fixtures/")
-      .split("\n")
-      .filter((path) => path.endsWith(".md"))
-      .filter(
-        (path) => !(path === "fixtures/test-integrity/python-switch-off/PYTEST-OUTCOMES.md" && added.includes(path)),
-      )
-      // Re-pinned for CORE-124: a rendered golden modified only by the pinned logo URL is its content at the base once
-      // the URL is folded back to the `main` one.
-      .filter(
-        (path) =>
-          added.includes(path) ||
-          foldLogoPin(readFileSync(resolve(ROOT, path), "utf8")) !== git("show", `${BASE}:${path}`),
-      );
-    // (An added .md still fails: it is kept by the filter above, as it was before CORE-124.)
-    expect(changed).toEqual([]);
 
     // Every message of the CLI's JSON carries the table's fix.
     expect(messages.length, "the goldens have messages").toBeGreaterThan(0);

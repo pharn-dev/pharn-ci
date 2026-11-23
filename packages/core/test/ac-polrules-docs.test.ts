@@ -1,112 +1,18 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { withoutCore50SchemaEdits } from "./core50-schema.js";
-import { withoutCore69SchemaEdits } from "./core69-schema.js";
-import { withoutSchemaLevelEdits } from "./level-edits.js";
-import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
-import { withoutTi17SchemaEdits } from "./ti17-schema.js";
-import { V060_CODE_TEXT } from "./v060-codes.js";
-import { V070_CODE_TEXT, V070_CODES } from "./v070-codes.js";
-import { V080_CODE_TEXT, V080_CODES } from "./v080-codes.js";
 
-// E3 item 22 (policy rules), AC-18. Reads the repository's schema and sources as text, and the schema at the
-// base commit with git; nothing the build adds is loaded. The base is c8fdc65 (E3 item 21, which appended
-// UPLOAD_TOO_LARGE to the same sentence): this change was rebased onto it from f563d7d.
+// E3 item 22 (policy rules), AC-18. Reads the repository's sources as text; nothing the build adds is loaded.
+// (CORE-133: the README, LIMITS and CHANGELOG wording checks moved out; docs-contract.test.ts checks the README code
+// rows. CORE-132: the comparison of the schema's code description with an old commit, and the check that each re-pinned
+// test names this item, were history pins and are removed; report-v2-compat.test.ts checks every released code.)
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const BASE = "c8fdc65";
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
-const atCommit = (commit: string, path: string) =>
-  execFileSync("git", ["show", `${commit}:${path}`], { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 
-const APPENDED =
-  " POLICY_P08 (error, or the level the org policy sets for P08: tracked files match a forbidden file pattern of the org policy; the message names up to 20 paths and the count) and POLICY_P09 (error, or warn for an agent settings file whose direction is not judged yet: the change edits a file the org policy guards; the message names up to 20 paths and the count; each reason is in policy.violations).";
-
-// E3 item 24a part B (P11): the same description then gains exactly this text after APPENDED, which names the two codes
-// POLICY_P11 and AGENT_PR_DETECTION_INCOMPLETE. It is an exact appended-text pin, so it only adds.
-const P11_TEXT =
-  " POLICY_P11 (error, or warn when the org policy sets agents.protected_paths_mode or the rule to warn: an agent pull request changes paths the org policy protects, or could not be checked because the diff, or the policy file at the merge base, could not be read; the message names up to 20 paths and the evidence as fixed words, never a pattern, label or login) and AGENT_PR_DETECTION_INCOMPLETE (warn: the pull request counts as an agent PR because its evidence could not be read in full, and the org policy protects paths; the message names the reason as one fixed word).";
-
-// Re-pinned for E3 item 23 (policy settings): the description then gains exactly this text after the item 22 text.
-const POLICY_SETTINGS_TEXT =
-  " POLICY_P02, POLICY_P03, POLICY_P04, POLICY_P05 and POLICY_P06 (error, or warn for the additionalDirectories check of P02, or the level the org policy sets for the rule: the committed agent settings or MCP files break org policy rule P02, P03, P04, P05 or P06; the message names up to 20 locations as path and line, and the count; each reason is in policy.violations) and POLICY_SETTINGS_INVALID (warn, or error for a file pharn-ci could not read or a problem a required list depends on: the rules P02 to P06 could not fully use an agent settings or MCP file, or did not run; the message names up to 20 problems as path, line and reason, never file text).";
-
-// E3 item 24 (P07): the same description then gains exactly this text after P11_TEXT, which names the code POLICY_P07.
-// It is an exact appended-text pin, so it only adds.
-const P07_TEXT =
-  " POLICY_P07 (warn by default, error when the org policy sets setup.consistency or the rule to block, info when it sets info or the agent instruction files could not be read: agent instruction files in the same directory name different package managers or JavaScript test runners, or some of them could not be compared; the message names up to 20 files, and each violation a path, a line and the tools as fixed words, never the file's text).";
-
-const REPINNED = [
-  "packages/core/test/ac-policy3-unchanged.test.ts",
-  "packages/action/test/ac-policy3-outcomes.test.ts",
-  "packages/action/test/ac-policy3-other-keys.test.ts",
-  "packages/cli/test/ac-policy3-file-mode.test.ts",
-  "packages/core/test/ac-precision-v030-schema.test.ts",
-  "packages/action/test/ac-pyparity2-unchanged.test.ts",
-  "packages/core/test/ac-secrets-repin.test.ts",
-];
-
-/** The upper-case code words of a text (as the pyparity2 pin collects them). */
-const words = (text: string) =>
-  [...new Set([...text.matchAll(/\b(?:TI\d\d|[A-Z][A-Z0-9]*_[A-Z0-9_]+)\b/g)].map((m) => m[0]))].sort();
-
-const codeDescription = (schemaText: string): string =>
-  (JSON.parse(schemaText) as { $defs: { message: { properties: { code: { description: string } } } } }).$defs.message
-    .properties.code.description;
-
-// CORE-133: the README, LIMITS and CHANGELOG wording checks moved out; docs-contract.test.ts checks the README code
-// rows.
-describe("schema and sources for the policy rules", { timeout: 60_000 }, () => {
-  it("AC-18: the schema appends exactly the two codes, report.ts and the hints name them, and each re-pinned test names E3 item 22", () => {
-    // Schema: the message-code description is the base one with exactly the appended text.
-    const base = codeDescription(atCommit(BASE, "schema/report.v2.json"));
-    // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
-    // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
-    // Re-pinned for policy-p13 (Horizon 2 item H1) and policy rule P14 (agent PR size cap): the one appended v0.6.0
-    // code text (POLICY_P13, then POLICY_P14) follows P07_TEXT; v060-codes.ts pins it exactly. It is an exact
-    // appended-text pin, so it only adds.
-    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
-    // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
-    // Re-pinned for the R3 schema text follow-up: its six description edits are put back first (r3-schema-text.ts).
-    const now = codeDescription(
-      withoutSchemaLevelEdits(
-        withoutTi17SchemaEdits(
-          withoutCore69SchemaEdits(withoutCore50SchemaEdits(withoutR3SchemaTextEdits(read("schema/report.v2.json")))),
-        ),
-      ),
-    );
-    expect(base.endsWith("the check ran in full).")).toBe(true);
-    expect(now.startsWith(base)).toBe(true);
-    // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the v0.7.0 code text follows the v0.6.0 one;
-    // v070-codes.ts pins it exactly, and its code joins the words below. It only adds.
-    // Re-pinned for flaky tests (A6) and dependency safety (A13): the v0.8.0 code text follows the v0.7.0 one;
-    // v080-codes.ts pins it exactly, and its codes join the words below. It only adds.
-    expect(now.slice(base.length)).toBe(
-      APPENDED + P11_TEXT + POLICY_SETTINGS_TEXT + P07_TEXT + V060_CODE_TEXT + V070_CODE_TEXT + V080_CODE_TEXT,
-    );
-    expect(words(now.slice(base.length))).toEqual(
-      [
-        "AGENT_PR_DETECTION_INCOMPLETE",
-        "POLICY_P02",
-        "POLICY_P03",
-        "POLICY_P04",
-        "POLICY_P05",
-        "POLICY_P06",
-        "POLICY_P07",
-        "POLICY_P08",
-        "POLICY_P09",
-        "POLICY_P11",
-        "POLICY_P13",
-        "POLICY_P14",
-        "POLICY_SETTINGS_INVALID",
-        ...V070_CODES,
-        ...V080_CODES,
-      ].sort(),
-    );
-
+describe("sources for the policy rules", { timeout: 60_000 }, () => {
+  it("AC-18: report.ts and the hints name the two codes", () => {
     // report.ts MessageCode and the renderer's hints.
     const report = read("packages/core/src/report.ts");
     const messageCode = /export type MessageCode =([\s\S]*?);/.exec(report)?.[1] ?? "";
@@ -116,14 +22,5 @@ describe("schema and sources for the policy rules", { timeout: 60_000 }, () => {
     expect(markdown).toContain("MESSAGE_HINTS");
     expect(markdown).toMatch(/^\s*POLICY_P08:\s*["'`]Stop tracking the file /m);
     expect(markdown).toMatch(/^\s*POLICY_P09:\s*["'`]Revert the edit, or ask the policy owner to make it/m);
-
-    // Each deliberate re-pin carries the comment naming this item.
-    for (const path of REPINNED) {
-      const lines = read(path).split("\n");
-      expect(
-        lines.some((l) => /^\s*(\/\/|\/\*|\*)/.test(l) && l.includes("E3 item 22 (policy rules)")),
-        path,
-      ).toBe(true);
-    }
   });
 });

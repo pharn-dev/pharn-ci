@@ -1,87 +1,14 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { withoutCore50SchemaEdits } from "./core50-schema.js";
-import { withoutCore69SchemaEdits } from "./core69-schema.js";
-import { withoutSchemaLevelEdits } from "./level-edits.js";
-import { withoutR3SchemaTextEdits } from "./r3-schema-text.js";
-import { withoutTi17SchemaEdits } from "./ti17-schema.js";
-import { V070_INJECTION_CODES, withoutV070Properties } from "./v070-codes.js";
-import { withoutV080Properties } from "./v080-codes.js";
-import { withoutV090SchemaEdits } from "./v090-codes.js";
 
-// precision-v030: the only schema change is the TEST_INTEGRITY_TI15 part of the report v2 message-code description,
-// which now states the level `info` in modes block and warn. report.v1.json and every other byte of report.v2.json
-// are identical to their copies at b31de0c, the commit this increment starts from (read with git show).
+// precision-v030: the TEST_INTEGRITY_TI15 part of the report v2 message-code description states the level `info` in
+// modes block and warn. (CORE-132: the comparisons of report.v1.json and of every other report.v2.json byte with an old
+// commit were history pins and are removed.)
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const BASE = "b31de0c";
 const START = "TEST_INTEGRITY_TI15 (";
-
-// Re-pinned for the agent-config secrets change (E3 item 26): report.v2.json may also carry one appended text, the one
-// starting ` Codes added in v0.4.0:` right after the final sentence of the message-code description, which names the 12
-// AGENT_CONFIG_SECRET_ codes. It is cut out of the current schema before the comparison with b31de0c; everything else
-// is as before.
-const FINAL_SENTENCE = "No code is removed or renamed before 1.0.";
-const APPENDED_START = " Codes added in v0.4.0:";
-const SECRET_CODES = [
-  ...Array.from({ length: 11 }, (_, i) => `AGENT_CONFIG_SECRET_S${String(i + 1).padStart(2, "0")}`),
-  "AGENT_CONFIG_SECRET_UNSCANNED",
-  // Re-pinned for E3 item 20 (the org policy): the same appended text also names these two codes.
-  "POLICY_OVERRIDE_IGNORED",
-  "POLICY_UNAVAILABLE",
-  // Re-pinned for E3 item 21 (the run upload): the same appended text also names this code.
-  "UPLOAD_TOO_LARGE",
-  // Re-pinned for E3 item 22 (policy rules): the same appended text also names these two rule codes.
-  "POLICY_P08",
-  "POLICY_P09",
-  // E3 item 24a part B (P11): the same appended text also names these two codes. This test would stay green without them
-  // (it uses toContain); adding them only states more.
-  "POLICY_P11",
-  "AGENT_PR_DETECTION_INCOMPLETE",
-  // Re-pinned for E3 item 23 (policy settings): the same appended text also names these six codes.
-  "POLICY_P02",
-  "POLICY_P03",
-  "POLICY_P04",
-  "POLICY_P05",
-  "POLICY_P06",
-  "POLICY_SETTINGS_INVALID",
-  // E3 item 24 (P07): the same appended text also names this rule code. This only states more (toContain).
-  "POLICY_P07",
-  // Re-pinned for policy-p13 (Horizon 2 item H1) and policy rule P14 (agent PR size cap): the same appended text ends
-  // with a " Codes added in v0.6.0:" text that names these two rule codes. This only states more (toContain).
-  "POLICY_P13",
-  "POLICY_P14",
-  // Re-pinned for A8 step 1: the appended text then has a " Codes added in v0.7.0:" text that names this code. This
-  // only states more (toContain).
-  "TESTS_NOT_EXERCISING_CHANGES",
-  // Re-pinned for H4 (prompt-injection scan): the same v0.7.0 text also names the six INJECTION_ codes. This only states
-  // more (toContain); its `injection` object is cut by withoutV070Properties.
-  ...V070_INJECTION_CODES,
-];
-
-// agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property: the four lines it inserts after the
-// `agentHint` line of meta.properties.
-const IS_AGENT_PR_LINES = [
-  '        "isAgentPr": {',
-  '          "description": "true when the pull request counts as an agent PR, including when detection could not read all of its evidence; false when the run has no pull request.",',
-  '          "type": "boolean"',
-  "        },",
-  "",
-].join("\n");
-
-const readNow = (path: string) => readFileSync(join(ROOT, path));
-const readBase = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT }) as Buffer;
-
-/** The text without the appended agent-config secrets text, and that text (to the end of the JSON string). */
-function cutAppended(text: string): { cut: string; appended: string } {
-  const at = text.indexOf(FINAL_SENTENCE) + FINAL_SENTENCE.length;
-  let end = at;
-  while (end < text.length && text[end] !== '"') end += text[end] === "\\" ? 2 : 1;
-  return { cut: text.slice(0, at) + text.slice(end), appended: text.slice(at, end) };
-}
 
 /** The [start, end) of the part from `TEST_INTEGRITY_TI15 (` to the next `TEST_INTEGRITY_` code, which must be unique. */
 function ti15Part(text: string, label: string): [number, number] {
@@ -92,60 +19,12 @@ function ti15Part(text: string, label: string): [number, number] {
   return [start, next === -1 ? text.length : next];
 }
 
-describe("schema: only the TI15 level sentence changes", () => {
-  it("AC-9: report.v1.json is byte-identical to b31de0c; the v2 TEST_INTEGRITY_TI15 part says info in modes block and warn; every other v2 byte is unchanged", () => {
-    expect(
-      readNow("schema/report.v1.json").equals(readBase("schema/report.v1.json")),
-      "report.v1.json is byte-identical to its copy at b31de0c",
-    ).toBe(true);
-
-    // agent-pr-detection (E3 item 24a) adds the optional meta.isAgentPr property
-    // Its four inserted lines appear once in the current schema and are cut out before the comparison with the base.
-    // Re-pinned by docs-schema-levels: the two insertions that state the block-mode levels of DIFF_UNAVAILABLE and
-    // TEST_INTEGRITY_INDEX_UNAVAILABLE are taken out first (level-edits.ts); every other byte stays pinned.
-    // Re-pinned for A8 step 1 (TESTS_NOT_EXERCISING_CHANGES): the optional testIntegrity.exercise property is taken out
-    // too (v070-codes.ts pins it exactly); the v0.7.0 code text is part of the appended text.
-    // Re-pinned for stale instructions (Horizon 2 item H3): its top-level setupHealth property is taken out the same way.
-    // Re-pinned for dependency safety (A13, v0.8.0): its top-level `dependencies` object is taken out the same way
-    // (withoutV080Properties; v080-codes.ts pins it exactly); its part of the v0.8.0 code text is in the appended text.
-    // Re-pinned for fix-hints (H6): the `$defs.fix` object and the six `fix` properties are taken out first
-    // (v090-codes.ts pins them exactly).
-    // Re-pinned for ti17-always-true-matcher-2: the TI17 id pattern and code text are taken out first (ti17-schema.ts).
-    const withIsAgentPr = withoutSchemaLevelEdits(
-      // Re-pinned for flaky tests (A6, v0.8.0): the flaky description is taken out the same way (v080-codes.ts).
-      withoutV080Properties(
-        withoutV070Properties(
-          // Re-pinned for CORE-69: its three description insertions are taken out first (core69-schema.ts).
-          withoutV090SchemaEdits(
-            withoutTi17SchemaEdits(
-              // Re-pinned for the R3 schema text follow-up: its six description edits are put back first
-              // (r3-schema-text.ts).
-              withoutCore69SchemaEdits(
-                withoutCore50SchemaEdits(withoutR3SchemaTextEdits(readNow("schema/report.v2.json").toString("utf8"))),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    expect(withIsAgentPr.split(IS_AGENT_PR_LINES).length - 1, "the four isAgentPr lines appear once").toBe(1);
-    const current = withIsAgentPr.replace(IS_AGENT_PR_LINES, "");
-    const { cut: now, appended } = cutAppended(current);
-    expect(appended.startsWith(APPENDED_START), "the appended text starts right after the final sentence").toBe(true);
-    for (const code of SECRET_CODES) expect(appended, `the appended text names ${code}`).toContain(code);
-    const baseBytes = readBase("schema/report.v2.json");
-    const base = baseBytes.toString("utf8");
+describe("schema: the TI15 level sentence", () => {
+  it("AC-9: the v2 TEST_INTEGRITY_TI15 part says info in modes block and warn", () => {
+    const now = readFileSync(join(ROOT, "schema/report.v2.json"), "utf8");
     const [ns, ne] = ti15Part(now, "now");
-    const [bs, be] = ti15Part(base, "base");
-    expect(base.slice(bs, be), "control: the base part states the level warn").toContain("the level is warn");
-
     const part = now.slice(ns, ne);
     expect(part).toContain("info in modes block and warn");
     expect(part).not.toContain("the level is warn");
-    const restored = now.slice(0, ns) + base.slice(bs, be) + now.slice(ne);
-    expect(
-      Buffer.from(restored, "utf8").equals(baseBytes),
-      "report.v2.json with the TI15 part put back is byte-identical to its copy at b31de0c",
-    ).toBe(true);
   });
 });

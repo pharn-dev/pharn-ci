@@ -1,14 +1,10 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
-/** The commit before this increment. */
-const BEFORE = "73ed546bc52c926fdf86c6d3ce12f5de86e4d82c";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 /** The tracked files a fixture runs with when it has no sibling `<name>.files.txt`. */
 const DEFAULT_FILES = ["package.json", "src/a.test.ts"];
@@ -48,17 +44,13 @@ async function signalsOf(dir: string, name: string, repoFiles = filesFor(dir, na
   return report.testIntegrity.signals.filter((signal) => String(signal.id) === dir);
 }
 
-// CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out.
+// CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out. CORE-132: the report.v1.json
+// comparison with an old commit was a history pin and is removed.
 describe("TI10 and TI13: schema and fixtures", () => {
-  it("AC-12: the v2 schema names both message codes and the v1 schema is byte-identical to the base commit's", () => {
+  it("AC-12: the v2 schema names both message codes", () => {
     const schema = read("schema/report.v2.json");
     expect(schema).toContain("TEST_INTEGRITY_TI10");
     expect(schema).toContain("TEST_INTEGRITY_TI13");
-    const before = execFileSync("git", ["show", `${BEFORE}:schema/report.v1.json`], {
-      cwd: fileURLToPath(ROOT),
-      encoding: "utf8",
-    });
-    expect(read("schema/report.v1.json")).toBe(before);
   });
 
   it("AC-12: at least five must-trigger and five must-not-trigger diffs per id, the named cases among them, and they behave", async () => {

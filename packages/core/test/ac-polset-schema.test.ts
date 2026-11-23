@@ -1,22 +1,18 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 // E3 item 23 (policy settings), AC-25. check() is loaded inside the test body: the AC test is written before the build
-// adds the settings rules, so nothing the build adds may run while this file loads. The base is main at 93376a9
-// (E3 item 22 merged), read with git.
+// adds the settings rules, so nothing the build adds may run while this file loads. (CORE-132: the report.v1.json
+// comparison with an old commit was a history pin and is removed.)
 
 type Violation = { id: string; severity: string; path: string | null; line: number | null; detail: string };
 type Message = { level: string; code: string; text: string };
 type Report = { verdict: string; messages: Message[]; policy?: { violations: Violation[] } };
 
-const BASE = "93376a9";
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
-const atBase = (path: string) =>
-  execFileSync("git", ["show", `${BASE}:${path}`], { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 const CODES = ["POLICY_P02", "POLICY_P03", "POLICY_P04", "POLICY_P05", "POLICY_P06", "POLICY_SETTINGS_INVALID"];
 
 const DOCUMENT = {
@@ -42,7 +38,7 @@ const SETTINGS = [
 const MCP = '{\n  "mcpServers": {\n    "notes": { "command": "node" },\n    "evil": { "command": "node" }\n  }\n}\n';
 
 describe("report v2 with the P02–P06 violations and the six codes", { timeout: 60_000 }, () => {
-  it("AC-25: a report with P02–P06 violations on lines and each new code validates against schema/report.v2.json, the codes are MessageCode members, and report.v1.json is unchanged", async () => {
+  it("AC-25: a report with P02–P06 violations on lines and each new code validates against schema/report.v2.json, and the codes are MessageCode members", async () => {
     const { check } = await import("@pharn-ci/core");
     const run = (sources: unknown) => {
       const report = check({
@@ -90,10 +86,9 @@ describe("report v2 with the P02–P06 violations and the six codes", { timeout:
     const union = source.slice(start, source.indexOf(";", start));
     for (const code of CODES) expect(union, `MessageCode has ${code}`).toContain(`"${code}"`);
 
-    // The v2 description names them; v1 is byte-identical to the base.
+    // The v2 description names them.
     const v2 = JSON.parse(read("schema/report.v2.json"));
     const description = JSON.stringify(v2);
     for (const code of CODES) expect(description, `report.v2.json names ${code}`).toContain(code);
-    expect(read("schema/report.v1.json") === atBase("schema/report.v1.json"), "report.v1.json is unchanged").toBe(true);
   });
 });
