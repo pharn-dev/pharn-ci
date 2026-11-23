@@ -35,6 +35,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   test-integrity signal ids are written once, in one registry in the core, and the policy's signal ids, the message
   codes, their fix hints and messages derive from it. The message `code` description in `schema/report.v2.json` is now
   one sentence that links to the code table in `docs/output.md`; no field, type or pattern changes.
+- PR comment hints carry the setting or key to change again (CORE-14 follow-up). The fix hints of 51 message codes
+  (and of the findings of their 16 signal ids) now name what the comment's own hints named before CORE-140: the input,
+  config key or flag (`coverage.file`, `coverage-root`, `--base`, `junit-paths`, `setup.expect`, `test-integrity`),
+  the workflow setting (`fetch-depth: 0`, `permissions: id-token: write`, `if: always()`), the cap (512 KiB, 200 test
+  files, 250 commits, the JUnit caps) or the concrete cause (Python 3.8 or newer, a `binary` attribute, a truncated
+  coverage file). The `Hint:` line and `fix.hint` change together; every code and kind is unchanged.
 - The CLI and the Action gather what the checks read with one shared function (CORE-136), so they no longer differ on
   the same repository. The Action now scans the agent config files for secrets (A7), and reads the agent instruction
   (P07) and settings files (P02 to P06), at `HEAD` also when there is no diff to measure because the checkout is still

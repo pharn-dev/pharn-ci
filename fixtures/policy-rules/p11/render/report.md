@@ -24,22 +24,22 @@ Policy file — the pull request can edit this file, so it can only tighten the 
 - ❌ **P09** `.pharn/policy.json` — this change edits the policy file it is checked against
   - Hint: Revert the edit to the file the org policy guards.
 - ❌ **P11** — policy file edited and unreadable at the merge base; protected paths could not be checked
-  - Hint: Ask a person to review or make the change to the paths the org policy protects from agent pull requests.
+  - Hint: Ask a person to review or make the change to the paths the org policy protects from agent pull requests (`agents.protected_paths`).
 - ❌ **P11** `.github/workflows/ci.yml` — agent PR changes a protected path
-  - Hint: Ask a person to review or make the change to the paths the org policy protects from agent pull requests.
+  - Hint: Ask a person to review or make the change to the paths the org policy protects from agent pull requests (`agents.protected_paths`).
 - ❌ **P11** `src/we'ird<!--\|x.ts` — agent PR changes a protected path
-  - Hint: Ask a person to review or make the change to the paths the org policy protects from agent pull requests.
+  - Hint: Ask a person to review or make the change to the paths the org policy protects from agent pull requests (`agents.protected_paths`).
 
 ### 💬 Messages (4)
 
 - ⚠️ `COVERAGE_FILE_MISSING` Coverage file not found: coverage/lcov.info
-  - Hint: Check that the test step writes the coverage file where the check reads it.
+  - Hint: Check that a test step with coverage runs before this check and writes the file where it reads it (`coverage.file`, the `coverage-file` input or `--coverage`).
 - ⚠️ `CONFIG_CHANGED_IN_DIFF` This change edits files that configure this check: \`.github/workflows/ci.yml\`. Review them before trusting the verdict.
-  - Hint: Ask a reviewer to confirm that the change to the files that configure this check is meant.
+  - Hint: Ask a reviewer to confirm that the change to the files that configure this check is meant, and protect `.pharn/ci.yml` and `.github/workflows/` with CODEOWNERS.
 - ℹ️ `NO_AGENT_SETUP_FILES` No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found.
-  - Hint: Check whether the repository should have an agent instruction file such as AGENTS.md.
+  - Hint: Check whether the repository should have an agent instruction file, such as AGENTS.md or CLAUDE.md at its root, that tells agents how to build and test.
 - ⚠️ `AGENT_PR_DETECTION_INCOMPLETE` This pull request counts as an agent PR because pharn-ci could not read all of its evidence (\`commits-unreadable\`), so the org policy's protected paths apply to it.
-  - Hint: Check that the token can read the pull request, its labels and its commits.
+  - Hint: Check that the token can read the pull request, its labels and its commits, then run the job again; a pull request with more than 250 commits always counts as an agent PR.
 
 ### 🤖 Agent setup (no files)
 

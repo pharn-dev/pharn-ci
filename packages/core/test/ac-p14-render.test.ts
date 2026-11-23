@@ -13,7 +13,9 @@ import { purityViolations } from "./purity-check.js";
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 // CORE-140: the comment's hint is the code's fix.hint, the one advice text of POLICY_P14.
-const HINT = "Split the change into smaller pull requests within the org policy's size caps.";
+// CORE-14 follow-up: the hint names the two caps and what does not count again.
+const HINT =
+  "Split the change into smaller pull requests within the org policy's size caps (`agents.max_files`, `agents.max_changed_lines`); lockfiles, snapshots and `*.generated.*` files do not count.";
 
 /** The lines of a `### ` section whose heading starts with `heading`, up to the next `### ` heading. */
 function section(md: string, heading: string): string[] {

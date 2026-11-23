@@ -52,7 +52,7 @@ export const TEST_INTEGRITY_SIGNALS = [
     id: "TI02",
     fix: {
       kind: "restore-test",
-      hint: "Restore the removed test, or keep a test with the same assertions in one of the touched test files.",
+      hint: "Restore the removed test, or keep a test with the same assertions in one of the touched test files, or say in the PR why it goes.",
     },
     accept: "always",
     message: {
@@ -86,7 +86,10 @@ export const TEST_INTEGRITY_SIGNALS = [
   },
   {
     id: "TI05",
-    fix: { kind: "restore-assertion", hint: "Restore the assertions this test had, so it checks the behaviour again." },
+    fix: {
+      kind: "restore-assertion",
+      hint: "Restore the assertions this test had, so it checks the behaviour again, or say in the PR why it checks less now.",
+    },
     accept: "always",
     message: {
       allPaths: true,
@@ -98,7 +101,7 @@ export const TEST_INTEGRITY_SIGNALS = [
     id: "TI06",
     fix: {
       kind: "restore-assertion",
-      hint: "Restore the stronger assertion this test had in place of the weaker one.",
+      hint: "Restore the stronger matcher, guard or placement of the assertion this test had, or say in the PR why the test checks less now.",
     },
     accept: "block",
     message: {
@@ -123,7 +126,7 @@ export const TEST_INTEGRITY_SIGNALS = [
     id: "TI08",
     fix: {
       kind: "request-review",
-      hint: "Ask a reviewer to confirm the snapshot changes are intended before merging.",
+      hint: "Ask a reviewer to confirm the snapshot changes are intended before merging, and keep snapshot-update flags out of the test command.",
     },
     message: {
       text: (_top, paths) =>

@@ -34,8 +34,9 @@ describe("the Instructions section", () => {
       "- ⚠️ **SI01** `CLAUDE.md:4` — command `pnpm run format` is not defined in the root package.json or Makefile",
       "- ⚠️ **SI02** `CLAUDE.md:11` — path `scripts/changelog.sh` is not in the repository",
       "- ⚠️ **SI03** `CLAUDE.md:15` — file to read is not in the repository",
-      // CORE-140: the hints are each code's fix.hint; SI01 to SI03 share one.
-      "- SI01 hint: Update this agent instruction so it names a script, path or file that exists.",
+      // CORE-140: the hints are each code's fix.hint. CORE-14 follow-up: SI01's names the root package.json and
+      // Makefile again; SI02 and SI03 share one.
+      "- SI01 hint: Update this agent instruction so the command names a script in the root package.json or a target in the root Makefile, or remove it.",
       "- SI02 hint: Update this agent instruction so it names a script, path or file that exists.",
       "- SI03 hint: Update this agent instruction so it names a script, path or file that exists.",
       "",

@@ -14,8 +14,9 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 // CORE-140: the comment's hint is the code's fix.hint, the one advice text of POLICY_P07.
+// CORE-14 follow-up: the hint says "in one directory" and offers moving a file again.
 const P07_HINT =
-  "A maintainer should make the agent instruction files agree on one package manager and one test runner.";
+  "A maintainer should make the agent instruction files in one directory agree on one package manager and test runner, or move a file into the package it describes.";
 
 describe("the schema sentence and the hint for POLICY_P07", { timeout: 60_000 }, () => {
   it("AC-20: the code table documents POLICY_P07; a report with POLICY_P07 validates; the hint is the fixed text", async () => {

@@ -148,6 +148,9 @@ describe("check(): COVERAGE_LINES_SKIPPED", () => {
     const markdown = renderMarkdown(report);
     expect(markdown).toContain(CODE);
     // CORE-140: the hint is the code's fix.hint.
-    expect(markdown).toContain("  - Hint: Check that the coverage reporter finished writing the file.");
+    // CORE-14 follow-up: the hint names the cause (a truncated or hand-edited file) again.
+    expect(markdown).toContain(
+      "  - Hint: Check that the coverage reporter finished writing the file, and regenerate it; a truncated or hand-edited file can show more coverage than the tests gave.",
+    );
   });
 });

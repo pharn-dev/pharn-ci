@@ -43,15 +43,16 @@ const IGNORED: Message = {
   code: "POLICY_OVERRIDE_IGNORED",
   text: "The policy file sets policy.rules.P02 lower than the default, so it was not applied.",
 };
-// CORE-140: the hints are each code's fix.hint; P02 to P06 share one.
-const REVIEW_POLICY = "Ask a maintainer or the policy owner to review the committed agent settings this rule names.";
+// CORE-140: the hints are each code's fix.hint. CORE-14 follow-up: P02 to P06 each have their own again, with the
+// setting or key to change.
 const HINTS: Record<string, string> = {
-  P02: REVIEW_POLICY,
-  P04: REVIEW_POLICY,
-  P05: REVIEW_POLICY,
-  P06: REVIEW_POLICY,
+  P02: "Ask a maintainer to narrow or remove the allow rule (or the `defaultMode` or `additionalDirectories` key) that the settings file sets against the org policy's `setup.forbidden_permissions`.",
+  P04: "Ask a maintainer to remove the MCP server that the org policy's `setup.allowed_mcp_servers` does not list, or the `enableAllProjectMcpServers` setting.",
+  P05: "Ask a maintainer to remove the MCP server the org policy forbids from the file that names it.",
+  P06: "Ask a maintainer to add the required command hook, with a matcher that covers the required one (`*` or the same tool names) and no `if` condition, or remove `disableAllHooks`.",
 };
-const INVALID_HINT = "Check the policy settings and correct the ones the report names.";
+const INVALID_HINT =
+  "Check that the agent settings files the report names are valid JSON and regular files under 512 KiB, on a checkout of the pull request head.";
 
 /** The section from `### 📜 Policy` up to and including the newline before the next `### ` line. */
 function policySection(markdown: string): string {

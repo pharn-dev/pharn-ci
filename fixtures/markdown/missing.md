@@ -20,9 +20,9 @@ No test-integrity findings (mode: warn).
 ### 💬 Messages (2)
 
 - ❌ `COVERAGE_FILE_MISSING` Coverage file not found: coverage/lcov.info
-  - Hint: Check that the test step writes the coverage file where the check reads it.
+  - Hint: Check that a test step with coverage runs before this check and writes the file where it reads it (`coverage.file`, the `coverage-file` input or `--coverage`).
 - ℹ️ `NO_AGENT_SETUP_FILES` No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found.
-  - Hint: Check whether the repository should have an agent instruction file such as AGENTS.md.
+  - Hint: Check whether the repository should have an agent instruction file, such as AGENTS.md or CLAUDE.md at its root, that tells agents how to build and test.
 
 ### 🤖 Agent setup (no files)
 

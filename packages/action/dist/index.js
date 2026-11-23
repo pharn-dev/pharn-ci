@@ -25542,7 +25542,7 @@ var TEST_INTEGRITY_SIGNALS = [
     id: "TI02",
     fix: {
       kind: "restore-test",
-      hint: "Restore the removed test, or keep a test with the same assertions in one of the touched test files."
+      hint: "Restore the removed test, or keep a test with the same assertions in one of the touched test files, or say in the PR why it goes."
     },
     accept: "always",
     message: {
@@ -25573,7 +25573,10 @@ var TEST_INTEGRITY_SIGNALS = [
   },
   {
     id: "TI05",
-    fix: { kind: "restore-assertion", hint: "Restore the assertions this test had, so it checks the behaviour again." },
+    fix: {
+      kind: "restore-assertion",
+      hint: "Restore the assertions this test had, so it checks the behaviour again, or say in the PR why it checks less now."
+    },
     accept: "always",
     message: {
       allPaths: true,
@@ -25584,7 +25587,7 @@ var TEST_INTEGRITY_SIGNALS = [
     id: "TI06",
     fix: {
       kind: "restore-assertion",
-      hint: "Restore the stronger assertion this test had in place of the weaker one."
+      hint: "Restore the stronger matcher, guard or placement of the assertion this test had, or say in the PR why the test checks less now."
     },
     accept: "block",
     message: {
@@ -25607,7 +25610,7 @@ var TEST_INTEGRITY_SIGNALS = [
     id: "TI08",
     fix: {
       kind: "request-review",
-      hint: "Ask a reviewer to confirm the snapshot changes are intended before merging."
+      hint: "Ask a reviewer to confirm the snapshot changes are intended before merging, and keep snapshot-update flags out of the test command."
     },
     message: {
       text: (_top, paths) => `This change regenerates or updates snapshots in bulk: ${paths}. Check that each new snapshot was reviewed.`
@@ -25727,33 +25730,53 @@ function testIntegritySignal(id) {
 }
 
 // ../core/src/fix/table.ts
-var REVIEW_POLICY = "Ask a maintainer or the policy owner to review the committed agent settings this rule names.";
 var REVIEW_INJECTION = "Ask a reviewer to look at the added text that addresses an AI agent before merging.";
 var SIGNAL_FIXES = {
   ...TEST_INTEGRITY_SIGNAL_FIXES,
   P01: { kind: "none", hint: "A maintainer should add the agent setup files the org policy requires." },
-  P02: { kind: "request-review", hint: REVIEW_POLICY },
-  P03: { kind: "request-review", hint: REVIEW_POLICY },
-  P04: { kind: "request-review", hint: REVIEW_POLICY },
-  P05: { kind: "request-review", hint: REVIEW_POLICY },
-  P06: { kind: "request-review", hint: REVIEW_POLICY },
+  P02: {
+    kind: "request-review",
+    hint: "Ask a maintainer to narrow or remove the allow rule (or the `defaultMode` or `additionalDirectories` key) that the settings file sets against the org policy's `setup.forbidden_permissions`."
+  },
+  P03: {
+    kind: "request-review",
+    hint: "Ask a maintainer to add a deny rule equal to or broader than the required one to the `.claude/settings.json` of each directory named."
+  },
+  P04: {
+    kind: "request-review",
+    hint: "Ask a maintainer to remove the MCP server that the org policy's `setup.allowed_mcp_servers` does not list, or the `enableAllProjectMcpServers` setting."
+  },
+  P05: {
+    kind: "request-review",
+    hint: "Ask a maintainer to remove the MCP server the org policy forbids from the file that names it."
+  },
+  P06: {
+    kind: "request-review",
+    hint: "Ask a maintainer to add the required command hook, with a matcher that covers the required one (`*` or the same tool names) and no `if` condition, or remove `disableAllHooks`."
+  },
   P07: {
     kind: "none",
-    hint: "A maintainer should make the agent instruction files agree on one package manager and one test runner."
+    hint: "A maintainer should make the agent instruction files in one directory agree on one package manager and test runner, or move a file into the package it describes."
   },
   P08: {
     kind: "request-review",
-    hint: "Ask a maintainer to review the tracked files that match the org policy's forbidden patterns."
+    hint: "Ask a maintainer to stop tracking the files that match the org policy's forbidden patterns (`git rm --cached` them and add them to `.gitignore`)."
   },
   P09: { kind: "revert-config", hint: "Revert the edit to the file the org policy guards." },
   P10: { kind: "none", hint: "The org policy could not be used; a maintainer should check where it comes from." },
   P11: {
     kind: "request-review",
-    hint: "Ask a person to review or make the change to the paths the org policy protects from agent pull requests."
+    hint: "Ask a person to review or make the change to the paths the org policy protects from agent pull requests (`agents.protected_paths`)."
   },
   P13: { kind: "revert-config", hint: "Revert the edit that widens what an agent may do." },
-  P14: { kind: "split-pr", hint: "Split the change into smaller pull requests within the org policy's size caps." },
-  SI01: { kind: "none", hint: "Update this agent instruction so it names a script, path or file that exists." },
+  P14: {
+    kind: "split-pr",
+    hint: "Split the change into smaller pull requests within the org policy's size caps (`agents.max_files`, `agents.max_changed_lines`); lockfiles, snapshots and `*.generated.*` files do not count."
+  },
+  SI01: {
+    kind: "none",
+    hint: "Update this agent instruction so the command names a script in the root package.json or a target in the root Makefile, or remove it."
+  },
   SI02: { kind: "none", hint: "Update this agent instruction so it names a script, path or file that exists." },
   SI03: { kind: "none", hint: "Update this agent instruction so it names a script, path or file that exists." },
   SI04: {
@@ -25762,7 +25785,7 @@ var SIGNAL_FIXES = {
   },
   PI01: {
     kind: "request-review",
-    hint: "Ask a reviewer to look at the invisible characters this change adds before merging."
+    hint: "Ask a reviewer to look at the invisible or bidirectional characters this change adds before merging; where code needs one, write it as an escape such as `\\u202E`."
   },
   PI02: { kind: "request-review", hint: REVIEW_INJECTION },
   PI03: { kind: "request-review", hint: REVIEW_INJECTION },
@@ -25785,7 +25808,7 @@ var SIGNAL_FIXES = {
   },
   D04: {
     kind: "request-review",
-    hint: "Regenerate the lockfile with the package manager and ask a reviewer to confirm the manifest change was meant."
+    hint: "Regenerate the lockfile with the package manager and commit it with the manifest, and ask a reviewer to confirm the change, above all a new hash for the same version."
   },
   D05: {
     kind: "remove-dependency",
@@ -25795,7 +25818,7 @@ var SIGNAL_FIXES = {
 var S = SIGNAL_FIXES;
 var REVIEW_SECRET = {
   kind: "request-review",
-  hint: "Ask a maintainer to remove the value from the committed agent config, rotate it and load it from the environment."
+  hint: "Ask a maintainer to revoke the value at its provider, remove it from the agent config and from git history, and load it from the environment or a secret store."
 };
 var MESSAGE_FIXES = {
   DIFF_COVERAGE_BELOW_THRESHOLD: {
@@ -25812,39 +25835,39 @@ var MESSAGE_FIXES = {
   },
   COVERAGE_FILE_MISSING: {
     kind: "none",
-    hint: "Check that the test step writes the coverage file where the check reads it."
+    hint: "Check that a test step with coverage runs before this check and writes the file where it reads it (`coverage.file`, the `coverage-file` input or `--coverage`)."
   },
   COVERAGE_FILE_EMPTY: {
     kind: "none",
-    hint: "Check that the tests ran and wrote records to the coverage file."
+    hint: "Check that the tests ran with coverage turned on before this check and wrote records for this repository's sources to the coverage file."
   },
   COVERAGE_FORMAT_UNSUPPORTED: {
     kind: "none",
-    hint: "Check that the coverage file is in lcov or Cobertura XML format."
+    hint: "Check that the coverage file is lcov or Cobertura XML; if it is, set its format (`coverage.format`, the `coverage-format` input or `--coverage-format`)."
   },
   DIFF_UNAVAILABLE: {
     kind: "none",
-    hint: "Check that the workflow fetches the base commit so the diff can be read."
+    hint: "Check that the workflow fetches the base commit (`fetch-depth: 0` on `actions/checkout`), or set the base with the `base-ref` input or `--base`."
   },
   COVERAGE_PATHS_UNMATCHED: {
     kind: "none",
-    hint: "Check that the coverage paths start at the repository root, or set the coverage root."
+    hint: "Check that the coverage paths start at the repository root, or set the directory they start from (`coverage.root`, the `coverage-root` input or `--coverage-root`)."
   },
   COVERAGE_PATHS_PARTIALLY_UNMATCHED: {
     kind: "none",
-    hint: "Check that the coverage paths start at the repository root so every file is matched."
+    hint: "Check that the coverage paths start at the repository root or at `coverage.root`, so every changed file is matched; generated files and files outside the repository need nothing."
   },
   COVERAGE_LINES_SKIPPED: {
     kind: "none",
-    hint: "Check that the coverage reporter finished writing the file."
+    hint: "Check that the coverage reporter finished writing the file, and regenerate it; a truncated or hand-edited file can show more coverage than the tests gave."
   },
   CONFIG_CHANGED_IN_DIFF: {
     kind: "request-review",
-    hint: "Ask a reviewer to confirm that the change to the files that configure this check is meant."
+    hint: "Ask a reviewer to confirm that the change to the files that configure this check is meant, and protect `.pharn/ci.yml` and `.github/workflows/` with CODEOWNERS."
   },
   COVERAGE_FILE_TRACKED: {
     kind: "request-review",
-    hint: "Ask a maintainer to stop tracking the coverage file, so a change cannot supply its own numbers."
+    hint: "Ask a maintainer to stop tracking the coverage file (`git rm --cached` it, add it to `.gitignore`) and generate it in CI, so a change cannot supply its own numbers."
   },
   DIFF_BINARY_COVERED_FILE: {
     kind: "none",
@@ -25856,7 +25879,7 @@ var MESSAGE_FIXES = {
   },
   NO_AGENT_SETUP_FILES: {
     kind: "none",
-    hint: "Check whether the repository should have an agent instruction file such as AGENTS.md."
+    hint: "Check whether the repository should have an agent instruction file, such as AGENTS.md or CLAUDE.md at its root, that tells agents how to build and test."
   },
   AGENT_SETUP_FILE_EMPTY: {
     kind: "none",
@@ -25864,17 +25887,20 @@ var MESSAGE_FIXES = {
   },
   AGENT_SETUP_EXPECTED_MISSING: {
     kind: "none",
-    hint: "Check which agent tools the repository expects and add their setup files."
+    hint: "Check which agent tools `setup.expect` names (in the org policy or `.pharn/ci.yml`) and add their setup files, such as AGENTS.md, CLAUDE.md or `.cursor/rules/`."
   },
   TEST_INTEGRITY_MODE_IGNORED: {
     kind: "none",
-    hint: "Check the test integrity mode in the config; a config can only make the check stricter."
+    hint: "Check the mode in the workflow: `test_integrity.mode` in `.pharn/ci.yml` can only make the `test-integrity` input stricter, so remove the looser value."
   },
-  TEST_INTEGRITY_OFF: { kind: "none", hint: "Check why test integrity is off for this run." },
+  TEST_INTEGRITY_OFF: {
+    kind: "none",
+    hint: "Check why test integrity is off for this run; the `test-integrity` input or `--test-integrity` set to `warn` or `block` turns it on."
+  },
   ...TEST_INTEGRITY_MESSAGE_FIXES,
   TEST_INTEGRITY_INDEX_UNAVAILABLE: {
     kind: "none",
-    hint: "Check that the touched test files can be read, so removed tests and assertions are compared; a -diff or binary attribute in .gitattributes, or a NUL byte in the file, can cause this."
+    hint: "Check the named test files by hand; a file over 512 KiB, over 200 touched test files, no Python 3.8+ for `.py` files, or a `binary` or `-diff` attribute in `.gitattributes` stops the comparison."
   },
   TEST_INTEGRITY_TEXT_TRUNCATED: {
     kind: "none",
@@ -25886,7 +25912,7 @@ var MESSAGE_FIXES = {
   },
   TEST_INTEGRITY_ACCEPT_IGNORED: {
     kind: "none",
-    hint: "Check that a reviewer who is not the author applies the accept label."
+    hint: "Check that a reviewer who is not the author applies the accept label; it counts only when a user account other than the author applied it last."
   },
   AGENT_CONFIG_SECRET_S01: REVIEW_SECRET,
   AGENT_CONFIG_SECRET_S02: REVIEW_SECRET,
@@ -25901,23 +25927,26 @@ var MESSAGE_FIXES = {
   AGENT_CONFIG_SECRET_S11: REVIEW_SECRET,
   AGENT_CONFIG_SECRET_UNSCANNED: {
     kind: "none",
-    hint: "Check the agent config files that could not be scanned for committed secrets."
+    hint: "Check the named agent config files by hand; to be scanned for secrets a file must be text, under 512 KiB and inside the repository, on a checkout of the pull request head."
   },
   POLICY_UNAVAILABLE: {
     kind: "none",
-    hint: "Check that the workflow grants id-token write and that the org policy can be fetched."
+    hint: "Check that the job has `permissions: id-token: write` (fork pull requests get no OIDC token) and that the pharn.dev app is installed for this repository."
   },
   POLICY_OVERRIDE_IGNORED: {
     kind: "none",
     hint: "Check that the workflow inputs and the config only make the org policy stricter."
   },
-  UPLOAD_TOO_LARGE: { kind: "none", hint: "Check the size of the report; the check itself ran in full." },
+  UPLOAD_TOO_LARGE: {
+    kind: "none",
+    hint: "Check the size of the report; the check itself ran in full, and the whole report is in the job summary and report.json."
+  },
   POLICY_P08: S.P08,
   POLICY_P09: S.P09,
   POLICY_P11: S.P11,
   AGENT_PR_DETECTION_INCOMPLETE: {
     kind: "none",
-    hint: "Check that the token can read the pull request, its labels and its commits."
+    hint: "Check that the token can read the pull request, its labels and its commits, then run the job again; a pull request with more than 250 commits always counts as an agent PR."
   },
   POLICY_P02: S.P02,
   POLICY_P03: S.P03,
@@ -25926,7 +25955,7 @@ var MESSAGE_FIXES = {
   POLICY_P06: S.P06,
   POLICY_SETTINGS_INVALID: {
     kind: "none",
-    hint: "Check the policy settings and correct the ones the report names."
+    hint: "Check that the agent settings files the report names are valid JSON and regular files under 512 KiB, on a checkout of the pull request head."
   },
   POLICY_P07: S.P07,
   POLICY_P13: S.P13,
@@ -25950,10 +25979,16 @@ var MESSAGE_FIXES = {
   },
   JUNIT_NOT_FOUND: {
     kind: "none",
-    hint: "Check that the test step writes the JUnit XML file where the junit paths point."
+    hint: "Check that the test step writes JUnit XML where `junit-paths` or `--junit` points, and that the pharn-ci step runs after it with `if: always()`."
   },
-  JUNIT_INVALID: { kind: "none", hint: "Check that the JUnit XML file is well formed and complete." },
-  JUNIT_TOO_LARGE: { kind: "none", hint: "Check the size of the JUnit XML file; it is too large to be read." },
+  JUNIT_INVALID: {
+    kind: "none",
+    hint: "Check that the JUnit XML file is well formed and complete: one `testsuites` or `testsuite` root, no DOCTYPE, every element closed."
+  },
+  JUNIT_TOO_LARGE: {
+    kind: "none",
+    hint: "Check the JUnit XML files against the caps (50 files, 25 MiB, 20,000 test cases) and narrow `junit-paths` to the files of this job; results past a cap are not counted."
+  },
   FLAKY_QUARANTINED_FAILURES: {
     kind: "none",
     hint: "Check the quarantined tests that failed and whether they are still flaky."
@@ -25969,7 +26004,7 @@ var MESSAGE_FIXES = {
   },
   DEPENDENCY_CHECK_INCOMPLETE: {
     kind: "none",
-    hint: "Check that the manifest or lockfile the report names can be read and parsed, and keep it under 32 MiB."
+    hint: "Check that the manifest or lockfile the report names parses and stays under 32 MiB, on a checkout of the pull request head with `fetch-depth: 0`."
   },
   POLICY_KEYS_UNKNOWN: {
     kind: "none",

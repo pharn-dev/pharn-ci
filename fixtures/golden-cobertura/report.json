@@ -113,7 +113,7 @@
       "text": "1 file path in the coverage report is not a tracked file in the repository; its coverage is not used.",
       "fix": {
         "kind": "none",
-        "hint": "Check that the coverage paths start at the repository root so every file is matched."
+        "hint": "Check that the coverage paths start at the repository root or at `coverage.root`, so every changed file is matched; generated files and files outside the repository need nothing."
       }
     }
   ],

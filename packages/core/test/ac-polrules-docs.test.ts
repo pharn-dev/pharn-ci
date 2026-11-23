@@ -22,7 +22,8 @@ describe("sources for the policy rules", { timeout: 60_000 }, () => {
     const table = read("packages/core/src/fix/table.ts");
     expect(table).toMatch(/^\s*POLICY_P08:\s*S\.P08,$/m);
     expect(table).toMatch(/^\s*POLICY_P09:\s*S\.P09,$/m);
-    expect(table).toContain('hint: "Ask a maintainer to review the tracked files that match the org policy');
+    // CORE-14 follow-up: the P08 hint says to stop tracking the files, as the comment's hint did before CORE-140.
+    expect(table).toContain('hint: "Ask a maintainer to stop tracking the files that match the org policy');
     expect(table).toContain(
       'P09: { kind: "revert-config", hint: "Revert the edit to the file the org policy guards." }',
     );

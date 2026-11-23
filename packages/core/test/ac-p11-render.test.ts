@@ -8,10 +8,12 @@ import { expectValidReport } from "./schema.js";
 // may run while this file loads.
 
 const HOSTILE = "src/we`ird<!--|x.ts";
-// CORE-140: the hints are each code's fix.hint.
+// CORE-140: the hints are each code's fix.hint. CORE-14 follow-up: they name `agents.protected_paths` and the
+// 250-commit cap again.
 const P11_HINT =
-  "Ask a person to review or make the change to the paths the org policy protects from agent pull requests.";
-const INCOMPLETE_HINT = "Check that the token can read the pull request, its labels and its commits.";
+  "Ask a person to review or make the change to the paths the org policy protects from agent pull requests (`agents.protected_paths`).";
+const INCOMPLETE_HINT =
+  "Check that the token can read the pull request, its labels and its commits, then run the job again; a pull request with more than 250 commits always counts as an agent PR.";
 
 /** The lines of a `### ` section whose heading starts with `heading`, up to the next `### ` heading. */
 function section(md: string, heading: string): string[] {

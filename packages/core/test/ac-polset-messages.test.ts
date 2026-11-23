@@ -63,14 +63,19 @@ const SETTINGS_TAIL =
   ". Claude Code skips an unparseable file or entry; pharn-ci never guesses what it meant, and a file it could not read counts against the policy.";
 
 // CORE-140: the comment's hint is each code's fix.hint, the one advice text of the code.
-const REVIEW_POLICY = "Ask a maintainer or the policy owner to review the committed agent settings this rule names.";
+// CORE-14 follow-up: P02 to P06 each have their own hint again, with the setting or key to change.
 const HINTS: Record<string, string> = {
-  POLICY_P02: REVIEW_POLICY,
-  POLICY_P03: REVIEW_POLICY,
-  POLICY_P04: REVIEW_POLICY,
-  POLICY_P05: REVIEW_POLICY,
-  POLICY_P06: REVIEW_POLICY,
-  POLICY_SETTINGS_INVALID: "Check the policy settings and correct the ones the report names.",
+  POLICY_P02:
+    "Ask a maintainer to narrow or remove the allow rule (or the `defaultMode` or `additionalDirectories` key) that the settings file sets against the org policy's `setup.forbidden_permissions`.",
+  POLICY_P03:
+    "Ask a maintainer to add a deny rule equal to or broader than the required one to the `.claude/settings.json` of each directory named.",
+  POLICY_P04:
+    "Ask a maintainer to remove the MCP server that the org policy's `setup.allowed_mcp_servers` does not list, or the `enableAllProjectMcpServers` setting.",
+  POLICY_P05: "Ask a maintainer to remove the MCP server the org policy forbids from the file that names it.",
+  POLICY_P06:
+    "Ask a maintainer to add the required command hook, with a matcher that covers the required one (`*` or the same tool names) and no `if` condition, or remove `disableAllHooks`.",
+  POLICY_SETTINGS_INVALID:
+    "Check that the agent settings files the report names are valid JSON and regular files under 512 KiB, on a checkout of the pull request head.",
 };
 
 describe("the P02–P06 and POLICY_SETTINGS_INVALID messages", { timeout: 60_000 }, () => {

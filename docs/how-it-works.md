@@ -135,7 +135,7 @@ flowchart LR
 > - ❌ `DIFF_COVERAGE_BELOW_THRESHOLD` Diff coverage 71.43% is below the threshold of 80%.
 >   - Hint: Add tests that run the changed lines listed in the report.
 > - ℹ️ `COVERAGE_PATHS_PARTIALLY_UNMATCHED` 1 file path in the coverage report is not a tracked file in the repository; its coverage is not used.
->   - Hint: Check that the coverage paths start at the repository root so every file is matched.
+>   - Hint: Check that the coverage paths start at the repository root or at `coverage.root`, so every changed file is matched; generated files and files outside the repository need nothing.
 >
 > ### 🤖 Agent setup (8 files)
 >

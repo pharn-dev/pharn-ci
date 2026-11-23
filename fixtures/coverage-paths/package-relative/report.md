@@ -20,7 +20,7 @@ No test-integrity findings (mode: warn).
 ### 💬 Messages (1)
 
 - ❌ `COVERAGE_PATHS_UNMATCHED` None of the 2 file paths in the coverage report are tracked files in the repository (for example \`src/a.ts\`), so diff coverage was not measured. The paths look relative to \`packages/core\`: set coverage-root: \`packages/core\` (coverage.root in .pharn/ci.yml, --coverage-root in the CLI).
-  - Hint: Check that the coverage paths start at the repository root, or set the coverage root.
+  - Hint: Check that the coverage paths start at the repository root, or set the directory they start from (`coverage.root`, the `coverage-root` input or `--coverage-root`).
 
 ### 🤖 Agent setup (1 file)
 

@@ -46,9 +46,9 @@ describe("the Dependencies section", () => {
       "- ⚠️ Not checked: 1 manifest or lockfile file could not be read, so dependency safety did not check it: \\`package.json\\` (unavailable).",
     );
     // Re-pinned for CORE-100 part 2: the per-file cap is 32 MiB now, and the hint names it. CORE-140: the hint is the
-    // code's fix.hint, which names the cap too.
+    // code's fix.hint, which names the cap too. CORE-14 follow-up: it names `fetch-depth: 0` again.
     expect(text).toContain(
-      "  - Hint: Check that the manifest or lockfile the report names can be read and parsed, and keep it under 32 MiB.",
+      "  - Hint: Check that the manifest or lockfile the report names parses and stays under 32 MiB, on a checkout of the pull request head with `fetch-depth: 0`.",
     );
   });
 

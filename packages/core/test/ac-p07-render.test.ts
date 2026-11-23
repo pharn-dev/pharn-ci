@@ -9,8 +9,9 @@ import { expectValidReport } from "./schema.js";
 
 const HOSTILE = "packages/we`ird<!--|x/AGENTS.md";
 // CORE-140: the hint is the code's fix.hint.
+// CORE-14 follow-up: the hint says "in one directory" and offers moving a file again.
 const P07_HINT =
-  "A maintainer should make the agent instruction files agree on one package manager and one test runner.";
+  "A maintainer should make the agent instruction files in one directory agree on one package manager and test runner, or move a file into the package it describes.";
 const AGENTS_LINE = "- ⚠️ **P07** `AGENTS.md:3` — package manager: pnpm here, npm in CLAUDE.md:4";
 
 /** The lines of a `### ` section whose heading starts with `heading`, up to the next `### ` heading; [] when absent. */

@@ -36,10 +36,10 @@ function asV1File(json: string): string {
  */
 const GOLDEN_MESSAGE_LINES = [
   "- ❌ `DIFF_COVERAGE_BELOW_THRESHOLD` Diff coverage 71.43% is below the threshold of 80%.",
-  // CORE-140: the hint lines are each code's fix.hint.
+  // CORE-140: the hint lines are each code's fix.hint. CORE-14 follow-up: the fix hint names `coverage.root` again.
   "  - Hint: Add tests that run the changed lines listed in the report.",
   "- ℹ️ `COVERAGE_PATHS_PARTIALLY_UNMATCHED` 1 file path in the coverage report is not a tracked file in the repository; its coverage is not used.",
-  "  - Hint: Check that the coverage paths start at the repository root so every file is matched.",
+  "  - Hint: Check that the coverage paths start at the repository root or at `coverage.root`, so every changed file is matched; generated files and files outside the repository need nothing.",
 ];
 
 /** The non-empty lines of the Messages section: from its heading to the next heading. */

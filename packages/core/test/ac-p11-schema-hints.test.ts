@@ -16,9 +16,11 @@ import { expectValidReport } from "./schema.js";
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
+// CORE-14 follow-up: the two hints name `agents.protected_paths` and the 250-commit cap again.
 const P11_HINT =
-  "Ask a person to review or make the change to the paths the org policy protects from agent pull requests.";
-const INCOMPLETE_HINT = "Check that the token can read the pull request, its labels and its commits.";
+  "Ask a person to review or make the change to the paths the org policy protects from agent pull requests (`agents.protected_paths`).";
+const INCOMPLETE_HINT =
+  "Check that the token can read the pull request, its labels and its commits, then run the job again; a pull request with more than 250 commits always counts as an agent PR.";
 
 describe("the schema sentence and the hints for POLICY_P11 and AGENT_PR_DETECTION_INCOMPLETE", {
   timeout: 60_000,
