@@ -1051,7 +1051,9 @@ a failed or timed-out run, output too large or unreadable) or a refusal of a `.p
 `too-deep`, `too-large`, `parser-threw`) leaves that file out of every signal that compares test text. Since CORE-351
 that fails closed: in `test-integrity: block`, the modified or added `.py` test file is named in
 `TEST_INTEGRITY_INDEX_UNAVAILABLE` as an error (the accept label lowers it), where it was a warning before; JS/TS test
-files of the same change are still compared. A head the index read, with a base only the index refused, still warns.
+files of the same change are still compared. One case is not per file: with no interpreter at all (`python-not-found`)
+and a modified `.py` test file, the whole comparison stops before any JS/TS file is compared (TI02 and TI05 did not
+run), an error the accept label never lowers. A head the index read, with a base only the index refused, still warns.
 
 **Python misses.** What the Python column does not see:
 
@@ -1118,12 +1120,14 @@ files of the same change are still compared. A head the index read, with a base 
   side whatever the other side holds, and as `too-large`, `binary` or `unsafe-path` while the other side's text was
   read (the pull request moved the file across the boundary); `too-large` or `binary` on both sides and `missing` on
   either side do not. A `.py` test file, modified or added, whose head text was read but not indexed by the Python index
-  fails closed: a Python run that gave no index (`python-not-found`, `python-too-old`, `python-failed`, `timeout`,
-  `output-too-large`, `bad-output`) or a refusal as `syntax-error`, `too-deep`, `too-large` or `parser-threw`, whatever
+  fails closed: a Python run that gave no index (`python-too-old`, `python-failed`, `timeout`, `output-too-large`,
+  `bad-output`, and `python-not-found` for an added file; with a modified `.py` test file `python-not-found` stays the
+  whole-run did-not-run error) or a refusal as `syntax-error`, `too-deep`, `too-large` or `parser-threw`, whatever
   the base side held. A caller that passes no Python index at all (a library call, not the CLI or the Action) keeps the
   warning. These still only warn in block: an added JS/TS test file that cannot be read, a modified test file that
-  could not be read at the merge base either (for a reason other than `over-file-cap`), the other reasons at HEAD
-  (`syntax-error`, `syntax-error-heavy`, `missing`, a JS/TS `parser-threw`) when the base indexed, a `.py` file whose
+  could not be read at the merge base either (for a reason other than `over-file-cap` or `over-total-cap`), the other
+  reasons at HEAD of a JS/TS file (`syntax-error`, `syntax-error-heavy`, `parser-threw`) and `missing` when the base
+  indexed, a `.py` file whose
   head indexed while only its base was refused, the Python index's own `missing`, and a cut file that is not a
   modified test file. The change can no longer use the cap to hide a modified test file: the test files it modifies
   are read first, so only they fill the 16 MiB cap ahead of one another, and a change that pads the other test files

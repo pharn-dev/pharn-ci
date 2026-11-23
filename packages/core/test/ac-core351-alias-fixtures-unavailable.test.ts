@@ -71,6 +71,8 @@ describe("CORE-351: the TI03 alias fixtures fail in mode block when the Python i
 
     const actual: Record<string, string> = {};
     const expected: Record<string, string> = {};
+    const actualErrors: Record<string, boolean> = {};
+    const expectedErrors: Record<string, boolean> = {};
     for (const name of ALIAS_CASES) {
       const root = `${TI03}${name}/`;
       const diff = readFileSync(`${root}change.diff`, "utf8");
@@ -99,8 +101,22 @@ describe("CORE-351: the TI03 alias fixtures fail in mode block when the Python i
         expectValidReport(report);
         actual[`${name} / ${label}`] = report.verdict;
         expected[`${name} / ${label}`] = "fail";
+        // The verdict alone cannot tell a TI03 block from the index error, so the error itself is checked too: at
+        // level error, naming a .py test file (python-not-found with a modified file is the whole-run form instead).
+        const errors = report.messages.filter(
+          (m) => m.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE" && m.level === "error",
+        );
+        const named =
+          errors.length === 1 &&
+          (label === "python-not-found"
+            ? (errors[0]?.text.includes("did not run") ?? false) ||
+              head.some((f) => isPyTest(f.path) && (errors[0]?.text.includes(f.path) ?? false))
+            : head.some((f) => isPyTest(f.path) && (errors[0]?.text.includes(f.path) ?? false)));
+        actualErrors[`${name} / ${label}`] = named;
+        expectedErrors[`${name} / ${label}`] = true;
       }
     }
     expect(actual).toEqual(expected);
+    expect(actualErrors).toEqual(expectedErrors);
   }, 60_000);
 });
