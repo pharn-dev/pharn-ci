@@ -1,6 +1,6 @@
 import type { DiffFile } from "../diff/unified.js";
-import { JS_TS_EXTENSIONS, jsTsFlavor } from "../jsTsExtensions.js";
 import type { TestIndexUnavailable } from "../report.js";
+import { type SourceLanguage, sourceLanguage } from "../sourceLanguage.js";
 import { isTestFile } from "../testFiles.js";
 import { indexTestFileWithImports } from "../testIndex/indexTestFile.js";
 import type { PythonTestIndex } from "../testIndex/pythonSides.js";
@@ -11,20 +11,10 @@ import type { TestSourceSide, TestSources } from "../testSources.js";
 import { byCodeUnit } from "../text.js";
 
 /** The language of a test file the base-and-head signals read. */
-export type TestLanguage = "ts" | "js" | "py";
-
-const EXTENSION_LANGUAGE: ReadonlyMap<string, TestLanguage> = new Map<string, TestLanguage>([
-  ...JS_TS_EXTENSIONS.map((extension): [string, TestLanguage] => [extension, jsTsFlavor(extension)]),
-  ["py", "py"],
-]);
+export type TestLanguage = SourceLanguage;
 
 /** The language of a path by its extension (case-sensitive), or null: Go and every other extension are not read. */
-export function languageOf(path: string): TestLanguage | null {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  const dot = basename.lastIndexOf(".");
-  if (dot <= 0) return null;
-  return EXTENSION_LANGUAGE.get(basename.slice(dot + 1)) ?? null;
-}
+export const languageOf: (path: string) => TestLanguage | null = sourceLanguage;
 
 /**
  * A test file present on both sides: the tests (kind `test` only) at its base path and at its head path, and the module

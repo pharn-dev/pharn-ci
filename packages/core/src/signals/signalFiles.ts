@@ -1,6 +1,6 @@
 import type { DiffFile } from "../diff/unified.js";
 import { configRepoPath } from "../gateInputs.js";
-import { JS_TS_EXTENSIONS } from "../jsTsExtensions.js";
+import { sourceLanguage } from "../sourceLanguage.js";
 import { isTestFile, keepTestFileText } from "../testFiles.js";
 import { byCodeUnit } from "../text.js";
 import { testLanguage } from "./testLines.js";
@@ -36,24 +36,18 @@ export function isSnapshotFile(path: string): boolean {
   return segments.slice(0, -1).includes("__snapshots__");
 }
 
-const JS_TS_EXTENSION_SET: ReadonlySet<string> = new Set(JS_TS_EXTENSIONS);
-
 /** Whether a repo-relative path is a `package.json`: its basename is exactly that, at the root or nested. */
 export function isPackageJsonFile(path: string): boolean {
   return path.slice(path.lastIndexOf("/") + 1) === "package.json";
 }
 
 /**
- * The language of a source file by its extension: `jsts` for js, jsx, ts, tsx, mjs, cjs, mts and cts, `python` for py,
- * else null. Case-sensitive. A basename that only starts with a dot has no extension.
+ * The language of a source file by its extension (`sourceLanguage`): `jsts` for js, jsx, ts, tsx, mjs, cjs, mts and cts,
+ * `python` for py, else null. Case-sensitive.
  */
 export function coverageSourceLanguage(path: string): "jsts" | "python" | null {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  const dot = basename.lastIndexOf(".");
-  if (dot <= 0) return null;
-  const extension = basename.slice(dot + 1);
-  if (extension === "py") return "python";
-  return JS_TS_EXTENSION_SET.has(extension) ? "jsts" : null;
+  const language = sourceLanguage(path);
+  return language === null ? null : language === "py" ? "python" : "jsts";
 }
 
 /**

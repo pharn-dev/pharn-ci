@@ -33867,6 +33867,18 @@ function mcpWidenings(path, base, head) {
   return MCP_WIDENINGS.filter((word) => found.has(word));
 }
 
+// ../core/src/sourceLanguage.ts
+var EXTENSION_LANGUAGE = new Map([
+  ...JS_TS_EXTENSIONS.map((extension) => [extension, jsTsFlavor(extension)]),
+  ["py", "py"]
+]);
+function sourceLanguage(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  const dot = basename.lastIndexOf(".");
+  if (dot === -1) return null;
+  return EXTENSION_LANGUAGE.get(basename.slice(dot + 1)) ?? null;
+}
+
 // ../core/src/signals/pythonAliases.ts
 var isIdentStart = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95;
 var isIdentChar = (code2) => isIdentStart(code2) || code2 >= 48 && code2 <= 57;
@@ -34044,12 +34056,10 @@ function resolvePythonName(name, aliases) {
 }
 
 // ../core/src/signals/testLines.ts
-var JS_EXTENSIONS = JS_TS_EXTENSIONS.map((extension) => `.${extension}`);
 function testLanguage(path) {
   if (path.endsWith("_test.go")) return "go";
-  if (path.endsWith(".py")) return "python";
-  for (const extension of JS_EXTENSIONS) if (path.endsWith(extension)) return "jsts";
-  return null;
+  const language = sourceLanguage(path);
+  return language === null ? null : language === "py" ? "python" : "jsts";
 }
 var MAX_NAME = 120;
 var isSpace4 = (c) => c === " " || c === "	";
@@ -34278,17 +34288,12 @@ function isSnapshotFile(path) {
   if (basename.endsWith(".snap") || basename.endsWith(".ambr")) return true;
   return segments.slice(0, -1).includes("__snapshots__");
 }
-var JS_TS_EXTENSION_SET = new Set(JS_TS_EXTENSIONS);
 function isPackageJsonFile(path) {
   return path.slice(path.lastIndexOf("/") + 1) === "package.json";
 }
 function coverageSourceLanguage(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  const dot = basename.lastIndexOf(".");
-  if (dot <= 0) return null;
-  const extension = basename.slice(dot + 1);
-  if (extension === "py") return "python";
-  return JS_TS_EXTENSION_SET.has(extension) ? "jsts" : null;
+  const language = sourceLanguage(path);
+  return language === null ? null : language === "py" ? "python" : "jsts";
 }
 function keepSignalFileText(configPath, repoRoot) {
   const config = configRepoPath(configPath, repoRoot);
@@ -37548,16 +37553,7 @@ function indexTestFileWithImports(path, text) {
 }
 
 // ../core/src/signals/testPairs.ts
-var EXTENSION_LANGUAGE = new Map([
-  ...JS_TS_EXTENSIONS.map((extension) => [extension, jsTsFlavor(extension)]),
-  ["py", "py"]
-]);
-function languageOf(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  const dot = basename.lastIndexOf(".");
-  if (dot <= 0) return null;
-  return EXTENSION_LANGUAGE.get(basename.slice(dot + 1)) ?? null;
-}
+var languageOf = sourceLanguage;
 function lookupOf(side) {
   const texts = /* @__PURE__ */ new Map();
   const dropped = /* @__PURE__ */ new Map();
@@ -40933,9 +40929,9 @@ function detectTI08(diff) {
 }
 
 // ../core/src/testConfig/kinds.ts
-var JS_EXTENSIONS2 = /* @__PURE__ */ new Set(["ts", "mts", "cts", "js", "mjs", "cjs"]);
+var JS_EXTENSIONS = /* @__PURE__ */ new Set(["ts", "mts", "cts", "js", "mjs", "cjs"]);
 function hasJsName(basename, prefix) {
-  return basename.startsWith(`${prefix}.`) && JS_EXTENSIONS2.has(basename.slice(prefix.length + 1));
+  return basename.startsWith(`${prefix}.`) && JS_EXTENSIONS.has(basename.slice(prefix.length + 1));
 }
 function testConfigKind(path) {
   const basename = path.slice(path.lastIndexOf("/") + 1);
