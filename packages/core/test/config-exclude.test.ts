@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { threadCpuMs } from "./growth.js";
 
 // parseConfig is imported inside each test body, like the other AC tests written before the build: the
 // coverage.exclude list does not exist yet, and nothing that depends on it may run while the file loads.
@@ -70,26 +71,29 @@ describe("parseConfig: coverage.exclude", () => {
 
   // CORE-43: a pattern over 1,024 characters is a config error since R1.5, so the 100,000-character pattern is now parsed
   // in linear time and rejected; before, it was accepted.
+  // The 1000 ms budgets are this thread's CPU time (growth.ts threadCpuMs), not wall time: a quadratic parse still
+  // exceeds them, a host so loaded that the thread waits for a core does not (CORE-14). The parse is synchronous, so its
+  // CPU time is its idle-host wall time: about 90 ms for the 100,000 items, the wall budget's headroom of about 11 times.
   it("AC-7: parses 100,000 items and a 100,000-character pattern in linear time", async () => {
     const { ConfigError, parseConfig } = await import("../src/config.js");
 
     const items = Array.from({ length: 100_000 }, (_, i) => `src/f${i}/**`);
     const many = `coverage:\n  exclude:\n${items.map((item) => `    - ${item}\n`).join("")}`;
-    let start = performance.now();
+    let start = threadCpuMs();
     const manyConfig = parseConfig(many);
-    expect(performance.now() - start).toBeLessThan(1000);
+    expect(threadCpuMs() - start).toBeLessThan(1000);
     expect(manyConfig.coverage?.exclude).toEqual(items);
 
     const long = `${"a/".repeat(49_999)}bb`;
     expect(long.length).toBe(100_000);
-    start = performance.now();
+    start = threadCpuMs();
     let error: unknown;
     try {
       parseConfig(`coverage:\n  exclude:\n    - ${long}\n`);
     } catch (e) {
       error = e;
     }
-    expect(performance.now() - start).toBeLessThan(1000);
+    expect(threadCpuMs() - start).toBeLessThan(1000);
     expect(error).toBeInstanceOf(ConfigError);
     expect((error as Error).message).toContain("the limit is 1024 characters");
   });

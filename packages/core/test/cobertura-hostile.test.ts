@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { threadCpuMs } from "./growth.js";
 
 // The parser is imported inside each test body: the AC tests are written before it exists. The hostile inputs are
 // built in the test, about 4 MB each; only the parse call is timed.
@@ -7,6 +8,10 @@ const VALID =
   '<coverage><packages><package name="p"><classes><class name="a" filename="src/a.py"><lines><line number="1" hits="1"/></lines></class></classes></package></packages></coverage>';
 const EXPECTED = { "src/a.py": { 1: 1 } };
 const SIZE = 4_000_000;
+// The budget is this thread's CPU time (growth.ts threadCpuMs), not wall time: a quadratic or runaway parse burns CPU
+// and still exceeds it, while a host so loaded that the thread waits for a core (F-24 took 1126 and 1491 ms of wall
+// time against this budget in CORE-14's runs) does not. The parse is synchronous, so its CPU time is its idle-host wall
+// time; the slowest case here takes about 100 ms of it, so 1000 ms keeps the wall budget's headroom of about 10 times.
 const LIMIT_MS = 1000;
 
 const JUNK = '<class filename="x.py"><lines><line number="1" hits="1"/>';
@@ -14,9 +19,9 @@ const junk = () => JUNK.repeat(Math.ceil(SIZE / JUNK.length));
 
 async function parseTimed(text: string, repoRoot?: string) {
   const { parseCobertura } = await import("../src/coverage/cobertura.js");
-  const started = performance.now();
+  const started = threadCpuMs();
   const map = parseCobertura(text, repoRoot === undefined ? {} : { repoRoot });
-  const elapsed = performance.now() - started;
+  const elapsed = threadCpuMs() - started;
   return {
     map: Object.fromEntries([...map].map(([path, hits]) => [path, Object.fromEntries(hits)])),
     elapsed,
