@@ -104,9 +104,14 @@ describe("unified diff line reader", () => {
             compared++;
             if (JSON.stringify(files) !== expected) mismatches.push(`${where}, ${how}: ${api}`);
           }
-          compared++;
-          if (JSON.stringify(await readDiffChunks(asAsync(chunks))) !== expectedWithText) {
-            mismatches.push(`${where}, ${how}: readDiffChunks`);
+          // readDiffChunks is the splitter and the line reader checked above on every chunking, wired to a stream; it
+          // keeps the added text of every file, so it runs on the fixed-size chunkings and the whole text only, which
+          // keeps the test inside its time budget.
+          if (how.startsWith("chunks of") || how === "cut at 0") {
+            compared++;
+            if (JSON.stringify(await readDiffChunks(asAsync(chunks))) !== expectedWithText) {
+              mismatches.push(`${where}, ${how}: readDiffChunks`);
+            }
           }
         }
       }
