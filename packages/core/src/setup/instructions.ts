@@ -1,4 +1,17 @@
 import { byCodeUnit } from "../text.js";
+import {
+  codeSpans,
+  commandsOfLine,
+  firstNonSpace,
+  hasCueWord,
+  isLetter,
+  isSpaceCode,
+  normalizeWord,
+  SESSION_INFO,
+  SHELL_INFO,
+  shellLine,
+  withoutComments,
+} from "./instructionLines.js";
 import type { AgentSetupFile, AgentSetupInventory, AgentSetupKind } from "./scan.js";
 
 /**
@@ -129,54 +142,9 @@ const AFTER_VERBS: ReadonlySet<string> = new Set(["is", "are", "was"]);
 const AFTER_NEGATIONS: ReadonlySet<string> = new Set(["not", "never", "deprecated", "forbidden", "unsupported"]);
 const AFTER_CONTRACTIONS: ReadonlySet<string> = new Set(["isn't", "aren't"]);
 
-/** The fence info words whose blocks are shell, and the subset that shows a session with prompts. */
-const SHELL_INFO: ReadonlySet<string> = new Set([
-  "",
-  "sh",
-  "bash",
-  "shell",
-  "zsh",
-  "fish",
-  "console",
-  "terminal",
-  "shell-session",
-  "shellsession",
-  "powershell",
-  "pwsh",
-  "ps1",
-  "cmd",
-  "bat",
-]);
-const SESSION_INFO: ReadonlySet<string> = new Set(["console", "terminal", "shell-session", "shellsession"]);
-const WRAPPER_WORDS: ReadonlySet<string> = new Set(["sudo", "time", "env"]);
 const RUNNER_LAUNCHERS: ReadonlySet<string> = new Set(["npx", "bunx", "npm", "pnpm", "yarn", "bun"]);
 const RUNNER_SKIPPED: ReadonlySet<string> = new Set(["exec", "dlx", "run", "x", "--"]);
 const GLOBAL_FLAGS: ReadonlySet<string> = new Set(["-g", "--global", "--location=global"]);
-/** The longest text between `PS` and `>` in a PowerShell prompt. */
-const MAX_PS_PROMPT = 64;
-
-const isSpaceCode = (code: number) => code === 32 || (code >= 9 && code <= 13) || code === 160;
-const isAsciiLetter = (code: number) => (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
-const isAsciiWordStart = (code: number) => isAsciiLetter(code) || code === 95;
-const isAsciiNameChar = (code: number) => isAsciiWordStart(code) || (code >= 48 && code <= 57);
-/** A letter, tested one character at a time; ASCII is decided without the Unicode property. */
-function isLetter(char: string): boolean {
-  const code = char.charCodeAt(0);
-  if (code < 128) return isAsciiLetter(code);
-  return /\p{L}/u.test(char);
-}
-
-/** The index of the first character at or after `from` that is not a space or tab, or `line.length`. */
-function firstNonSpace(line: string, from = 0): number {
-  let i = from;
-  while (i < line.length && (line.charCodeAt(i) === 32 || line.charCodeAt(i) === 9)) i++;
-  return i;
-}
-
-/** A word lower-cased, with the typographic apostrophe (U+2019) made a plain one. */
-function normalizeWord(word: string): string {
-  return word.split("’").join("'").toLowerCase();
-}
 
 /** The first `limit` words of `line[from, to)`, lower-cased: a word is a run of letters and apostrophes (U+2019 counts as one). */
 function wordsIn(line: string, from: number, to: number, limit: number): string[] {
@@ -199,73 +167,6 @@ function wordsIn(line: string, from: number, to: number, limit: number): string[
   return words;
 }
 
-/** True when `line[from, to)` holds a cue word. One pass over the gap. */
-function hasCueWord(line: string, from: number, to: number): boolean {
-  let start = -1;
-  let i = from;
-  const flush = (end: number) => {
-    const word = normalizeWord(line.slice(start, end));
-    start = -1;
-    return CUE_WORDS.has(word);
-  };
-  while (i < to) {
-    const char = String.fromCodePoint(line.codePointAt(i) as number);
-    const inWord = char === "'" || char === "’" || isLetter(char);
-    if (inWord && start === -1) start = i;
-    if (!inWord && start !== -1 && flush(i)) return true;
-    i += char.length;
-  }
-  return start !== -1 && flush(to);
-}
-
-/** Split on whitespace into words, by a character loop. */
-function splitWords(text: string): string[] {
-  const words: string[] = [];
-  let start = -1;
-  for (let i = 0; i < text.length; i++) {
-    const space = isSpaceCode(text.charCodeAt(i));
-    if (!space && start === -1) start = i;
-    if (space && start !== -1) {
-      words.push(text.slice(start, i));
-      start = -1;
-    }
-  }
-  if (start !== -1) words.push(text.slice(start));
-  return words;
-}
-
-/** True for `NAME=value`: a letter or `_`, then letters, digits or `_`, then `=`. */
-function isAssignment(word: string): boolean {
-  if (word.length === 0 || !isAsciiWordStart(word.charCodeAt(0))) return false;
-  let i = 1;
-  while (i < word.length && isAsciiNameChar(word.charCodeAt(i))) i++;
-  return i < word.length && word[i] === "=";
-}
-
-/** Split a command line on `&&`, `||`, `;` and `|`, scanning the characters once. */
-function commandSegments(text: string): string[] {
-  const segments: string[] = [];
-  let from = 0;
-  let i = 0;
-  while (i < text.length) {
-    const char = text[i];
-    const next = text[i + 1];
-    if ((char === "&" && next === "&") || (char === "|" && next === "|")) {
-      segments.push(text.slice(from, i));
-      i += 2;
-      from = i;
-    } else if (char === ";" || char === "|") {
-      segments.push(text.slice(from, i));
-      i += 1;
-      from = i;
-    } else {
-      i += 1;
-    }
-  }
-  segments.push(text.slice(from));
-  return segments;
-}
-
 /** The counters the line loop fills; `line` is the 1-based line of the first declaration of the class. */
 interface Collected {
   packageManagers: Set<InstructionPackageManager>;
@@ -276,17 +177,7 @@ interface Collected {
 
 /** Read one command line: the package manager and the test runner of each segment. */
 function declareCommand(commandLine: string, lineNumber: number, found: Collected): void {
-  for (const segment of commandSegments(commandLine)) {
-    let text = segment.trim();
-    if (text.startsWith("(")) text = text.slice(1);
-    if (text.endsWith(")")) text = text.slice(0, -1);
-    const all = splitWords(text);
-    let at = 0;
-    while (at < all.length) {
-      const word = all[at] as string;
-      if (!isAssignment(word) && !WRAPPER_WORDS.has(word)) break;
-      at++;
-    }
+  for (const { words: all, at } of commandsOfLine(commandLine)) {
     const first = all[at];
     if (first === undefined) continue;
     const manager = PACKAGE_MANAGERS.find((tool) => tool === first);
@@ -314,41 +205,6 @@ function declareCommand(commandLine: string, lineNumber: number, found: Collecte
   }
 }
 
-/** The text of a counted shell-block line after its prompt, or null when the line declares nothing. */
-function shellLine(line: string, session: boolean): string | null {
-  const start = firstNonSpace(line);
-  if (session) {
-    const rest = line.slice(start);
-    if (rest.startsWith("$ ") || rest.startsWith("% ") || rest.startsWith("> ")) return rest.slice(2);
-    if (rest.startsWith("PS")) {
-      const limit = Math.min(rest.length, 2 + MAX_PS_PROMPT + 1);
-      for (let i = 2; i < limit; i++) {
-        if (rest[i] !== ">") continue;
-        return rest[i + 1] === " " ? rest.slice(i + 2) : null;
-      }
-    }
-    return null;
-  }
-  let rest = line.slice(start);
-  if (rest.startsWith("$ ") || rest.startsWith("% ") || rest.startsWith("> ")) rest = rest.slice(2);
-  const body = firstNonSpace(rest);
-  if (rest[body] === "#") return null;
-  return rest;
-}
-
-/** `[start, length]` of each backtick run of a line. */
-function backtickRuns(line: string): [number, number][] {
-  const runs: [number, number][] = [];
-  let i = line.indexOf("`");
-  while (i !== -1) {
-    let end = i + 1;
-    while (end < line.length && line[end] === "`") end++;
-    runs.push([i, end - i]);
-    i = line.indexOf("`", end);
-  }
-  return runs;
-}
-
 /** Whether the gap after a span, read for at most its first two words, negates the span. */
 function negatedAfter(line: string, from: number, to: number): boolean {
   const [first, second] = wordsIn(line, from, to, 2);
@@ -359,32 +215,11 @@ function negatedAfter(line: string, from: number, to: number): boolean {
 
 /** Read the inline code spans of one prose line; a negated span declares nothing. */
 function declareSpans(line: string, lineNumber: number, found: Collected): void {
-  const runs = backtickRuns(line);
-  if (runs.length < 2) return;
-  // The next run of the same length, by one right-to-left pass.
-  const partner: number[] = new Array(runs.length).fill(-1);
-  const nextOfLength = new Map<number, number>();
-  for (let i = runs.length - 1; i >= 0; i--) {
-    const length = (runs[i] as [number, number])[1];
-    partner[i] = nextOfLength.get(length) ?? -1;
-    nextOfLength.set(length, i);
-  }
-  const spans: { from: number; to: number; open: number; close: number }[] = [];
-  for (let i = 0; i < runs.length; ) {
-    const j = partner[i] as number;
-    if (j === -1) {
-      i++;
-      continue;
-    }
-    const [openAt, length] = runs[i] as [number, number];
-    const [closeAt] = runs[j] as [number, number];
-    spans.push({ from: openAt + length, to: closeAt, open: openAt, close: closeAt + length });
-    i = j + 1;
-  }
+  const spans = codeSpans(line);
   let gapStart = 0;
   spans.forEach((span, index) => {
     const next = spans[index + 1];
-    const before = hasCueWord(line, gapStart, span.open);
+    const before = hasCueWord(line, gapStart, span.open, CUE_WORDS);
     const negated = before || negatedAfter(line, span.close, next === undefined ? line.length : next.open);
     gapStart = span.close;
     if (!negated) declareCommand(line.slice(span.from, span.to).trim(), lineNumber, found);
@@ -408,30 +243,6 @@ function frontmatterScoped(lines: readonly string[], close: number): boolean {
     if (nextLine.slice(firstNonSpace(nextLine)).startsWith("- ")) return true;
   }
   return false;
-}
-
-/** The line without the HTML comments of a prose line, or null when the whole line is inside a comment. */
-function withoutComments(line: string, state: { open: boolean }): string | null {
-  let pos = 0;
-  if (state.open) {
-    const end = line.indexOf("-->");
-    if (end === -1) return null;
-    state.open = false;
-    pos = end + 3;
-  }
-  let out = "";
-  for (;;) {
-    const open = line.indexOf("<!--", pos);
-    if (open === -1) return out + line.slice(pos);
-    out += line.slice(pos, open);
-    const close = line.indexOf("-->", open + 4);
-    if (close === -1) {
-      state.open = true;
-      return out;
-    }
-    out += " ";
-    pos = close + 3;
-  }
 }
 
 /**
@@ -512,7 +323,7 @@ export function instructionDeclarations(text: string): InstructionDeclarations {
     }
 
     if (char === "#") {
-      ignored = hasCueWord(line, at, line.length);
+      ignored = hasCueWord(line, at, line.length, CUE_WORDS);
       previousBlank = false;
       previousIndented = false;
       if (ignored) continue;

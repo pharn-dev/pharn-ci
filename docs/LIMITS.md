@@ -1286,8 +1286,8 @@ instruction file that went old next to the code it describes is not reported. Wh
   tracked (`pharn/.run/x`), extensionless tokens whose first segment is not a tracked entry or is a dependency name
   (`next/link`, `owner/repo`) and files a tool creates later are never reported, even when an instruction tells the
   agent to read them.
-- **Examples and negations are word heuristics.** A fenced block in any language but a shell is an example and is not
-  read; an indented block, an HTML comment and frontmatter are not read; a line or a section under a heading with
+- **Examples and negations are word heuristics.** A fenced block in any language but a shell (PowerShell and `cmd`
+  count as shells) is an example and is not read; an indented block, an HTML comment and frontmatter are not read; a line or a section under a heading with
   `not`, `never`, `don't`, `avoid`, `instead`, `deprecated`, `removed`, `legacy`, `example` or a similar word is
   skipped. A legacy name in a line without such a word ("equivalent to `middleware.ts`") is still read.
 - **Diff-aware by design.** A stale token in an instruction file the change does not touch is reported only when the

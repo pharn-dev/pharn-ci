@@ -11,6 +11,11 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- P07 and the stale-instruction check (SI01 to SI03) read instruction files with one set of line helpers (CORE-142),
+  so the two no longer differ on the same line. The stale check now reads PowerShell, `pwsh`, `ps1`, `cmd` and `bat`
+  fences and a PowerShell `PS …> ` prompt in a console block, as P07 did, and no longer takes "no" out of "Noël" as a
+  negation (a word may hold any letter, not only ASCII). P07 now reads a span after a word such as `docs/not.md`,
+  which it read as the negation "not"; a word may hold a dot after its first letter, as in the stale check.
 - The CLI and the Action gather what the checks read with one shared function (CORE-136), so they no longer differ on
   the same repository. The Action now scans the agent config files for secrets (A7), and reads the agent instruction
   (P07) and settings files (P02 to P06), at `HEAD` also when there is no diff to measure because the checkout is still

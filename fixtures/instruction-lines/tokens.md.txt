@@ -1,0 +1,25 @@
+# Shared helpers
+
+```console
+PS C:\repo> pnpm run ps-session
+PS> make ps-target
+PSA warning without a prompt
+```
+
+```powershell
+npm run ps-fence
+```
+
+```cmd
+yarn run cmd-fence
+```
+
+Run `pnpm run before-noel` before Noël.
+
+Run `pnpm run negated`, not.
+
+```bash
+$ # pnpm run commented
+FOO_1=x BAR=2 pnpm run env-assigned
+1FOO=x pnpm run not-assignment
+```

@@ -1,0 +1,13 @@
+# Tools
+
+Read docs/not.md first, then run `pnpm install`.
+
+Run `bun install` avant Noël.
+
+```cmd
+FOO_1=x npm ci
+```
+
+```console
+PS C:\repo> pnpm vitest
+```

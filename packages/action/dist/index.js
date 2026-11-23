@@ -30973,6 +30973,197 @@ function binaryCoveredPaths(diff, coverage2) {
   return [...found].sort(byCodeUnit);
 }
 
+// ../core/src/setup/instructionLines.ts
+var SHELL_INFO = /* @__PURE__ */ new Set([
+  "",
+  "sh",
+  "bash",
+  "shell",
+  "zsh",
+  "fish",
+  "console",
+  "terminal",
+  "shell-session",
+  "shellsession",
+  "powershell",
+  "pwsh",
+  "ps1",
+  "cmd",
+  "bat"
+]);
+var SESSION_INFO = /* @__PURE__ */ new Set(["console", "terminal", "shell-session", "shellsession"]);
+var WRAPPER_WORDS = /* @__PURE__ */ new Set(["sudo", "time", "env"]);
+var MAX_PS_PROMPT = 64;
+var isSpaceCode = (code2) => code2 === 32 || code2 >= 9 && code2 <= 13 || code2 === 160;
+var isAsciiLetter3 = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122;
+var isAsciiWordStart = (code2) => isAsciiLetter3(code2) || code2 === 95;
+var isAsciiNameChar = (code2) => isAsciiWordStart(code2) || code2 >= 48 && code2 <= 57;
+function isLetter(char) {
+  const code2 = char.charCodeAt(0);
+  if (code2 < 128) return isAsciiLetter3(code2);
+  return new RegExp("\\p{L}", "u").test(char);
+}
+function firstNonSpace(line, from = 0) {
+  let i = from;
+  while (i < line.length && (line.charCodeAt(i) === 32 || line.charCodeAt(i) === 9)) i++;
+  return i;
+}
+function normalizeWord(word) {
+  return word.split("\u2019").join("'").toLowerCase();
+}
+function hasCueWord(line, from, to, cueWords) {
+  let start = -1;
+  let i = from;
+  const flush = (end) => {
+    let word = normalizeWord(line.slice(start, end));
+    start = -1;
+    while (word.endsWith(".") || word.endsWith("'")) word = word.slice(0, -1);
+    return cueWords.has(word);
+  };
+  while (i < to) {
+    const char = String.fromCodePoint(line.codePointAt(i));
+    const inWord = char === "'" || char === "\u2019" || isLetter(char) || char === "." && start !== -1;
+    if (inWord && start === -1) start = i;
+    if (!inWord && start !== -1 && flush(i)) return true;
+    i += char.length;
+  }
+  return start !== -1 && flush(to);
+}
+function splitWords(text) {
+  const words = [];
+  let start = -1;
+  for (let i = 0; i < text.length; i++) {
+    const space = isSpaceCode(text.charCodeAt(i));
+    if (!space && start === -1) start = i;
+    if (space && start !== -1) {
+      words.push(text.slice(start, i));
+      start = -1;
+    }
+  }
+  if (start !== -1) words.push(text.slice(start));
+  return words;
+}
+function isAssignment(word) {
+  if (word.length === 0 || !isAsciiWordStart(word.charCodeAt(0))) return false;
+  let i = 1;
+  while (i < word.length && isAsciiNameChar(word.charCodeAt(i))) i++;
+  return i < word.length && word[i] === "=";
+}
+function commandSegments(text) {
+  const segments = [];
+  let from = 0;
+  let i = 0;
+  while (i < text.length) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === "&" && next === "&" || char === "|" && next === "|") {
+      segments.push(text.slice(from, i));
+      i += 2;
+      from = i;
+    } else if (char === ";" || char === "|") {
+      segments.push(text.slice(from, i));
+      i += 1;
+      from = i;
+    } else {
+      i += 1;
+    }
+  }
+  segments.push(text.slice(from));
+  return segments;
+}
+function commandsOfLine(text) {
+  return commandSegments(text).map((segment) => {
+    let body = segment.trim();
+    if (body.startsWith("(")) body = body.slice(1);
+    if (body.endsWith(")")) body = body.slice(0, -1);
+    const words = splitWords(body);
+    let at = 0;
+    while (at < words.length) {
+      const word = words[at];
+      if (!isAssignment(word) && !WRAPPER_WORDS.has(word)) break;
+      at++;
+    }
+    return { words, at };
+  });
+}
+function backtickRuns(line) {
+  const runs = [];
+  let i = line.indexOf("`");
+  while (i !== -1) {
+    let end = i + 1;
+    while (end < line.length && line[end] === "`") end++;
+    runs.push([i, end - i]);
+    i = line.indexOf("`", end);
+  }
+  return runs;
+}
+function codeSpans(line) {
+  const runs = backtickRuns(line);
+  if (runs.length < 2) return [];
+  const partner = new Array(runs.length).fill(-1);
+  const nextOfLength = /* @__PURE__ */ new Map();
+  for (let i = runs.length - 1; i >= 0; i--) {
+    const length = runs[i][1];
+    partner[i] = nextOfLength.get(length) ?? -1;
+    nextOfLength.set(length, i);
+  }
+  const spans = [];
+  for (let i = 0; i < runs.length; ) {
+    const j = partner[i];
+    if (j === -1) {
+      i++;
+      continue;
+    }
+    const [openAt, length] = runs[i];
+    const [closeAt] = runs[j];
+    spans.push({ open: openAt, from: openAt + length, to: closeAt, close: closeAt + length });
+    i = j + 1;
+  }
+  return spans;
+}
+function withoutComments(line, state) {
+  let pos = 0;
+  if (state.open) {
+    const end = line.indexOf("-->");
+    if (end === -1) return null;
+    state.open = false;
+    pos = end + 3;
+  }
+  let out = "";
+  for (; ; ) {
+    const open3 = line.indexOf("<!--", pos);
+    if (open3 === -1) return out + line.slice(pos);
+    out += line.slice(pos, open3);
+    const close = line.indexOf("-->", open3 + 4);
+    if (close === -1) {
+      state.open = true;
+      return out;
+    }
+    out += " ";
+    pos = close + 3;
+  }
+}
+function shellLine(line, session) {
+  const start = firstNonSpace(line);
+  if (session) {
+    const rest2 = line.slice(start);
+    if (rest2.startsWith("$ ") || rest2.startsWith("% ") || rest2.startsWith("> ")) return rest2.slice(2);
+    if (rest2.startsWith("PS")) {
+      const limit = Math.min(rest2.length, 2 + MAX_PS_PROMPT + 1);
+      for (let i = 2; i < limit; i++) {
+        if (rest2[i] !== ">") continue;
+        return rest2[i + 1] === " " ? rest2.slice(i + 2) : null;
+      }
+    }
+    return null;
+  }
+  let rest = line.slice(start);
+  if (rest.startsWith("$ ") || rest.startsWith("% ") || rest.startsWith("> ")) rest = rest.slice(2);
+  const body = firstNonSpace(rest);
+  if (rest[body] === "#") return null;
+  return rest;
+}
+
 // ../core/src/setup/instructions.ts
 var INSTRUCTION_KINDS = [
   "claude-md",
@@ -31062,46 +31253,9 @@ var CUE_WORDS = /* @__PURE__ */ new Set([
 var AFTER_VERBS = /* @__PURE__ */ new Set(["is", "are", "was"]);
 var AFTER_NEGATIONS = /* @__PURE__ */ new Set(["not", "never", "deprecated", "forbidden", "unsupported"]);
 var AFTER_CONTRACTIONS = /* @__PURE__ */ new Set(["isn't", "aren't"]);
-var SHELL_INFO = /* @__PURE__ */ new Set([
-  "",
-  "sh",
-  "bash",
-  "shell",
-  "zsh",
-  "fish",
-  "console",
-  "terminal",
-  "shell-session",
-  "shellsession",
-  "powershell",
-  "pwsh",
-  "ps1",
-  "cmd",
-  "bat"
-]);
-var SESSION_INFO = /* @__PURE__ */ new Set(["console", "terminal", "shell-session", "shellsession"]);
-var WRAPPER_WORDS = /* @__PURE__ */ new Set(["sudo", "time", "env"]);
 var RUNNER_LAUNCHERS = /* @__PURE__ */ new Set(["npx", "bunx", "npm", "pnpm", "yarn", "bun"]);
 var RUNNER_SKIPPED = /* @__PURE__ */ new Set(["exec", "dlx", "run", "x", "--"]);
 var GLOBAL_FLAGS = /* @__PURE__ */ new Set(["-g", "--global", "--location=global"]);
-var MAX_PS_PROMPT = 64;
-var isSpaceCode = (code2) => code2 === 32 || code2 >= 9 && code2 <= 13 || code2 === 160;
-var isAsciiLetter3 = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122;
-var isAsciiWordStart = (code2) => isAsciiLetter3(code2) || code2 === 95;
-var isAsciiNameChar = (code2) => isAsciiWordStart(code2) || code2 >= 48 && code2 <= 57;
-function isLetter(char) {
-  const code2 = char.charCodeAt(0);
-  if (code2 < 128) return isAsciiLetter3(code2);
-  return new RegExp("\\p{L}", "u").test(char);
-}
-function firstNonSpace(line, from = 0) {
-  let i = from;
-  while (i < line.length && (line.charCodeAt(i) === 32 || line.charCodeAt(i) === 9)) i++;
-  return i;
-}
-function normalizeWord(word) {
-  return word.split("\u2019").join("'").toLowerCase();
-}
 function wordsIn(line, from, to, limit) {
   const words = [];
   let start = -1;
@@ -31121,77 +31275,8 @@ function wordsIn(line, from, to, limit) {
   if (start !== -1 && words.length < limit) words.push(normalizeWord(line.slice(start, to)));
   return words;
 }
-function hasCueWord(line, from, to) {
-  let start = -1;
-  let i = from;
-  const flush = (end) => {
-    const word = normalizeWord(line.slice(start, end));
-    start = -1;
-    return CUE_WORDS.has(word);
-  };
-  while (i < to) {
-    const char = String.fromCodePoint(line.codePointAt(i));
-    const inWord = char === "'" || char === "\u2019" || isLetter(char);
-    if (inWord && start === -1) start = i;
-    if (!inWord && start !== -1 && flush(i)) return true;
-    i += char.length;
-  }
-  return start !== -1 && flush(to);
-}
-function splitWords(text) {
-  const words = [];
-  let start = -1;
-  for (let i = 0; i < text.length; i++) {
-    const space = isSpaceCode(text.charCodeAt(i));
-    if (!space && start === -1) start = i;
-    if (space && start !== -1) {
-      words.push(text.slice(start, i));
-      start = -1;
-    }
-  }
-  if (start !== -1) words.push(text.slice(start));
-  return words;
-}
-function isAssignment(word) {
-  if (word.length === 0 || !isAsciiWordStart(word.charCodeAt(0))) return false;
-  let i = 1;
-  while (i < word.length && isAsciiNameChar(word.charCodeAt(i))) i++;
-  return i < word.length && word[i] === "=";
-}
-function commandSegments(text) {
-  const segments = [];
-  let from = 0;
-  let i = 0;
-  while (i < text.length) {
-    const char = text[i];
-    const next = text[i + 1];
-    if (char === "&" && next === "&" || char === "|" && next === "|") {
-      segments.push(text.slice(from, i));
-      i += 2;
-      from = i;
-    } else if (char === ";" || char === "|") {
-      segments.push(text.slice(from, i));
-      i += 1;
-      from = i;
-    } else {
-      i += 1;
-    }
-  }
-  segments.push(text.slice(from));
-  return segments;
-}
 function declareCommand(commandLine, lineNumber, found) {
-  for (const segment of commandSegments(commandLine)) {
-    let text = segment.trim();
-    if (text.startsWith("(")) text = text.slice(1);
-    if (text.endsWith(")")) text = text.slice(0, -1);
-    const all = splitWords(text);
-    let at = 0;
-    while (at < all.length) {
-      const word = all[at];
-      if (!isAssignment(word) && !WRAPPER_WORDS.has(word)) break;
-      at++;
-    }
+  for (const { words: all, at } of commandsOfLine(commandLine)) {
     const first = all[at];
     if (first === void 0) continue;
     const manager = PACKAGE_MANAGERS.find((tool) => tool === first);
@@ -31214,37 +31299,6 @@ function declareCommand(commandLine, lineNumber, found) {
     }
   }
 }
-function shellLine(line, session) {
-  const start = firstNonSpace(line);
-  if (session) {
-    const rest2 = line.slice(start);
-    if (rest2.startsWith("$ ") || rest2.startsWith("% ") || rest2.startsWith("> ")) return rest2.slice(2);
-    if (rest2.startsWith("PS")) {
-      const limit = Math.min(rest2.length, 2 + MAX_PS_PROMPT + 1);
-      for (let i = 2; i < limit; i++) {
-        if (rest2[i] !== ">") continue;
-        return rest2[i + 1] === " " ? rest2.slice(i + 2) : null;
-      }
-    }
-    return null;
-  }
-  let rest = line.slice(start);
-  if (rest.startsWith("$ ") || rest.startsWith("% ") || rest.startsWith("> ")) rest = rest.slice(2);
-  const body = firstNonSpace(rest);
-  if (rest[body] === "#") return null;
-  return rest;
-}
-function backtickRuns(line) {
-  const runs = [];
-  let i = line.indexOf("`");
-  while (i !== -1) {
-    let end = i + 1;
-    while (end < line.length && line[end] === "`") end++;
-    runs.push([i, end - i]);
-    i = line.indexOf("`", end);
-  }
-  return runs;
-}
 function negatedAfter(line, from, to) {
   const [first, second] = wordsIn(line, from, to, 2);
   if (first === void 0) return false;
@@ -31252,31 +31306,11 @@ function negatedAfter(line, from, to) {
   return AFTER_VERBS.has(first) && second !== void 0 && AFTER_NEGATIONS.has(second);
 }
 function declareSpans(line, lineNumber, found) {
-  const runs = backtickRuns(line);
-  if (runs.length < 2) return;
-  const partner = new Array(runs.length).fill(-1);
-  const nextOfLength = /* @__PURE__ */ new Map();
-  for (let i = runs.length - 1; i >= 0; i--) {
-    const length = runs[i][1];
-    partner[i] = nextOfLength.get(length) ?? -1;
-    nextOfLength.set(length, i);
-  }
-  const spans = [];
-  for (let i = 0; i < runs.length; ) {
-    const j = partner[i];
-    if (j === -1) {
-      i++;
-      continue;
-    }
-    const [openAt, length] = runs[i];
-    const [closeAt] = runs[j];
-    spans.push({ from: openAt + length, to: closeAt, open: openAt, close: closeAt + length });
-    i = j + 1;
-  }
+  const spans = codeSpans(line);
   let gapStart = 0;
   spans.forEach((span2, index) => {
     const next = spans[index + 1];
-    const before = hasCueWord(line, gapStart, span2.open);
+    const before = hasCueWord(line, gapStart, span2.open, CUE_WORDS);
     const negated = before || negatedAfter(line, span2.close, next === void 0 ? line.length : next.open);
     gapStart = span2.close;
     if (!negated) declareCommand(line.slice(span2.from, span2.to).trim(), lineNumber, found);
@@ -31298,28 +31332,6 @@ function frontmatterScoped(lines, close) {
     if (nextLine.slice(firstNonSpace(nextLine)).startsWith("- ")) return true;
   }
   return false;
-}
-function withoutComments(line, state) {
-  let pos = 0;
-  if (state.open) {
-    const end = line.indexOf("-->");
-    if (end === -1) return null;
-    state.open = false;
-    pos = end + 3;
-  }
-  let out = "";
-  for (; ; ) {
-    const open3 = line.indexOf("<!--", pos);
-    if (open3 === -1) return out + line.slice(pos);
-    out += line.slice(pos, open3);
-    const close = line.indexOf("-->", open3 + 4);
-    if (close === -1) {
-      state.open = true;
-      return out;
-    }
-    out += " ";
-    pos = close + 3;
-  }
 }
 function instructionDeclarations(text) {
   const lines = (text.charCodeAt(0) === 65279 ? text.slice(1) : text).split("\n").map((line) => line.endsWith("\r") ? line.slice(0, -1) : line);
@@ -31384,7 +31396,7 @@ function instructionDeclarations(text) {
       }
     }
     if (char === "#") {
-      ignored = hasCueWord(line, at, line.length);
+      ignored = hasCueWord(line, at, line.length, CUE_WORDS);
       previousBlank = false;
       previousIndented = false;
       if (ignored) continue;
@@ -35830,19 +35842,6 @@ var MAX_PATH_TOKEN = 200;
 var MAX_COMMAND_NAME = 100;
 var MAX_MAKE_TARGETS = 10;
 var MAX_FRONTMATTER_LINE2 = 50;
-var SHELL_INFO2 = /* @__PURE__ */ new Set([
-  "",
-  "sh",
-  "bash",
-  "shell",
-  "zsh",
-  "fish",
-  "console",
-  "terminal",
-  "shell-session",
-  "shellsession"
-]);
-var SESSION_INFO2 = /* @__PURE__ */ new Set(["console", "terminal", "shell-session", "shellsession"]);
 var CUE_WORDS2 = /* @__PURE__ */ new Set([
   "not",
   "never",
@@ -35867,7 +35866,6 @@ var CUE_WORDS2 = /* @__PURE__ */ new Set([
   "examples",
   "e.g"
 ]);
-var WRAPPER_WORDS2 = /* @__PURE__ */ new Set(["sudo", "time", "env"]);
 var DIRECTORY_WORDS = /* @__PURE__ */ new Set(["cd", "pushd"]);
 var PNPM_BUILTINS = /* @__PURE__ */ new Set([
   "add",
@@ -36120,11 +36118,9 @@ var GENERATED_DIRS = /* @__PURE__ */ new Set([
   "tmp",
   ".tmp"
 ]);
-var isSpaceCode3 = (code2) => code2 === 32 || code2 >= 9 && code2 <= 13 || code2 === 160;
-var isAsciiLetter4 = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122;
 var isDigit3 = (code2) => code2 >= 48 && code2 <= 57;
 function isPathChar(code2) {
-  return isAsciiLetter4(code2) || isDigit3(code2) || code2 === 46 || code2 === 95 || code2 === 45 || code2 === 43 || code2 === 47;
+  return isAsciiLetter3(code2) || isDigit3(code2) || code2 === 46 || code2 === 95 || code2 === 45 || code2 === 43 || code2 === 47;
 }
 function allChars(text, extra) {
   for (let i = 0; i < text.length; i++) {
@@ -36143,74 +36139,6 @@ function isSafeTargetName(name) {
 }
 function isSafePathToken(token) {
   return token.length > 0 && token.length <= MAX_PATH_TOKEN && allChars(token, false);
-}
-function firstNonSpace2(line, from = 0) {
-  let i = from;
-  while (i < line.length && (line.charCodeAt(i) === 32 || line.charCodeAt(i) === 9)) i++;
-  return i;
-}
-function hasCueWord2(text) {
-  let start = -1;
-  const flush = (end) => {
-    let word = text.slice(start, end).split("\u2019").join("'").toLowerCase();
-    start = -1;
-    while (word.endsWith(".") || word.endsWith("'")) word = word.slice(0, -1);
-    return CUE_WORDS2.has(word);
-  };
-  for (let i = 0; i < text.length; i++) {
-    const code2 = text.charCodeAt(i);
-    const inWord = isAsciiLetter4(code2) || code2 === 39 || code2 === 8217 || code2 === 46 && start !== -1;
-    if (inWord && start === -1) start = i;
-    if (!inWord && start !== -1 && flush(i)) return true;
-  }
-  return start !== -1 && flush(text.length);
-}
-function splitWords2(text) {
-  const words = [];
-  let start = -1;
-  for (let i = 0; i < text.length; i++) {
-    const space = isSpaceCode3(text.charCodeAt(i));
-    if (!space && start === -1) start = i;
-    if (space && start !== -1) {
-      words.push(text.slice(start, i));
-      start = -1;
-    }
-  }
-  if (start !== -1) words.push(text.slice(start));
-  return words;
-}
-function isAssignment2(word) {
-  const first = word.charCodeAt(0);
-  if (!(isAsciiLetter4(first) || first === 95)) return false;
-  let i = 1;
-  while (i < word.length) {
-    const code2 = word.charCodeAt(i);
-    if (!(isAsciiLetter4(code2) || isDigit3(code2) || code2 === 95)) break;
-    i++;
-  }
-  return i < word.length && word[i] === "=";
-}
-function commandSegments2(text) {
-  const segments = [];
-  let from = 0;
-  let i = 0;
-  while (i < text.length) {
-    const char = text[i];
-    const next = text[i + 1];
-    if (char === "&" && next === "&" || char === "|" && next === "|") {
-      segments.push(text.slice(from, i));
-      i += 2;
-      from = i;
-    } else if (char === ";" || char === "|") {
-      segments.push(text.slice(from, i));
-      i += 1;
-      from = i;
-    } else {
-      i += 1;
-    }
-  }
-  segments.push(text.slice(from));
-  return segments;
 }
 function scriptOf(manager, words, at) {
   let i = at + 1;
@@ -36251,17 +36179,7 @@ function makeTargetsOf(words, at) {
   return targets;
 }
 function commandsIn(text, line, out) {
-  for (const segment of commandSegments2(text)) {
-    let body = segment.trim();
-    if (body.startsWith("(")) body = body.slice(1);
-    if (body.endsWith(")")) body = body.slice(0, -1);
-    const words = splitWords2(body);
-    let at = 0;
-    while (at < words.length) {
-      const word = words[at];
-      if (!isAssignment2(word) && !WRAPPER_WORDS2.has(word)) break;
-      at++;
-    }
+  for (const { words, at } of commandsOfLine(text)) {
     const first = words[at];
     if (first === void 0) continue;
     if (DIRECTORY_WORDS.has(first)) return;
@@ -36273,63 +36191,6 @@ function commandsIn(text, line, out) {
       const name = scriptOf(first, words, at);
       if (name !== null) out.push({ manager: first, name, line });
     }
-  }
-}
-function backtickRuns2(line) {
-  const runs = [];
-  let i = line.indexOf("`");
-  while (i !== -1) {
-    let end = i + 1;
-    while (end < line.length && line[end] === "`") end++;
-    runs.push([i, end - i]);
-    i = line.indexOf("`", end);
-  }
-  return runs;
-}
-function codeSpans(line) {
-  const runs = backtickRuns2(line);
-  if (runs.length < 2) return [];
-  const partner = new Array(runs.length).fill(-1);
-  const nextOfLength = /* @__PURE__ */ new Map();
-  for (let i = runs.length - 1; i >= 0; i--) {
-    const length = runs[i][1];
-    partner[i] = nextOfLength.get(length) ?? -1;
-    nextOfLength.set(length, i);
-  }
-  const spans = [];
-  for (let i = 0; i < runs.length; ) {
-    const j = partner[i];
-    if (j === -1) {
-      i++;
-      continue;
-    }
-    const [openAt, length] = runs[i];
-    const [closeAt] = runs[j];
-    spans.push({ open: openAt, from: openAt + length, to: closeAt, close: closeAt + length });
-    i = j + 1;
-  }
-  return spans;
-}
-function withoutComments2(line, state) {
-  let pos = 0;
-  if (state.open) {
-    const end = line.indexOf("-->");
-    if (end === -1) return null;
-    state.open = false;
-    pos = end + 3;
-  }
-  let out = "";
-  for (; ; ) {
-    const open3 = line.indexOf("<!--", pos);
-    if (open3 === -1) return out + line.slice(pos);
-    out += line.slice(pos, open3);
-    const close = line.indexOf("-->", open3 + 4);
-    if (close === -1) {
-      state.open = true;
-      return out;
-    }
-    out += " ";
-    pos = close + 3;
   }
 }
 function isVersion(token) {
@@ -36399,19 +36260,19 @@ function linkTargets(text) {
       if (end === -1) break;
       target = text.slice(start, end).trim();
       let cut = 0;
-      while (cut < target.length && !isSpaceCode3(target.charCodeAt(cut))) cut++;
+      while (cut < target.length && !isSpaceCode(target.charCodeAt(cut))) cut++;
       target = target.slice(0, cut);
     }
     targets.push(target);
     from = end + 1;
   }
-  const lead = firstNonSpace2(text);
+  const lead = firstNonSpace(text);
   if (lead <= 3 && text[lead] === "[") {
     const close = text.indexOf("]:", lead + 1);
     if (close !== -1) {
       const rest = text.slice(close + 2).trim();
       let cut = 0;
-      while (cut < rest.length && !isSpaceCode3(rest.charCodeAt(cut))) cut++;
+      while (cut < rest.length && !isSpaceCode(rest.charCodeAt(cut))) cut++;
       let target = rest.slice(0, cut);
       if (target.startsWith("<") && target.endsWith(">")) target = target.slice(1, -1);
       if (target !== "") targets.push(target);
@@ -36434,9 +36295,9 @@ function importPaths(text, line, out) {
     const at = text.indexOf("@", from);
     if (at === -1) return;
     from = at + 1;
-    if (at > 0 && !isSpaceCode3(text.charCodeAt(at - 1))) continue;
+    if (at > 0 && !isSpaceCode(text.charCodeAt(at - 1))) continue;
     let end = at + 1;
-    while (end < text.length && !isSpaceCode3(text.charCodeAt(end))) end++;
+    while (end < text.length && !isSpaceCode(text.charCodeAt(end))) end++;
     let word = text.slice(at + 1, end);
     while (word.length > 0 && ".,;:!?)".includes(word[word.length - 1])) word = word.slice(0, -1);
     from = end;
@@ -36445,13 +36306,6 @@ function importPaths(text, line, out) {
     if (reference.extensionless && !reference.relative) continue;
     out.push(reference);
   }
-}
-function shellLine2(line, session) {
-  const rest = line.slice(firstNonSpace2(line));
-  if (rest.startsWith("$ ") || rest.startsWith("% ") || rest.startsWith("> ")) return rest.slice(2);
-  if (session) return null;
-  if (rest.startsWith("#")) return null;
-  return rest;
 }
 function scanInstructionTokens(text) {
   const source = text.length > MAX_SCAN_CHARS ? text.slice(0, MAX_SCAN_CHARS) : text;
@@ -36477,7 +36331,7 @@ function scanInstructionTokens(text) {
     const raw = lines[index];
     const lineNumber = index + 1;
     if (fence !== null) {
-      const at2 = firstNonSpace2(raw);
+      const at2 = firstNonSpace(raw);
       let run2 = 0;
       while (raw[at2 + run2] === fence.char) run2++;
       if (run2 >= fence.length && raw.slice(at2 + run2).trim() === "") {
@@ -36485,18 +36339,18 @@ function scanInstructionTokens(text) {
         previousBlank = false;
         previousIndented = false;
       } else if (fence.shell && !ignored) {
-        const command = shellLine2(raw, fence.session);
+        const command = shellLine(raw, fence.session);
         if (command !== null) commandsIn(command, lineNumber, commands);
       }
       continue;
     }
-    const line = withoutComments2(raw, comment);
+    const line = withoutComments(raw, comment);
     if (line === null) {
       previousBlank = false;
       previousIndented = false;
       continue;
     }
-    const at = firstNonSpace2(line);
+    const at = firstNonSpace(line);
     const char = line[at];
     if ((char === "`" || char === "~") && at < 4) {
       let run2 = 0;
@@ -36504,16 +36358,16 @@ function scanInstructionTokens(text) {
       if (run2 >= 3) {
         const info2 = line.slice(at + run2).trim();
         let end = 0;
-        while (end < info2.length && !isSpaceCode3(info2.charCodeAt(end)) && info2[end] !== "{") end++;
+        while (end < info2.length && !isSpaceCode(info2.charCodeAt(end)) && info2[end] !== "{") end++;
         const word = info2.slice(0, end).toLowerCase();
-        fence = { char, length: run2, shell: SHELL_INFO2.has(word), session: SESSION_INFO2.has(word) };
+        fence = { char, length: run2, shell: SHELL_INFO.has(word), session: SESSION_INFO.has(word) };
         previousBlank = false;
         previousIndented = false;
         continue;
       }
     }
     if (char === "#") {
-      ignored = hasCueWord2(line);
+      ignored = hasCueWord(line, 0, line.length, CUE_WORDS2);
       previousBlank = false;
       previousIndented = false;
       if (ignored) continue;
@@ -36531,12 +36385,12 @@ function scanInstructionTokens(text) {
       pos = span2.close;
     }
     outside += line.slice(pos);
-    if (hasCueWord2(outside)) continue;
+    if (hasCueWord(outside, 0, outside.length, CUE_WORDS2)) continue;
     for (const span2 of spans) {
       const content = line.slice(span2.from, span2.to).trim();
       if (content === "") continue;
       let space = false;
-      for (let i = 0; i < content.length && !space; i++) space = isSpaceCode3(content.charCodeAt(i));
+      for (let i = 0; i < content.length && !space; i++) space = isSpaceCode(content.charCodeAt(i));
       if (space) {
         commandsIn(content.startsWith("$ ") ? content.slice(2) : content, lineNumber, commands);
       } else {

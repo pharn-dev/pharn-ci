@@ -5,6 +5,18 @@
  * loops, never a regular expression over the file's text. Pure; never throws.
  */
 import { JS_TS_EXTENSIONS } from "../jsTsExtensions.js";
+import {
+  codeSpans,
+  commandsOfLine,
+  firstNonSpace,
+  hasCueWord,
+  isAsciiLetter,
+  isSpaceCode,
+  SESSION_INFO,
+  SHELL_INFO,
+  shellLine,
+  withoutComments,
+} from "./instructionLines.js";
 
 /** The most code units of one instruction file that are scanned; the rest is not read. */
 export const MAX_SCAN_CHARS = 256 * 1024;
@@ -49,21 +61,6 @@ export interface InstructionTokens {
   references: InstructionReference[];
 }
 
-/** The fence info words whose blocks are shell, so their lines are read for commands; any other block is an example. */
-const SHELL_INFO: ReadonlySet<string> = new Set([
-  "",
-  "sh",
-  "bash",
-  "shell",
-  "zsh",
-  "fish",
-  "console",
-  "terminal",
-  "shell-session",
-  "shellsession",
-]);
-const SESSION_INFO: ReadonlySet<string> = new Set(["console", "terminal", "shell-session", "shellsession"]);
-
 /** Words that negate or retire what a line names: a line or a section under a heading with one is not read. */
 const CUE_WORDS: ReadonlySet<string> = new Set([
   "not",
@@ -90,7 +87,6 @@ const CUE_WORDS: ReadonlySet<string> = new Set([
   "e.g",
 ]);
 
-const WRAPPER_WORDS: ReadonlySet<string> = new Set(["sudo", "time", "env"]);
 /** The words after which the rest of a command line runs somewhere else, so it is not read. */
 const DIRECTORY_WORDS: ReadonlySet<string> = new Set(["cd", "pushd"]);
 
@@ -363,8 +359,6 @@ export const GENERATED_DIRS: ReadonlySet<string> = new Set([
   ".tmp",
 ]);
 
-const isSpaceCode = (code: number) => code === 32 || (code >= 9 && code <= 13) || code === 160;
-const isAsciiLetter = (code: number) => (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
 const isDigit = (code: number) => code >= 48 && code <= 57;
 
 /** A repo-path character: ASCII letters, digits, `.`, `_`, `-`, `+` and `/`. */
@@ -398,84 +392,6 @@ export function isSafeTargetName(name: string): boolean {
 /** A path token that can be reported: repo-path characters, at most 200 of them. */
 export function isSafePathToken(token: string): boolean {
   return token.length > 0 && token.length <= MAX_PATH_TOKEN && allChars(token, false);
-}
-
-/** The index of the first character at or after `from` that is not a space or tab, or `line.length`. */
-function firstNonSpace(line: string, from = 0): number {
-  let i = from;
-  while (i < line.length && (line.charCodeAt(i) === 32 || line.charCodeAt(i) === 9)) i++;
-  return i;
-}
-
-/** True when `text` holds a cue word: a run of ASCII letters, apostrophes (U+2019 too) and dots, lower-cased. */
-function hasCueWord(text: string): boolean {
-  let start = -1;
-  const flush = (end: number): boolean => {
-    let word = text.slice(start, end).split("’").join("'").toLowerCase();
-    start = -1;
-    while (word.endsWith(".") || word.endsWith("'")) word = word.slice(0, -1);
-    return CUE_WORDS.has(word);
-  };
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    const inWord = isAsciiLetter(code) || code === 39 || code === 0x2019 || (code === 46 && start !== -1);
-    if (inWord && start === -1) start = i;
-    if (!inWord && start !== -1 && flush(i)) return true;
-  }
-  return start !== -1 && flush(text.length);
-}
-
-/** Split on whitespace into words, by a character loop. */
-function splitWords(text: string): string[] {
-  const words: string[] = [];
-  let start = -1;
-  for (let i = 0; i < text.length; i++) {
-    const space = isSpaceCode(text.charCodeAt(i));
-    if (!space && start === -1) start = i;
-    if (space && start !== -1) {
-      words.push(text.slice(start, i));
-      start = -1;
-    }
-  }
-  if (start !== -1) words.push(text.slice(start));
-  return words;
-}
-
-/** True for `NAME=value`: a letter or `_`, then letters, digits or `_`, then `=`. */
-function isAssignment(word: string): boolean {
-  const first = word.charCodeAt(0);
-  if (!(isAsciiLetter(first) || first === 95)) return false;
-  let i = 1;
-  while (i < word.length) {
-    const code = word.charCodeAt(i);
-    if (!(isAsciiLetter(code) || isDigit(code) || code === 95)) break;
-    i++;
-  }
-  return i < word.length && word[i] === "=";
-}
-
-/** Split a command line on `&&`, `||`, `;` and `|`, scanning the characters once. */
-function commandSegments(text: string): string[] {
-  const segments: string[] = [];
-  let from = 0;
-  let i = 0;
-  while (i < text.length) {
-    const char = text[i];
-    const next = text[i + 1];
-    if ((char === "&" && next === "&") || (char === "|" && next === "|")) {
-      segments.push(text.slice(from, i));
-      i += 2;
-      from = i;
-    } else if (char === ";" || char === "|") {
-      segments.push(text.slice(from, i));
-      i += 1;
-      from = i;
-    } else {
-      i += 1;
-    }
-  }
-  segments.push(text.slice(from));
-  return segments;
 }
 
 /** The script a JS package-manager command runs, or null when it runs no checkable root script. */
@@ -524,17 +440,7 @@ function makeTargetsOf(words: readonly string[], at: number): string[] {
 
 /** Read one command line for commands; stops at a `cd`, after which the rest runs in another directory. */
 function commandsIn(text: string, line: number, out: InstructionCommand[]): void {
-  for (const segment of commandSegments(text)) {
-    let body = segment.trim();
-    if (body.startsWith("(")) body = body.slice(1);
-    if (body.endsWith(")")) body = body.slice(0, -1);
-    const words = splitWords(body);
-    let at = 0;
-    while (at < words.length) {
-      const word = words[at] as string;
-      if (!isAssignment(word) && !WRAPPER_WORDS.has(word)) break;
-      at++;
-    }
+  for (const { words, at } of commandsOfLine(text)) {
     const first = words[at];
     if (first === undefined) continue;
     if (DIRECTORY_WORDS.has(first)) return;
@@ -546,69 +452,6 @@ function commandsIn(text: string, line: number, out: InstructionCommand[]): void
       const name = scriptOf(first, words, at);
       if (name !== null) out.push({ manager: first, name, line });
     }
-  }
-}
-
-/** `[start, length]` of each backtick run of a line. */
-function backtickRuns(line: string): [number, number][] {
-  const runs: [number, number][] = [];
-  let i = line.indexOf("`");
-  while (i !== -1) {
-    let end = i + 1;
-    while (end < line.length && line[end] === "`") end++;
-    runs.push([i, end - i]);
-    i = line.indexOf("`", end);
-  }
-  return runs;
-}
-
-/** The inline code spans of a line as `[open, from, to, close)`: a run pairs with the next run of the same length. */
-function codeSpans(line: string): { open: number; from: number; to: number; close: number }[] {
-  const runs = backtickRuns(line);
-  if (runs.length < 2) return [];
-  const partner: number[] = new Array(runs.length).fill(-1);
-  const nextOfLength = new Map<number, number>();
-  for (let i = runs.length - 1; i >= 0; i--) {
-    const length = (runs[i] as [number, number])[1];
-    partner[i] = nextOfLength.get(length) ?? -1;
-    nextOfLength.set(length, i);
-  }
-  const spans: { open: number; from: number; to: number; close: number }[] = [];
-  for (let i = 0; i < runs.length; ) {
-    const j = partner[i] as number;
-    if (j === -1) {
-      i++;
-      continue;
-    }
-    const [openAt, length] = runs[i] as [number, number];
-    const [closeAt] = runs[j] as [number, number];
-    spans.push({ open: openAt, from: openAt + length, to: closeAt, close: closeAt + length });
-    i = j + 1;
-  }
-  return spans;
-}
-
-/** The line without the HTML comments of a prose line, or null when the whole line is inside a comment. */
-function withoutComments(line: string, state: { open: boolean }): string | null {
-  let pos = 0;
-  if (state.open) {
-    const end = line.indexOf("-->");
-    if (end === -1) return null;
-    state.open = false;
-    pos = end + 3;
-  }
-  let out = "";
-  for (;;) {
-    const open = line.indexOf("<!--", pos);
-    if (open === -1) return out + line.slice(pos);
-    out += line.slice(pos, open);
-    const close = line.indexOf("-->", open + 4);
-    if (close === -1) {
-      state.open = true;
-      return out;
-    }
-    out += " ";
-    pos = close + 3;
   }
 }
 
@@ -750,15 +593,6 @@ function importPaths(text: string, line: number, out: InstructionReference[]): v
   }
 }
 
-/** The text of a shell-block line after its prompt, or null when the line names no command. */
-function shellLine(line: string, session: boolean): string | null {
-  const rest = line.slice(firstNonSpace(line));
-  if (rest.startsWith("$ ") || rest.startsWith("% ") || rest.startsWith("> ")) return rest.slice(2);
-  if (session) return null;
-  if (rest.startsWith("#")) return null;
-  return rest;
-}
-
 /**
  * The commands and paths an instruction file names. Read: inline code spans of prose lines (a span with a space is a
  * command line, one without is a path when it looks like one), the lines of fenced blocks marked as shell or not
@@ -835,7 +669,7 @@ export function scanInstructionTokens(text: string): InstructionTokens {
     }
 
     if (char === "#") {
-      ignored = hasCueWord(line);
+      ignored = hasCueWord(line, 0, line.length, CUE_WORDS);
       previousBlank = false;
       previousIndented = false;
       if (ignored) continue;
@@ -856,7 +690,7 @@ export function scanInstructionTokens(text: string): InstructionTokens {
       pos = span.close;
     }
     outside += line.slice(pos);
-    if (hasCueWord(outside)) continue;
+    if (hasCueWord(outside, 0, outside.length, CUE_WORDS)) continue;
 
     for (const span of spans) {
       const content = line.slice(span.from, span.to).trim();
