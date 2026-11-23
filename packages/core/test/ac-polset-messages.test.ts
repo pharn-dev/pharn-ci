@@ -60,17 +60,15 @@ const SETTINGS_HEAD = "P02–P06 could not fully use these agent settings files:
 const SETTINGS_TAIL =
   ". Claude Code skips an unparseable file or entry; pharn-ci never guesses what it meant, and a file it could not read counts against the policy.";
 
+// CORE-140: the comment's hint is each code's fix.hint, the one advice text of the code.
+const REVIEW_POLICY = "Ask a maintainer or the policy owner to review the committed agent settings this rule names.";
 const HINTS: Record<string, string> = {
-  POLICY_P02:
-    "Narrow or remove the allow rule (or the defaultMode or additionalDirectories key) in the settings file, or ask the policy owner to change setup.forbidden_permissions.",
-  POLICY_P03:
-    "Add a deny rule equal to or broader than the required one to the .claude/settings.json of each directory named.",
-  POLICY_P04: "Remove the server, or ask the policy owner to add it to setup.allowed_mcp_servers.",
-  POLICY_P05: "Remove the server from the MCP file.",
-  POLICY_P06:
-    "Add a command hook for the event whose matcher covers the required one (`*` or the same tool names), without an if condition.",
-  POLICY_SETTINGS_INVALID:
-    "Keep agent settings files valid JSON and regular files under 512 KiB, and run on a checkout of the pull request head, so the org policy can check them.",
+  POLICY_P02: REVIEW_POLICY,
+  POLICY_P03: REVIEW_POLICY,
+  POLICY_P04: REVIEW_POLICY,
+  POLICY_P05: REVIEW_POLICY,
+  POLICY_P06: REVIEW_POLICY,
+  POLICY_SETTINGS_INVALID: "Check the policy settings and correct the ones the report names.",
 };
 
 describe("the P02–P06 and POLICY_SETTINGS_INVALID messages", { timeout: 60_000 }, () => {
@@ -228,9 +226,9 @@ describe("the P02–P06 and POLICY_SETTINGS_INVALID messages", { timeout: 60_000
     for (const [code, hint] of Object.entries(HINTS)) {
       expect(markdown, `the ${code} hint`).toContain(`  - Hint: ${hint}\n`);
     }
-    const source = readFileSync(new URL("../src/render/markdown.ts", import.meta.url), "utf8");
-    const table = source.slice(source.indexOf("MESSAGE_HINTS"));
+    const source = readFileSync(new URL("../src/fix/table.ts", import.meta.url), "utf8");
+    const table = source.slice(source.indexOf("MESSAGE_FIXES"));
     for (const code of Object.keys(HINTS))
-      expect(table, `MESSAGE_HINTS has ${code}`).toMatch(new RegExp(`\\b${code}\\s*:`));
+      expect(table, `MESSAGE_FIXES has ${code}`).toMatch(new RegExp(`\\b${code}\\s*:`));
   });
 });

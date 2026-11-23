@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { codeRow } from "./codeTable.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -86,9 +87,7 @@ describe("report v2 with the P02–P06 violations and the six codes", { timeout:
     const union = source.slice(start, source.indexOf(";", start));
     for (const code of CODES) expect(union, `MessageCode has ${code}`).toContain(`"${code}"`);
 
-    // The v2 description names them.
-    const v2 = JSON.parse(read("schema/report.v2.json"));
-    const description = JSON.stringify(v2);
-    for (const code of CODES) expect(description, `report.v2.json names ${code}`).toContain(code);
+    // The code table names them (CORE-140: the schema's code description is one sentence and a link to that table).
+    for (const code of CODES) expect(codeRow(code), `the code table names ${code}`).toMatch(/`(?:error|warn)`/);
   });
 });

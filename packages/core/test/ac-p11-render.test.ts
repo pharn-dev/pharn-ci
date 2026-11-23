@@ -15,10 +15,10 @@ interface Core {
 }
 
 const HOSTILE = "src/we`ird<!--|x.ts";
+// CORE-140: the hints are each code's fix.hint.
 const P11_HINT =
-  "Agent PRs may not change these paths under the org policy. Move the change to a pull request by a person, or ask the policy owner to change `agents.protected_paths`.";
-const INCOMPLETE_HINT =
-  "Re-run the job if the GitHub API failed. A pull request with more than 250 commits, an author GitHub does not name, or an edited policy file whose base cannot be read always counts as an agent PR.";
+  "Ask a person to review or make the change to the paths the org policy protects from agent pull requests.";
+const INCOMPLETE_HINT = "Check that the token can read the pull request, its labels and its commits.";
 
 /** The lines of a `### ` section whose heading starts with `heading`, up to the next `### ` heading. */
 function section(md: string, heading: string): string[] {

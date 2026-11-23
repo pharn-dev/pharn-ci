@@ -24,7 +24,7 @@ describe("the Dependencies section", () => {
         "5 added or changed dependencies checked · registry lookups off",
         "",
         "- ❌ **D05** `package.json:7` `from-git` — declared from a git repository",
-        "  - Hint: Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks. For a registry your team runs (Artifactory, Nexus, a private PyPI index), name its host in the dependency-allowed-hosts input or the org policy's dependencies.allowed_hosts.",
+        "  - Hint: Depend on a published registry version, or name the host of a registry your team runs in the dependency-allowed-hosts input; otherwise remove the dependency.",
         "- ❌ **D05** `package.json:8` `from-tarball` — declared from a URL outside the allowed registries",
         "- ❌ **D05** `package.json:9` `from-disk` — declared from a local file",
         "",
@@ -45,8 +45,11 @@ describe("the Dependencies section", () => {
     expect(text).toContain(
       "- ⚠️ Not checked: 1 manifest or lockfile file could not be read, so dependency safety did not check it: \\`package.json\\` (unavailable).",
     );
-    // Re-pinned for CORE-100 part 2: the per-file cap is 32 MiB now, and the hint names it.
-    expect(text).toContain("  - Hint: Keep manifests and lockfiles valid and under 32 MiB");
+    // Re-pinned for CORE-100 part 2: the per-file cap is 32 MiB now, and the hint names it. CORE-140: the hint is the
+    // code's fix.hint, which names the cap too.
+    expect(text).toContain(
+      "  - Hint: Check that the manifest or lockfile the report names can be read and parsed, and keep it under 32 MiB.",
+    );
   });
 
   it("CORE-100: shows an unread line the pull request can cause with the error icon", () => {

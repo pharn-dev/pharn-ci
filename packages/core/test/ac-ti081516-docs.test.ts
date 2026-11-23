@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { codeRow } from "./codeTable.js";
 
 // The files are read inside the test body, so the file loads whatever they say. (CORE-133: the CHANGELOG, README and
 // LIMITS wording checks moved out; docs-contract.test.ts checks the README code rows. CORE-132: the comparisons of
@@ -34,18 +35,9 @@ function actionInputs(text: string): string[] {
 }
 
 describe("TI08, TI15 and TI16: schemas and action.yml", () => {
-  it("AC-16: the v2 message-code description names the three codes with their levels, and action.yml declares the inputs added since", () => {
-    const schema = JSON.parse(read("schema/report.v2.json")) as {
-      $defs: { message: { properties: { code: { description: string } } } };
-    };
-    const description = schema.$defs.message.properties.code.description;
-    for (const id of IDS) {
-      const at = description.indexOf(code(id));
-      expect(at, code(id)).toBeGreaterThan(-1);
-      const next = description.indexOf("TEST_INTEGRITY_", at + code(id).length);
-      const window = description.slice(at, next === -1 ? at + 300 : next);
-      expect(window, code(id)).toContain(LEVELS[id] as string);
-    }
+  it("AC-16: the code table documents the three codes with their levels, and action.yml declares the inputs added since", () => {
+    // CORE-140: the schema's code description became one sentence and a link to the code table of docs/output.md.
+    for (const id of IDS) expect(codeRow(code(id)), code(id)).toContain(`\`${LEVELS[id] as string}\``);
 
     const POLICY_INPUTS = [
       "policy",

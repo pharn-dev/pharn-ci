@@ -1,11 +1,11 @@
 import { DEFAULT_ACCEPT_LABEL, GITHUB_LOGIN, isLiftableUnreadableError } from "../acceptLabel.js";
 import { isBinaryDetail } from "../binaryDetails.js";
 import type { CoverageFormat } from "../coverage/types.js";
+import { messageFix } from "../fix/attach.js";
 import type { PolicyUnavailableReason } from "../policy/resolved.js";
 import {
   formatNumber,
   type Message,
-  type MessageCode,
   type Report,
   type ReportFlaky,
   type ReportInjectionSignal,
@@ -13,6 +13,7 @@ import {
   type ReportStaleInstruction,
 } from "../report.js";
 import { summarizeAgentSetup } from "../setup/summary.js";
+import { testIntegritySignal } from "../signals/registry.js";
 import { replaceUnsafeChars } from "../text.js";
 import { logoMarkup } from "./logo.js";
 
@@ -37,220 +38,54 @@ const LEVEL_ICON = { info: "ℹ️", warn: "⚠️", error: "❌" } as const;
 const FULL_REPORT_NOTE =
   "_Full list in report.json: the Action's `report-path` output, or `pharn-ci check --format json`._";
 
-/** A hint is a fixed string, or a function of the accept label's code span; the label is validated, never free text. */
-type Hint = string | ((labelSpan: string) => string);
-
 /** The accept label a report was made with: the configured name, or the default one. */
 function acceptLabelOf(report: Report): string {
   const configured = report.testIntegrity.acceptLabel;
   return typeof configured === "string" && configured !== "" ? configured : DEFAULT_ACCEPT_LABEL;
 }
 
-/** The hint of a committed secret of a known shape (S01 to S09). */
-const SECRET_HINT =
-  "Revoke the credential at its provider, remove it from the file and from git history, and load it from an environment variable or a secret store.";
+/**
+ * The hint with the accept-label clause: the hint's full stop goes, and the clause (with its own full stop) follows, so
+ * the words before it stay the code's `fix.hint`. `label` is the accept label, quoted as a code span; it is validated,
+ * never free text.
+ */
+function withAcceptClause(hint: string, label: string): string {
+  return `${hint.slice(0, -1)}; a reviewer who is not the PR author can record that sign-off by applying the accept label ${labelSpan(label)}.`;
+}
 
 /**
- * One-line remediation per message code, added at render time so message text (which consumers may
- * match on) stays as it is. Fixed strings only: nothing input-derived. The hints of the signals that block by default
- * (TI02, TI03, TI05, TI09, TI10, TI13) name the accept label, so they are functions of its code span; TI06, TI12 and
- * TI17 name it only on a block finding (BLOCK_ONLY_ACCEPT_CLAUSE). No hint tells the reader to loosen the gate it
- * reports on (review finding 11). Exported for tests only; not part of the package index.
+ * The two messages that are an error only for a per-file or truncation cause, judged by `isLiftableUnreadableError`, so
+ * the accept-label clause never appears on the did-not-run error or on a warning.
  */
-export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
-  DIFF_COVERAGE_BELOW_THRESHOLD: "Add tests that exercise the uncovered lines listed in the table above.",
-  DIFF_COVERAGE_UNGATED:
-    "To gate diff coverage, set a threshold above 0 (`coverage.threshold`, `threshold` or `--threshold`).",
-  NO_COVERABLE_CHANGES:
-    "Nothing to do if the change has no code; otherwise check that the coverage report includes the changed files.",
-  COVERAGE_FILE_MISSING:
-    "Run the tests with coverage before pharn-ci, and check the path (`coverage.file`, `coverage-file` or `--coverage`).",
-  COVERAGE_FILE_EMPTY:
-    "Run the tests with coverage enabled before pharn-ci, and check that the report covers this repo's sources.",
-  COVERAGE_FORMAT_UNSUPPORTED:
-    "Have the test runner write lcov or Cobertura XML; if it already does, set `coverage.format` explicitly.",
-  DIFF_UNAVAILABLE:
-    "Check out full history (`actions/checkout` with `fetch-depth: 0`) or set the base (`base-ref` or `--base`).",
-  COVERAGE_PATHS_UNMATCHED:
-    "Write coverage paths relative to the repository root, or set the directory they start from (`coverage.root`, `coverage-root` or `--coverage-root`).",
-  COVERAGE_PATHS_PARTIALLY_UNMATCHED:
-    "Nothing to do if those files are generated or outside the repo; if changed files are missing from the table, check the coverage root.",
-  COVERAGE_LINES_SKIPPED:
-    "Regenerate the coverage report and check that the reporter finished writing it; a truncated or hand-edited file can show more coverage than the tests gave.",
-  CONFIG_CHANGED_IN_DIFF:
-    "Review the config and workflow changes before trusting the verdict; protect `.pharn/ci.yml` and `.github/workflows/` with CODEOWNERS.",
-  COVERAGE_FILE_TRACKED:
-    "Generate the coverage file in CI and stop tracking it (`git rm --cached` it and add it to `.gitignore`).",
-  DIFF_BINARY_COVERED_FILE:
-    "Remove `-diff` or `binary` attributes for source files from `.gitattributes` so their changes are measured.",
-  TEST_FILES_DELETED:
-    "Check that the deleted or renamed tests were meant to go, or that their cases moved to a file the test runner still runs.",
-  NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
-  AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
-  AGENT_SETUP_EXPECTED_MISSING:
-    "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or ask whoever owns `setup.expect` (the org policy owner, or the maintainers for `.pharn/ci.yml`) to change it.",
-  TEST_INTEGRITY_MODE_IGNORED:
-    "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
-  TEST_INTEGRITY_OFF:
-    "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
-  TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
-  TEST_INTEGRITY_TI02: (label) =>
-    `Restore the removed tests, or say in the PR why they go; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}. A test that only moved or was renamed is not reported when its body is the same or close to it.`,
-  TEST_INTEGRITY_TI03: (label) =>
-    `Remove the skip so the test runs again, or say in the PR why it must stay, for example a test that fails in CI; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
-  TEST_INTEGRITY_TI04:
-    "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
-  TEST_INTEGRITY_TI05: (label) =>
-    `Restore the assertions the test had, or say in the PR why it checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
-  TEST_INTEGRITY_TI06:
-    "Restore the stronger matcher, guard or placement of the assertion, or say in the PR why the test checks less now.",
-  TEST_INTEGRITY_TI07:
-    "Check each new expected value against what the code should do, not what it now returns; if the behaviour change is meant, say so in the PR so a reviewer can confirm it.",
-  TEST_INTEGRITY_TI08:
-    "Review the snapshot changes, or regenerate them in a separate change, and keep snapshot-update flags out of the test command.",
-  TEST_INTEGRITY_TI09: (label) =>
-    `Restore the setting, or say in the PR why it changes; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}. A raised retry count or timeout is a warning only.`,
-  TEST_INTEGRITY_TI12:
-    "Mock a collaborator of the code under test instead of the code itself, or say in the PR why this module is mocked.",
-  TEST_INTEGRITY_TI10: (label) =>
-    `Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
-  TEST_INTEGRITY_TI13: (label) =>
-    `Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
-  TEST_INTEGRITY_TI11:
-    "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
-  TEST_INTEGRITY_TI14:
-    "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
-  // TI15 and SI04 are not emitted since CORE-144; their hints stay because every message code has one.
-  TEST_INTEGRITY_TI15:
-    "Check that the code handles the general case and not only the test's value, and add a test with another input.",
-  TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
-  TEST_INTEGRITY_TI17: "Restore the assertion that can fail, or say in the PR why the test checks less now.",
-  TEST_INTEGRITY_INDEX_UNAVAILABLE:
-    "A file over 512 KiB or nested too deeply, one with many syntax errors, more than 200 touched test files, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison. A test file git shows as binary (a `-diff` or `binary` attribute in `.gitattributes`) hides its changed lines from the signals that read the diff, and non-text content such as a NUL byte also stops the comparison. Review the named test files by hand for removed tests and weakened assertions.",
-  TEST_INTEGRITY_TEXT_TRUNCATED:
-    "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
-  TEST_INTEGRITY_ACCEPTED:
-    "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
-  TEST_INTEGRITY_ACCEPT_IGNORED:
-    "The block findings stand. Fix them, or ask a reviewer who is not the PR author to apply the label; it counts only when a user account other than the author applied it last.",
-  AGENT_CONFIG_SECRET_S01: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S02: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S03: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S04: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S05: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S06: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S07: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S08: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S09: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S10:
-    "If the value is a real secret, revoke it at its provider, remove it from the file and from git history, and load it from an environment variable or a secret store. If it is not a secret, a reviewer can confirm that.",
-  AGENT_CONFIG_SECRET_S11:
-    "Move the literal value into the environment, like the other secrets in the same file, so no secret is committed.",
-  AGENT_CONFIG_SECRET_UNSCANNED:
-    "Keep agent config files text, under 512 KiB and inside the repository, and run on a checkout of the pull request head (not PR-number mode or a compare-API diff), so they can be scanned for committed secrets.",
-  POLICY_UNAVAILABLE:
-    "Give the job `permissions: id-token: write` (fork pull requests get no OIDC token) and check that the pharn.dev app is installed for this repository.",
-  POLICY_OVERRIDE_IGNORED:
-    "The org policy's value applies. Raise the setting in the workflow inputs or `.pharn/ci.yml` to match, or ask the policy owner to change the policy.",
-  UPLOAD_TOO_LARGE: "Nothing in the pull request needs fixing; the full report is in the job summary and report.json.",
-  POLICY_P08:
-    "Stop tracking the file (`git rm --cached` it and add it to `.gitignore`); the org policy forbids it in the repository.",
-  POLICY_P09:
-    "Revert the edit, or ask the policy owner to make it; a pull request cannot loosen the check it is graded by.",
-  POLICY_P11:
-    "Agent PRs may not change these paths under the org policy. Move the change to a pull request by a person, or ask the policy owner to change `agents.protected_paths`.",
-  POLICY_P07:
-    "Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.",
-  POLICY_P13:
-    "An agent PR may not widen its own or another agent's powers. Move the change to a pull request by a person, or ask the policy owner to change `policy.rules.P13`.",
-  AGENT_PR_DETECTION_INCOMPLETE:
-    "Re-run the job if the GitHub API failed. A pull request with more than 250 commits, an author GitHub does not name, or an edited policy file whose base cannot be read always counts as an agent PR.",
-  // E3 item 23 (policy settings): the hints of P02 to P06 and of the settings problems.
-  POLICY_P02:
-    "Narrow or remove the allow rule (or the defaultMode or additionalDirectories key) in the settings file, or ask the policy owner to change setup.forbidden_permissions.",
-  POLICY_P03:
-    "Add a deny rule equal to or broader than the required one to the .claude/settings.json of each directory named.",
-  POLICY_P04: "Remove the server, or ask the policy owner to add it to setup.allowed_mcp_servers.",
-  POLICY_P05: "Remove the server from the MCP file.",
-  POLICY_P06:
-    "Add a command hook for the event whose matcher covers the required one (`*` or the same tool names), without an if condition.",
-  POLICY_SETTINGS_INVALID:
-    "Keep agent settings files valid JSON and regular files under 512 KiB, and run on a checkout of the pull request head, so the org policy can check them.",
-  POLICY_P14:
-    "Split the agent pull request into smaller ones, one per area named, or ask the policy owner to change `agents.max_files` or `agents.max_changed_lines`. Lockfiles, snapshots and `*.generated.*` files do not count.",
-  TESTS_NOT_EXERCISING_CHANGES:
-    "Add or update a test that imports each listed file and asserts on the changed behaviour, or say in the PR why no test changes. This is a warning only.",
-  // Stale instructions (H3): the instruction file is what to fix, never the check.
-  SETUP_STALE_SI01:
-    "Make the command match a script in the root package.json or a target in the root Makefile, or remove it from the instruction file.",
-  SETUP_STALE_SI02: "Point the instruction at the path where the file now lives, or remove the line.",
-  SETUP_STALE_SI03: "Point the link or `@` import at a file that exists, or remove it.",
-  SETUP_STALE_SI04:
-    "Read the instruction file next to the files this change edits, and update it where it no longer matches.",
-  // H4 (prompt-injection scan): the hints of PI01 to PI05 and of the cut scan.
-  INJECTION_PI01:
-    "Remove the invisible or bidirectional character, or write it as an escape (such as `\\u202E`) where the code needs it.",
-  INJECTION_PI02: "Remove the hidden text, or move what it says into visible text a reviewer can read.",
-  INJECTION_PI03:
-    "Remove the phrase. If the file documents prompt injection on purpose, keep such samples in test files or under `fixtures/`.",
-  INJECTION_PI04: "Remove the blob from the instruction file; point to a reviewed file in the repository instead.",
-  INJECTION_PI05:
-    "Remove the instruction file from the vendored directory, or keep vendored code out of the repository.",
-  INJECTION_TEXT_TRUNCATED: "Split the change into smaller pull requests, so every added line is scanned.",
-  // Flaky tests (A6): the JUnit paths and the test step are what to fix; test results never change the verdict.
-  JUNIT_NOT_FOUND:
-    "Point `junit-paths` (or `--junit`) at the files the test step writes, run pharn-ci after the test step, and keep the test step from stopping the job first (`if: always()` on the pharn-ci step).",
-  JUNIT_INVALID:
-    "Have the test runner write plain JUnit XML: one `testsuites` or `testsuite` root, no DOCTYPE, every element closed.",
-  JUNIT_TOO_LARGE:
-    "Narrow `junit-paths` to the files of this job, or merge the reports; the results past the limits are not counted or uploaded.",
-  FLAKY_QUARANTINED_FAILURES:
-    "Nothing to fix in the pull request; the org's quarantine list on pharn.dev says which tests are known to be flaky.",
-  // Dependency safety (A13): the dependency is what to fix, never the check.
-  DEPENDENCY_D01:
-    "Check the package name against the registry: an agent may have invented it, and anyone can publish a package under an invented name. Use the real package, or remove the dependency.",
-  DEPENDENCY_D02:
-    "Check who publishes the package and why it is new before you merge; prefer an established package. This is a warning only.",
-  DEPENDENCY_D03:
-    "Check that this is the package you meant (a typo of a popular name is a common trap) and who publishes it. This is a warning only.",
-  DEPENDENCY_D04:
-    "Run the package manager's install so the lockfile matches the manifest, and commit both; a lockfile that changes a hash for the same version needs an explanation.",
-  DEPENDENCY_D05:
-    "Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks. For a registry your team runs (Artifactory, Nexus, a private PyPI index), name its host in the dependency-allowed-hosts input or the org policy's dependencies.allowed_hosts.",
-  DEPENDENCY_LOOKUP_UNAVAILABLE:
-    "Re-run the job; the registry lookups fail open, so D01 to D03 were not checked for the packages counted.",
-  DEPENDENCY_CHECK_INCOMPLETE:
-    "Keep manifests and lockfiles valid and under 32 MiB, and run on a checkout of the pull request head with fetch-depth: 0, so they can be compared.",
-  POLICY_KEYS_UNKNOWN:
-    "Update the pharn-dev/pharn-ci pin in the workflow to a release that knows these keys; until then the rest of the org policy applies without them.",
-};
-
-/**
- * The codes of the signals that are `warn` unless an org policy raises them, and the two messages that are an error
- * only for a per-file or truncation cause. The accept label is read only when a finding blocks, so their hints offer it
- * only on a block finding (or an error-level message the label lowers), where it counts. The two message codes are
- * judged by `isLiftableUnreadableError`, so the clause never appears on the did-not-run error or on a warning.
- */
-const BLOCK_ONLY_ACCEPT_CLAUSE: ReadonlySet<string> = new Set([
-  "TEST_INTEGRITY_TI06",
-  "TEST_INTEGRITY_TI12",
-  "TEST_INTEGRITY_TI17",
+const LIFTABLE_CODES: ReadonlySet<string> = new Set([
   "TEST_INTEGRITY_INDEX_UNAVAILABLE",
   "TEST_INTEGRITY_TEXT_TRUNCATED",
 ]);
 
+const TI_CODE_PREFIX = "TEST_INTEGRITY_";
+
 /**
- * The hint text for a message code, or undefined when it has none. `label` is the report's accept label; `blocks` says
- * whether the finding or message blocks, which adds the accept label clause to a BLOCK_ONLY_ACCEPT_CLAUSE hint.
+ * When a code's hint carries the accept-label clause: for a `TEST_INTEGRITY_<id>` code as the signal registry says
+ * (always for the signals that block by default, only on a block finding for the ones that are `warn` unless an org
+ * policy raises them), and only when it blocks for the two liftable messages. The label is read only when a finding
+ * blocks, so the sentence is offered only where it counts.
+ */
+function acceptOf(code: string): "always" | "block" | undefined {
+  if (LIFTABLE_CODES.has(code)) return "block";
+  return code.startsWith(TI_CODE_PREFIX) ? testIntegritySignal(code.slice(TI_CODE_PREFIX.length))?.accept : undefined;
+}
+
+/**
+ * The hint for a message code: its `fix.hint`, the one advice text of the code (CORE-140), or undefined for a code the
+ * fix table does not hold (one from a newer producer). `label` is the report's accept label; `blocks` says whether the
+ * finding or message blocks, which adds the accept-label clause to a code whose label counts only then. Fixed strings
+ * only: nothing input-derived. No hint tells the reader to loosen the gate it reports on.
  */
 function hintFor(code: string, label: string, blocks = false): string | undefined {
-  // Object.hasOwn: a code from a newer producer has no hint, and must not reach Object.prototype.
-  if (!Object.hasOwn(MESSAGE_HINTS, code)) return undefined;
-  const hint = MESSAGE_HINTS[code as MessageCode];
-  if (typeof hint === "function") return hint(labelSpan(label));
-  if (!blocks || !BLOCK_ONLY_ACCEPT_CLAUSE.has(code)) return hint;
-  // The hint ends with its full stop; the clause goes before it, as in the hints that always name the label.
-  return `${hint.slice(0, -1)}; a reviewer who is not the PR author can record that sign-off by applying the accept label ${labelSpan(label)}.`;
+  const hint = messageFix(code)?.hint;
+  if (hint === undefined) return undefined;
+  const accept = acceptOf(code);
+  return accept === "always" || (accept === "block" && blocks) ? withAcceptClause(hint, label) : hint;
 }
 
 /**
@@ -266,27 +101,6 @@ function labelSpan(text: string): string {
   return `${fence}${pad}${safe}${pad}${fence}`;
 }
 
-/** The signal ids that have a hint under their finding. */
-const SIGNAL_HINT_IDS: ReadonlySet<string> = new Set([
-  "TI01",
-  "TI02",
-  "TI03",
-  "TI04",
-  "TI05",
-  "TI06",
-  "TI07",
-  "TI08",
-  "TI09",
-  "TI10",
-  "TI11",
-  "TI12",
-  "TI13",
-  "TI14",
-  "TI15",
-  "TI16",
-  "TI17",
-]);
-
 /**
  * The sentence added to the hint of a TI01, TI10, TI11 or TI14 finding that git shows as binary (CORE-50). The report
  * cannot say why git showed the file as binary, so it names both causes and the fix for each, and never claims the
@@ -295,17 +109,16 @@ const SIGNAL_HINT_IDS: ReadonlySet<string> = new Set([
 const BINARY_HINT_SENTENCE =
   "Git shows this file as binary: if a `-diff` or `binary` attribute in `.gitattributes` matches it, remove that attribute; if none does, the file holds non-text content such as a NUL byte, so store it as UTF-8 text.";
 
-/** The signal ids whose findings can be binary findings (`isBinaryDetail`). */
-const BINARY_FINDING_IDS: ReadonlySet<string> = new Set(["TI01", "TI10", "TI11", "TI14"]);
-
 /**
- * Hint under the finding of a test-integrity signal id: the hint of its `TEST_INTEGRITY_<id>` code, followed by one space
- * and the binary sentence when the finding's detail is one of the fixed binary sentences.
+ * Hint under the finding of a test-integrity signal id: the hint of its `TEST_INTEGRITY_<id>` code (the finding's own
+ * `fix.hint`), followed by one space and the binary sentence when the registry says the id has binary findings and the
+ * finding's detail is one of the fixed binary sentences.
  */
 function signalHint(id: string, label: string, blocks: boolean, detail?: string): string | undefined {
-  if (!SIGNAL_HINT_IDS.has(id)) return undefined;
-  const hint = hintFor(`TEST_INTEGRITY_${id}`, label, blocks);
-  if (hint === undefined || detail === undefined || !BINARY_FINDING_IDS.has(id) || !isBinaryDetail(detail)) return hint;
+  const signal = testIntegritySignal(id);
+  if (signal === undefined) return undefined;
+  const hint = hintFor(`${TI_CODE_PREFIX}${id}`, label, blocks);
+  if (hint === undefined || detail === undefined || signal.binary !== true || !isBinaryDetail(detail)) return hint;
   return `${hint} ${BINARY_HINT_SENTENCE}`;
 }
 
@@ -1116,14 +929,15 @@ function policyCell(report: Report): string {
 
 function renderMessage(m: Message, report: Report): string {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
-  const lifted = m.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE" || m.code === "TEST_INTEGRITY_TEXT_TRUNCATED";
+  const lifted = LIFTABLE_CODES.has(m.code);
   const base = hintFor(m.code, acceptLabelOf(report), lifted ? isLiftableUnreadableError(m) : m.level === "error");
   // A TEST_INTEGRITY_TI01/10/11/14 message shown here (all its findings were cut from the section) gets the binary
   // sentence when the report holds a binary finding of that id.
   const binary =
     base !== undefined &&
     report.testIntegrity.signals.some(
-      (s) => BINARY_FINDING_IDS.has(s.id) && `TEST_INTEGRITY_${s.id}` === m.code && isBinaryDetail(s.detail),
+      (s) =>
+        testIntegritySignal(s.id)?.binary === true && `${TI_CODE_PREFIX}${s.id}` === m.code && isBinaryDetail(s.detail),
     );
   const hint = binary ? `${base} ${BINARY_HINT_SENTENCE}` : base;
   return hint === undefined ? line : `${line}\n  - Hint: ${hint}`;

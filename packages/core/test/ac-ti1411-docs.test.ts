@@ -1,10 +1,10 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { codeRow } from "./codeTable.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 const ROOT = new URL("../../../", import.meta.url);
-const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
 const TI14 = [
@@ -65,10 +65,10 @@ async function signalsOf(dir: string, name: string, exclude: string[] = []) {
 // CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out. CORE-132: the report.v1.json
 // comparison with an old commit was a history pin and is removed.
 describe("TI14 and TI11: schema and fixtures", () => {
-  it("AC-15: the v2 schema names both message codes", () => {
-    const schema = read("schema/report.v2.json");
-    expect(schema).toContain("TEST_INTEGRITY_TI14");
-    expect(schema).toContain("TEST_INTEGRITY_TI11");
+  // CORE-140: the schema's code description is one sentence and a link to the code table of docs/output.md.
+  it("AC-15: the code table names both message codes", () => {
+    expect(codeRow("TEST_INTEGRITY_TI14")).toContain("TI14:");
+    expect(codeRow("TEST_INTEGRITY_TI11")).toContain("TI11:");
   });
 
   it("AC-15: at least five must-trigger and five must-not-trigger diffs exist for each id, and they behave", async () => {

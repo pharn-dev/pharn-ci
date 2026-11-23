@@ -87,8 +87,8 @@ that worked on the previous release. Before 1.0 the rules are:
      table says, and rewrite the README's **Status** note so it names the new release.
    - **Append the new message codes.** Add every Report v2 message code this release adds to
      `fixtures/release/codes.txt`, under a `# vX.Y.Z` line, and never remove or reorder an earlier line.
-     `packages/core/test/report-v2-compat.test.ts` fails when `report.ts` or `schema/report.v2.json` stops naming a
-     listed code.
+     `packages/core/test/report-v2-compat.test.ts` fails when a listed code is no longer a `MessageCode`, no longer
+     valid in a message `schema/report.v2.json` checks, or no longer has a row in the code table of `docs/output.md`.
    - Run `pnpm build` (the version is compiled into `packages/action/dist`) and commit the result.
    - Merge with all required checks green, then dispatch `release.yml` (steps 2 and 3). The release PR is the
      last change merged before the dispatch: a PR merged in between lands in the tag but not in its dated

@@ -25,6 +25,16 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 - One extension-to-language mapper for the test-integrity signals (CORE-142). Every extension maps as before; a file
   whose whole name is an extension (`tests/.ts`, `.py`) is now JS/TS or Python for the test pairing and the source-file
   signals too, as the one-line test readers (TI03, TI04) already read it.
+- Each message code has one advice text (CORE-140). The `Hint:` line in the PR comment and the job summary is now the
+  same sentence as the report's `fix.hint` for that code or finding, so the two can no longer disagree; for the
+  test-integrity codes whose findings the accept label can lower, a clause at its end names the label, as before.
+  The hint texts of the comment change. `fix.hint` keeps its text except for TI03, TI09, TI10, TI13, TI17,
+  `TEST_INTEGRITY_ACCEPTED`, D05 and `DEPENDENCY_CHECK_INCOMPLETE`, whose one text carries what the comment's hint said
+  (say in the PR why, a raised retry is a warning only, remove the accept label to judge a later push again,
+  `dependency-allowed-hosts` for a registry your team runs, the 32 MiB cap). Every message code is unchanged. The
+  test-integrity signal ids are written once, in one registry in the core, and the policy's signal ids, the message
+  codes, their fix hints and messages derive from it. The message `code` description in `schema/report.v2.json` is now
+  one sentence that links to the code table in `docs/output.md`; no field, type or pattern changes.
 - The CLI and the Action gather what the checks read with one shared function (CORE-136), so they no longer differ on
   the same repository. The Action now scans the agent config files for secrets (A7), and reads the agent instruction
   (P07) and settings files (P02 to P06), at `HEAD` also when there is no diff to measure because the checkout is still

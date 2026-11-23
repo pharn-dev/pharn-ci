@@ -46,9 +46,12 @@ const PINNED: Record<string, string> = {
   // edited files.
   // Re-pinned again by CORE-124: ac-accept-signoff-regression folds the pinned logo URL in fixtures/golden/report.md
   // back to the `main` one before hashing it (its golden digest is unchanged); this is the digest of the edited file.
+  // Re-pinned again by CORE-140: ac-accept-signoff-regression folds the golden hint lines back to their earlier text
+  // before hashing (its golden digest is unchanged) and pins the TI01/TI04/TI11/TI14 hints as each code's fix.hint;
+  // this is the digest of the edited file.
   "packages/core/test/ac-ti0205-regression.test.ts": "1df2953978aee69fa343a36dffe2045ebc97468f2b165933254aeb7e44e2fd9f",
   "packages/action/test/ac-accept-signoff-regression.test.ts":
-    "c984776f0c7d0d4a3a023249cecb8347590bc9912e8917dd8b7d46c63691f724",
+    "5bff6701db0ff0c77c58b193100b37634ec2e87a0fbb484478849363857185af",
 };
 
 /**

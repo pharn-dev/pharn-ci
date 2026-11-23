@@ -121,12 +121,15 @@ function messageHint(markdown: string, code: string, name: string): string {
   return hint as string;
 }
 
-/** Comment hints of a report with no binary finding, as the base commit 0942691 renders them. */
+/**
+ * Comment hints of a report with no binary finding. The base commit 0942691 recorded them; CORE-140 made each the
+ * code's fix.hint (with the accept-label clause at its end for TI10), so these are the fix hints.
+ */
 const BASE_HINTS: Record<string, string> = {
-  TI01: "  - Hint: Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
-  TI10: "  - Hint: Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label `pharn/accepted`.",
-  TI11: "  - Hint: Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
-  TI14: "  - Hint: Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
+  TI01: "  - Hint: Restore the deleted test file, or move its tests to a test file that still runs them.",
+  TI10: "  - Hint: Restore the test script in package.json so it runs the whole suite and fails when a test fails, or say in the PR why it changes; a reviewer who is not the PR author can record that sign-off by applying the accept label `pharn/accepted`.",
+  TI11: "  - Hint: Revert the workflow change so CI runs the tests on pull requests as before.",
+  TI14: "  - Hint: Revert the change to the coverage settings of the pharn-ci config so the gate measures the same files as before.",
 };
 
 const textEdit = (path: string, header: string, removed: string, added: string) =>

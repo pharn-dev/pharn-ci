@@ -1,9 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { messageCodes } from "./codeTable.js";
 
 // The docs contract: the mechanical facts the documents must agree with, and nothing about their wording.
 // 1. Every input in action.yml has a row in the inputs table, with its default.
-// 2. Every message code in schema/report.v2.json has a row in the message-code table.
+// 2. Every message code has a row in the message-code table, which the schema's code description links to.
 // 3. Every version pin in the docs and examples equals the version in the root package.json (a SHA pin may lag one
 //    release, until the PR after the tag), and so does the newest release heading of CHANGELOG.md.
 // The tables are found by their heading text (any heading level), then parsed, so a table can move to another
@@ -123,16 +124,24 @@ describe("docs contract", () => {
     expect(unknown, `rows of ${INPUTS_DOC} for inputs action.yml does not declare`).toEqual([]);
   });
 
-  it("every message code in schema/report.v2.json has a row in the code table, and every row is a code", () => {
-    const schema = JSON.parse(read("schema/report.v2.json"));
-    const description: string = schema.$defs.message.properties.code.description;
-    const codes = new Set(description.match(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g));
-    expect(codes.size, "the schema names message codes").toBeGreaterThan(0);
+  it("every message code has a row in the code table, every row is a code, and the schema links to the table", () => {
+    // CORE-140: the schema's code description is one sentence and a link to this table, so the codes come from the
+    // core (MESSAGE_FIXES is a Record over the MessageCode union) and the schema must point at the table.
+    const codes = new Set(messageCodes());
+    expect(codes.size, "the core knows message codes").toBeGreaterThan(0);
     const rows = new Set(tableUnder(read(CODES_DOC), CODES_HEADING, CODES_DOC).map((row) => plain(row[0] ?? "")));
     const missing = [...codes].filter((code) => !rows.has(code));
     expect(missing, `codes with no row in ${CODES_DOC}`).toEqual([]);
     const unknown = [...rows].filter((code) => !codes.has(code));
-    expect(unknown, `rows of ${CODES_DOC} for codes the schema does not name`).toEqual([]);
+    expect(unknown, `rows of ${CODES_DOC} for codes the core does not know`).toEqual([]);
+    const schema = JSON.parse(read("schema/report.v2.json"));
+    const description: string = schema.$defs.message.properties.code.description;
+    const anchor = CODES_HEADING.toLowerCase()
+      .replace(/[^a-z0-9 -]/g, "")
+      .replace(/ /g, "-");
+    expect(description, "the schema links to the code table").toContain(
+      `https://github.com/pharn-dev/pharn-ci/blob/main/${CODES_DOC}#${anchor}`,
+    );
   });
 
   it("every version pin in the docs and examples equals the root package.json version", () => {

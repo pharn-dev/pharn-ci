@@ -1,9 +1,16 @@
 import type { MessageCode } from "../report.js";
+import {
+  TEST_INTEGRITY_MESSAGE_FIXES,
+  TEST_INTEGRITY_SIGNAL_FIXES,
+  type TestIntegritySignalId,
+} from "../signals/registry.js";
 
 /**
  * Fix hints (since 0.9.0): how to fix a message or a finding honestly. One kind from a closed list and one fixed English
- * sentence per message code and per signal id, written here, never by a model and never from the code under review. No
- * kind lowers a gate: none lowers a threshold, adds an exclusion, turns a test off, adds an exemption or edits a policy.
+ * sentence per message code and per signal id, written here (the test-integrity ones in `signals/registry.ts`), never by
+ * a model and never from the code under review. No kind lowers a gate: none lowers a threshold, adds an exclusion, turns
+ * a test off, adds an exemption or edits a policy. The hint is the one advice text of its code: the PR comment shows the
+ * same sentence (CORE-140), with the accept-label clause at its end where the code has one.
  */
 
 /** The closed list of kinds, in the order the schema's `$defs.fix.properties.kind.enum` lists them. */
@@ -34,27 +41,11 @@ export interface FixHint {
 }
 
 /**
- * Every signal id core produces: TI01 to TI17, the P ids with a rule file (there is no P12), SI01 to SI04, PI01 to PI05
+ * Every signal id core produces: TI01 to TI17 (from the registry), the P ids with a rule file (there is no P12), SI01 to SI04, PI01 to PI05
  * and D01 to D05. TI15 and SI04 are not emitted since CORE-144; their entries stay because their message codes stay.
  */
 export type FixSignalId =
-  | "TI01"
-  | "TI02"
-  | "TI03"
-  | "TI04"
-  | "TI05"
-  | "TI06"
-  | "TI07"
-  | "TI08"
-  | "TI09"
-  | "TI10"
-  | "TI11"
-  | "TI12"
-  | "TI13"
-  | "TI14"
-  | "TI15"
-  | "TI16"
-  | "TI17"
+  | TestIntegritySignalId
   | "P01"
   | "P02"
   | "P03"
@@ -88,65 +79,7 @@ const REVIEW_INJECTION = "Ask a reviewer to look at the added text that addresse
 
 /** The kind and hint of each signal id. */
 export const SIGNAL_FIXES: Readonly<Record<FixSignalId, FixEntry>> = {
-  TI01: {
-    kind: "restore-test",
-    hint: "Restore the deleted test file, or move its tests to a test file that still runs them.",
-  },
-  TI02: {
-    kind: "restore-test",
-    hint: "Restore the removed test, or keep a test with the same assertions in one of the touched test files.",
-  },
-  TI03: { kind: "restore-test", hint: "Remove the marker that turns this test off, so it runs again." },
-  TI04: {
-    kind: "restore-test",
-    hint: "Remove the focused-run marker (.only, fit or fdescribe) so every test in the file runs again.",
-  },
-  TI05: { kind: "restore-assertion", hint: "Restore the assertions this test had, so it checks the behaviour again." },
-  TI06: {
-    kind: "restore-assertion",
-    hint: "Restore the stronger assertion this test had in place of the weaker one.",
-  },
-  TI07: {
-    kind: "restore-assertion",
-    hint: "Restore the expected values; if the behaviour really changed, say why in the pull request and have a reviewer confirm it.",
-  },
-  TI08: { kind: "request-review", hint: "Ask a reviewer to confirm the snapshot changes are intended before merging." },
-  TI09: {
-    kind: "revert-config",
-    hint: "Revert the test-runner config change so the same tests run under the same rules as before.",
-  },
-  TI10: {
-    kind: "revert-config",
-    hint: "Revert the test script change in package.json so it runs the whole suite and fails when a test fails.",
-  },
-  TI11: {
-    kind: "revert-config",
-    hint: "Revert the workflow change so CI runs the tests on pull requests as before.",
-  },
-  TI12: {
-    kind: "request-review",
-    hint: "Ask a reviewer to confirm that mocking the changed module still tests its real behaviour.",
-  },
-  TI13: {
-    kind: "revert-config",
-    hint: "Remove the added coverage pragma and add tests that run those lines.",
-  },
-  TI14: {
-    kind: "revert-config",
-    hint: "Revert the change to the coverage settings of the pharn-ci config so the gate measures the same files as before.",
-  },
-  TI15: {
-    kind: "request-review",
-    hint: "Ask a reviewer to confirm the code does not special-case the value the test checks.",
-  },
-  TI16: {
-    kind: "request-review",
-    hint: "Ask a reviewer to confirm the lint or type suppression added to the test file is needed.",
-  },
-  TI17: {
-    kind: "restore-assertion",
-    hint: "Restore an assertion that can fail in place of the one that always passes.",
-  },
+  ...TEST_INTEGRITY_SIGNAL_FIXES,
   P01: { kind: "none", hint: "A maintainer should add the agent setup files the org policy requires." },
   P02: { kind: "request-review", hint: REVIEW_POLICY },
   P03: { kind: "request-review", hint: REVIEW_POLICY },
@@ -205,7 +138,7 @@ export const SIGNAL_FIXES: Readonly<Record<FixSignalId, FixEntry>> = {
   },
   D05: {
     kind: "remove-dependency",
-    hint: "Remove the dependency from outside the allowed registries, or use the package's registry release.",
+    hint: "Depend on a published registry version, or name the host of a registry your team runs in the dependency-allowed-hosts input; otherwise remove the dependency.",
   },
 };
 
@@ -291,23 +224,7 @@ export const MESSAGE_FIXES: Readonly<Record<MessageCode, FixEntry>> = {
     hint: "Check the test integrity mode in the config; a config can only make the check stricter.",
   },
   TEST_INTEGRITY_OFF: { kind: "none", hint: "Check why test integrity is off for this run." },
-  TEST_INTEGRITY_TI01: S.TI01,
-  TEST_INTEGRITY_TI02: S.TI02,
-  TEST_INTEGRITY_TI03: S.TI03,
-  TEST_INTEGRITY_TI04: S.TI04,
-  TEST_INTEGRITY_TI05: S.TI05,
-  TEST_INTEGRITY_TI06: S.TI06,
-  TEST_INTEGRITY_TI07: S.TI07,
-  TEST_INTEGRITY_TI08: S.TI08,
-  TEST_INTEGRITY_TI09: S.TI09,
-  TEST_INTEGRITY_TI10: S.TI10,
-  TEST_INTEGRITY_TI11: S.TI11,
-  TEST_INTEGRITY_TI12: S.TI12,
-  TEST_INTEGRITY_TI13: S.TI13,
-  TEST_INTEGRITY_TI14: S.TI14,
-  TEST_INTEGRITY_TI15: S.TI15,
-  TEST_INTEGRITY_TI16: S.TI16,
-  TEST_INTEGRITY_TI17: S.TI17,
+  ...TEST_INTEGRITY_MESSAGE_FIXES,
   TEST_INTEGRITY_INDEX_UNAVAILABLE: {
     kind: "none",
     hint: "Check that the touched test files can be read, so removed tests and assertions are compared; a -diff or binary attribute in .gitattributes, or a NUL byte in the file, can cause this.",
@@ -318,7 +235,7 @@ export const MESSAGE_FIXES: Readonly<Record<MessageCode, FixEntry>> = {
   },
   TEST_INTEGRITY_ACCEPTED: {
     kind: "none",
-    hint: "Check that the reviewer's sign-off covers the findings listed in the report.",
+    hint: "Check that the sign-off covers the findings listed in the report, and remove the label if a later push should be judged again.",
   },
   TEST_INTEGRITY_ACCEPT_IGNORED: {
     kind: "none",
@@ -405,7 +322,7 @@ export const MESSAGE_FIXES: Readonly<Record<MessageCode, FixEntry>> = {
   },
   DEPENDENCY_CHECK_INCOMPLETE: {
     kind: "none",
-    hint: "Check that the manifest or lockfile the report names can be read and parsed.",
+    hint: "Check that the manifest or lockfile the report names can be read and parsed, and keep it under 32 MiB.",
   },
   POLICY_KEYS_UNKNOWN: {
     kind: "none",

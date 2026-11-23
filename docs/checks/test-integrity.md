@@ -90,7 +90,7 @@ This is the "Test integrity" section of the report for a change that turns `it(`
 > ### 🔍 Test integrity
 >
 > - ❌ **TI03** `src/cart.test.ts:12` — An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.
->   - Hint: Remove the skip so the test runs again, or say in the PR why it must stay, for example a test that fails in CI; a reviewer who is not the PR author can record that sign-off by applying the accept label `pharn/accepted`.
+>   - Hint: Remove the skipping of the test so it runs again, or say in the PR why it must stay, for example a test that fails in CI; a reviewer who is not the PR author can record that sign-off by applying the accept label `pharn/accepted`.
 
 The benchmark for this is Skylos's list of nine ways to hide a failing test. The nine cases are reproduced in vitest
 under `fixtures/skylos-nine/` and pinned by tests: the signals of v0.11.0 catch **8 of 9** (`deleted-test` by TI01,

@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { codeRow } from "./codeTable.js";
 
 // The schemas and the core entry point document TI06, TI12 and their message codes, and the new fixture directories
 // hold must-trigger and must-not-trigger cases in the agreed shape. Files are read and the core entry point is loaded
@@ -11,17 +12,9 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const CODES = ["TEST_INTEGRITY_TI06", "TEST_INTEGRITY_TI12"];
-const NEW_CODES = "New codes may be added within v2";
+const NEW_CODES = "new codes may be added within v2";
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
-
-/** Every string value in a JSON document. */
-function strings(value: unknown): string[] {
-  if (typeof value === "string") return [value];
-  if (Array.isArray(value)) return value.flatMap(strings);
-  if (value !== null && typeof value === "object") return Object.values(value).flatMap(strings);
-  return [];
-}
 
 /** Every file under `dir`, relative to it. */
 function walk(dir: string): string[] {
@@ -31,16 +24,13 @@ function walk(dir: string): string[] {
 }
 
 describe("TI06 and TI12: schema, exports and fixtures", () => {
-  it("AC-18: schema/report.v2.json names TEST_INTEGRITY_TI06 and TEST_INTEGRITY_TI12 in its message-code description before 'New codes may be added within v2'", () => {
-    const schema = JSON.parse(read("schema/report.v2.json")) as unknown;
-    const description = strings(schema).find((s) => s.includes("Known codes") && s.includes(NEW_CODES));
-    expect(description, "the message-code description").toBeDefined();
-    const cut = (description as string).indexOf(NEW_CODES);
-    for (const code of CODES) {
-      const at = (description as string).indexOf(code);
-      expect(at, code).toBeGreaterThan(-1);
-      expect(at, `${code} before "${NEW_CODES}"`).toBeLessThan(cut);
-    }
+  it("AC-18: the code table documents TEST_INTEGRITY_TI06 and TEST_INTEGRITY_TI12 with their level warn, and the schema's code description says new codes may be added within v2", () => {
+    // CORE-140: the schema's code description became one sentence and a link to the code table of docs/output.md.
+    for (const code of CODES) expect(codeRow(code), code).toContain("(`warn` in every mode)");
+    const schema = JSON.parse(read("schema/report.v2.json")) as {
+      $defs: { message: { properties: { code: { description: string } } } };
+    };
+    expect(schema.$defs.message.properties.code.description).toContain(NEW_CODES);
   });
 
   it("AC-18: @pharn-ci/core exports the functions detectTI06 and detectTI12", async () => {

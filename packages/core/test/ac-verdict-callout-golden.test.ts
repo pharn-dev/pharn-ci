@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fixture, foldCoverageBar, foldIntegrityColumn } from "./helpers.js";
+import { foldHintsToBase } from "./hints-at-base.js";
 import { expectValidReport } from "./schema.js";
 
 // pr-comment-verdict-callout AC-1. check(), the config parser and the renderer are loaded inside the test body: the AC
@@ -125,7 +126,8 @@ describe("renderMarkdown(): the golden renderings gain the verdict callout and n
       // package-relative golden's diff coverage is not computed, so it has no bar.
       const markdown = loaded.renderMarkdown(report);
       const unbarred = golden === "coverage-paths/package-relative" ? markdown : foldCoverageBar(markdown);
-      const rendered = foldTestIntegrity(foldIntegrityColumn(unbarred)).split("\n");
+      // CORE-140 made each hint its code's fix.hint on purpose: the hint lines are folded back too.
+      const rendered = foldHintsToBase(foldTestIntegrity(foldIntegrityColumn(unbarred))).split("\n");
       expect(rendered[2]?.endsWith(heading), `${golden}: heading ${rendered[2]}`).toBe(true);
       expect(rendered[4], `${golden}: the alert marker on line 5`).toBe(marker);
       const content = rendered[5] ?? "";

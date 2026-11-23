@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fixture, foldCallout, foldCoverageBar, foldIntegrityColumn } from "./helpers.js";
+import { foldHintsToBase } from "./hints-at-base.js";
 import { expectValidReport } from "./schema.js";
 
 // pr-comment-logo-2 AC-2. check() and the renderer are loaded inside the test body: the AC tests are written before the
@@ -56,7 +57,10 @@ describe("renderMarkdown(): the golden report opens with the logo line", () => {
     // test-integrity-mode added the "🔍 Test integrity" section on purpose: its four lines are folded out first.
     // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out too.
     // The comment-coverage-bar change added the diff-coverage bar line on purpose: it is folded out too.
-    const rendered = foldCallout(foldTestIntegrity(foldIntegrityColumn(foldCoverageBar(lines.slice(2).join("\n")))));
+    // CORE-140 made each hint its code's fix.hint on purpose: the hint lines are folded back too.
+    const rendered = foldHintsToBase(
+      foldCallout(foldTestIntegrity(foldIntegrityColumn(foldCoverageBar(lines.slice(2).join("\n"))))),
+    );
     expect(rendered).toContain("· report schema v2");
     const rest = rendered.replace("· report schema v2", "· report schema v1");
     expect(createHash("sha256").update(rest).digest("hex")).toBe(GOLDEN_MD_BEFORE_SHA256);

@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { codeRow } from "./codeTable.js";
 
 // The schemas and the TI09 fixture directory are read inside the test body: the AC test is written before they
 // change. schema/report.v1.json is pinned by the sha256 it has at the base commit 98693cf. (CORE-133: the CHANGELOG,
@@ -11,19 +12,6 @@ import { describe, expect, it } from "vitest";
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const TI09 = `${ROOT}fixtures/test-integrity/TI09`;
 const V1_SHA256_AT_BASE = "c6cfd5b5afeada776fa89028f5ef29e06427d0e32529420184474e52ca77c731";
-
-const read = (path: string) => readFileSync(`${ROOT}${path}`, "utf8");
-
-/** The text from `start` to its balanced closing parenthesis (the first `(` after `start` opens it). */
-function parenthesized(text: string, start: number): string {
-  const open = text.indexOf("(", start);
-  let depth = 0;
-  for (let i = open; i < text.length; i++) {
-    if (text[i] === "(") depth++;
-    if (text[i] === ")" && --depth === 0) return text.slice(start, i + 1);
-  }
-  return text.slice(start);
-}
 
 /** Every file under `dir`, relative to it with forward slashes. */
 function filesUnder(dir: string): string[] {
@@ -34,16 +22,11 @@ function filesUnder(dir: string): string[] {
 }
 
 describe("TI09: schema and fixtures", () => {
-  it("AC-19: the v2 schema names TEST_INTEGRITY_TI09 and TI09 in the index-unavailable sentence, v1 is unchanged, and the TI09 fixtures hold at least 8 must-trigger and 6 must-not-trigger cases of the required kinds and layout", () => {
-    // Schemas.
-    const v2 = JSON.parse(read("schema/report.v2.json")) as {
-      $defs: { message: { properties: { code: { description: string } } } };
-    };
-    const codes = v2.$defs.message.properties.code.description;
-    expect(codes, "the message-code description names TEST_INTEGRITY_TI09").toContain("TEST_INTEGRITY_TI09");
-    const at = codes.indexOf("TEST_INTEGRITY_INDEX_UNAVAILABLE (");
-    expect(at, "the index-unavailable entry").toBeGreaterThan(-1);
-    expect(parenthesized(codes, at), "the index-unavailable sentence mentions TI09").toContain("TI09");
+  it("AC-19: the code table documents TEST_INTEGRITY_TI09 and names TI09 in the index-unavailable row, v1 is unchanged, and the TI09 fixtures hold at least 8 must-trigger and 6 must-not-trigger cases of the required kinds and layout", () => {
+    // Codes. CORE-140: the schema's code description became one sentence and a link to the code table of
+    // docs/output.md, so the rows of that table are read.
+    expect(codeRow("TEST_INTEGRITY_TI09"), "the TI09 row").toContain("TI09:");
+    expect(codeRow("TEST_INTEGRITY_INDEX_UNAVAILABLE"), "the index-unavailable row mentions TI09").toContain("TI09");
     const v1 = createHash("sha256")
       .update(readFileSync(`${ROOT}schema/report.v1.json`))
       .digest("hex");

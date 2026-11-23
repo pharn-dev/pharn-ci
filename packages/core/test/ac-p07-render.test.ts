@@ -15,8 +15,9 @@ interface Core {
 }
 
 const HOSTILE = "packages/we`ird<!--|x/AGENTS.md";
+// CORE-140: the hint is the code's fix.hint.
 const P07_HINT =
-  "Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.";
+  "A maintainer should make the agent instruction files agree on one package manager and one test runner.";
 const AGENTS_LINE = "- ⚠️ **P07** `AGENTS.md:3` — package manager: pnpm here, npm in CLAUDE.md:4";
 
 /** The lines of a `### ` section whose heading starts with `heading`, up to the next `### ` heading; [] when absent. */
@@ -58,7 +59,10 @@ describe("the P07 violations and message in the PR comment", { timeout: 60_000 }
     // The renderer may backslash-escape message text; compare with the escapes taken out.
     const messages = section(markdown, "### 💬 Messages").join("\n").replace(/\\/g, "");
     expect(messages).not.toContain(p07Text);
-    expect(messages).not.toContain("agent instruction file");
+    // CORE-140: the NO_AGENT_SETUP_FILES hint (its fix.hint) names "an agent instruction file", so the check looks for
+    // the two parts of the P07 text instead of the bare phrase.
+    expect(messages).not.toContain("agent instruction files name");
+    expect(messages).not.toContain("agent instruction file was not compared");
 
     // The hostile path renders on one line, inside one code span, inert outside it.
     const hostile = markdown.split("\n").filter((l) => l.includes("ird") && l.includes("x/AGENTS.md"));

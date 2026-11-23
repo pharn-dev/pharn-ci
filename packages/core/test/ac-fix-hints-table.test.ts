@@ -1,12 +1,12 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { codeTable } from "./codeTable.js";
 
 // fix-hints (H6), AC-2. The core's fix tables are loaded inside the test body: the AC test is written before the build
-// adds them. The codes come from the message-code description of schema/report.v2.json and the P ids from the rule
-// files core has, so a code or id added later without an entry fails here.
+// adds them. The codes come from the code table of docs/output.md (which the schema's message-code description links
+// to) and the P ids from the rule files core has, so a code or id added later without an entry fails here.
 
 const ROOT = new URL("../../../", import.meta.url);
-const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 
 const KINDS = [
   "add-test",
@@ -25,13 +25,12 @@ type Tables = { MESSAGE_FIXES?: Record<string, Entry>; SIGNAL_FIXES?: Record<str
 const range = (prefix: string, from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, i) => `${prefix}${String(from + i).padStart(2, "0")}`);
 
-/** Every message code the message-code description of schema/report.v2.json names. */
+/**
+ * Every message code the code table of docs/output.md documents (CORE-140: the schema's message-code description is
+ * one sentence and a link to that table, so the table is where the codes are documented).
+ */
 function documentedCodes(): string[] {
-  const schema = JSON.parse(read("schema/report.v2.json")) as {
-    $defs: { message: { properties: { code: { description: string } } } };
-  };
-  const description = schema.$defs.message.properties.code.description;
-  return [...new Set(description.match(/\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/g) ?? [])].sort();
+  return [...codeTable().keys()].sort();
 }
 
 /** The P ids core produces: one rule file packages/core/src/policy/rules/pNN.ts per id. */
@@ -52,13 +51,13 @@ function expectEntry(table: Record<string, Entry>, key: string): void {
 }
 
 describe("fix hints: a table entry for every documented code and signal id", () => {
-  it("AC-2: every message code the schema documents has an entry with a closed kind and a non-empty hint of at most 200 characters", async () => {
+  it("AC-2: every message code the code table documents has an entry with a closed kind and a non-empty hint of at most 200 characters", async () => {
     const { MESSAGE_FIXES } = (await import("../src/fix/table.js")) as unknown as Tables;
     expect(MESSAGE_FIXES, "MESSAGE_FIXES is exported").toBeDefined();
     const codes = documentedCodes();
     // Control: the extraction finds the codes of every era of the schema.
     for (const code of ["DIFF_COVERAGE_BELOW_THRESHOLD", "TEST_INTEGRITY_TI16", "POLICY_P14", "JUNIT_TOO_LARGE"]) {
-      expect(codes, `the schema names ${code}`).toContain(code);
+      expect(codes, `the code table names ${code}`).toContain(code);
     }
     for (const code of codes) expectEntry(MESSAGE_FIXES ?? {}, code);
   });

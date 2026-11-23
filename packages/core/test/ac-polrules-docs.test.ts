@@ -18,9 +18,13 @@ describe("sources for the policy rules", { timeout: 60_000 }, () => {
     const messageCode = /export type MessageCode =([\s\S]*?);/.exec(report)?.[1] ?? "";
     expect(messageCode).toContain('"POLICY_P08"');
     expect(messageCode).toContain('"POLICY_P09"');
-    const markdown = read("packages/core/src/render/markdown.ts");
-    expect(markdown).toContain("MESSAGE_HINTS");
-    expect(markdown).toMatch(/^\s*POLICY_P08:\s*["'`]Stop tracking the file /m);
-    expect(markdown).toMatch(/^\s*POLICY_P09:\s*["'`]Revert the edit, or ask the policy owner to make it/m);
+    // CORE-140: the comment's hint is the code's fix.hint, so the hints are the fix table's P08 and P09 entries.
+    const table = read("packages/core/src/fix/table.ts");
+    expect(table).toMatch(/^\s*POLICY_P08:\s*S\.P08,$/m);
+    expect(table).toMatch(/^\s*POLICY_P09:\s*S\.P09,$/m);
+    expect(table).toContain('hint: "Ask a maintainer to review the tracked files that match the org policy');
+    expect(table).toContain(
+      'P09: { kind: "revert-config", hint: "Revert the edit to the file the org policy guards." }',
+    );
   });
 });

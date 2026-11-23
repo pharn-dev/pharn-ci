@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { type Report as CoreReport, detectAgentPr, parseUnifiedDiff, renderMarkdown } from "../src/index.js";
 import { agentPolicyOf } from "../src/policy/agents.js";
 import { evaluatePolicyRules } from "../src/policy/rules/evaluate.js";
+import { codeRow } from "./codeTable.js";
 import { AGENT_FACTS, appPolicy, p14Messages, policyFixture, runP14 } from "./p14-run.js";
 import { purityViolations } from "./purity-check.js";
 
@@ -11,8 +12,8 @@ import { purityViolations } from "./purity-check.js";
 
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
-const HINT =
-  "Split the agent pull request into smaller ones, one per area named, or ask the policy owner to change `agents.max_files` or `agents.max_changed_lines`. Lockfiles, snapshots and `*.generated.*` files do not count.";
+// CORE-140: the comment's hint is the code's fix.hint, the one advice text of POLICY_P14.
+const HINT = "Split the change into smaller pull requests within the org policy's size caps.";
 
 /** The lines of a `### ` section whose heading starts with `heading`, up to the next `### ` heading. */
 function section(md: string, heading: string): string[] {
@@ -62,12 +63,11 @@ describe("org policy rule P14 in the PR comment, the schema and the docs", () =>
     ]);
   });
 
-  it("schema/report.v2.json names POLICY_P14 among the codes added in v0.6.0, and schema/policy.v1.json describes the caps", () => {
-    const schema = JSON.parse(read("schema/report.v2.json"));
-    const description: string = schema.$defs.message.properties.code.description;
+  it("the code table documents POLICY_P13 and POLICY_P14 with their levels, and schema/policy.v1.json describes the caps", () => {
     // CORE-132: the byte-for-byte pin of the whole v0.6.0 sentence (v060-codes.ts, a history-pin helper) is removed.
-    expect(description).toContain(" Codes added in v0.6.0: POLICY_P13 (");
-    expect(description).toContain(", POLICY_P14 (error, or the level the org policy sets for P14:");
+    // CORE-140: the schema's code description is one sentence and a link to the code table, so the rows are read.
+    expect(codeRow("POLICY_P13")).toContain("(`error`, or the level an app policy sets for P13)");
+    expect(codeRow("POLICY_P14")).toContain("(`error`, or the level the policy sets for P14)");
     const policySchema = JSON.parse(read("schema/policy.v1.json"));
     for (const key of ["max_files", "max_changed_lines"]) {
       const text: string = policySchema.properties.agents.properties[key].description;

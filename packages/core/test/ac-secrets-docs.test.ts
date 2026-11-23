@@ -2,14 +2,13 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { codeRow } from "./codeTable.js";
 
 // Reads the repository files. findSecretSpans() is loaded inside the test body: the AC test is written before the
 // redaction module exists, so nothing the build adds may run while the file loads. (CORE-132: the report.v1.json
 // comparison with an old commit was a history pin and is removed, and so is ac-secrets-repin.test.ts from TEST_FILES.)
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-
-const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 const CODES = [
   ...Array.from({ length: 11 }, (_, i) => `AGENT_CONFIG_SECRET_S${String(i + 1).padStart(2, "0")}`),
@@ -31,30 +30,6 @@ const TEST_FILES = [
   "packages/action/test/ac-secrets-fakes.test.ts",
 ];
 
-/** The description string of the schema's message `code` property. */
-function messageCodeDescription(schema: string): string {
-  const parsed = JSON.parse(schema) as unknown;
-  const found: string[] = [];
-  const walk = (node: unknown): void => {
-    if (Array.isArray(node)) node.forEach(walk);
-    else if (node !== null && typeof node === "object") {
-      for (const [key, value] of Object.entries(node)) {
-        if (
-          key === "description" &&
-          typeof value === "string" &&
-          value.includes("No code is removed or renamed before 1.0.")
-        ) {
-          found.push(value);
-        }
-        walk(value);
-      }
-    }
-  };
-  walk(parsed);
-  expect(found, "one message-code description").toHaveLength(1);
-  return found[0] as string;
-}
-
 // CORE-133: the README, LIMITS, THREAT-MODEL and CHANGELOG wording checks moved out; docs-contract.test.ts checks
 // the README code rows.
 describe("A7 schema and fixtures", () => {
@@ -63,11 +38,9 @@ describe("A7 schema and fixtures", () => {
       findSecretSpans(text: string): { id: string; start: number; end: number }[];
     };
 
-    // schema/report.v2.json names the 12 codes after "Codes added in v0.4.0:".
-    const description = messageCodeDescription(read("schema/report.v2.json"));
-    const added = description.indexOf("Codes added in v0.4.0:");
-    expect(added, "the description holds Codes added in v0.4.0:").toBeGreaterThan(-1);
-    for (const code of CODES) expect(description.slice(added), `the v0.4.0 text names ${code}`).toContain(code);
+    // The code table names the 12 codes with their levels (CORE-140: the schema's code description is one sentence and
+    // a link to that table, so the codes are documented there).
+    for (const code of CODES) expect(codeRow(code), `${code}: the row states a level`).toMatch(/`(?:error|warn|info)`/);
 
     // No committed fixture under fixtures/secrets/ and no AC test file of this change holds a span.
     const fixtureDir = join(ROOT, "fixtures/secrets");

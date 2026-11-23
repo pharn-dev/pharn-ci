@@ -77,7 +77,8 @@ const CAUGHT_BY: Readonly<Record<string, string>> = {
 const EXERCISE_BLOCKS: Readonly<Record<string, readonly string[]>> = {
   "hard-coded-answer": [
     "- ⚠️ **Tests exercise changes** — 1 of 1 changed source file is not imported by a test file this change adds or modifies.",
-    "  - Hint: Add or update a test that imports each listed file and asserts on the changed behaviour, or say in the PR why no test changes. This is a warning only.",
+    // CORE-140: the hint is the code's fix.hint.
+    "  - Hint: Add or change tests that import and assert on the changed source files.",
     "<details><summary>Not exercised: 1 file</summary>",
     "- `src/cart.py`",
     "</details>",

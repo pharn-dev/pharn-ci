@@ -8,6 +8,12 @@ import type { FixHint } from "./fix/table.js";
 import type { ConfigSource } from "./gateInputs.js";
 import type { AgentSetupFile, AgentSetupInventory } from "./setup/scan.js";
 import { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
+import {
+  TEST_INTEGRITY_SIGNALS,
+  type TestIntegrityMessageCode,
+  type TestIntegritySignalDefinition,
+  testIntegrityCode,
+} from "./signals/registry.js";
 import type { ResolvedTestIntegrityMode } from "./testIntegrityMode.js";
 import { hasBinaryReason, isBinaryUnreadable, ti09NotRunStart, ti0205NotRunStart } from "./testIntegrityUnreadable.js";
 import { cutCodeUnits, replaceUnsafeChars } from "./text.js";
@@ -248,7 +254,8 @@ export interface ReportDiffCoverage {
 export type MessageLevel = "info" | "warn" | "error";
 
 /**
- * Stable message codes. Add new ones here and in the schema description; never rename. TEST_INTEGRITY_TI15 and
+ * Stable message codes. Add new ones here and in the code table of docs/output.md; never rename. The
+ * `TEST_INTEGRITY_<id>` codes come from the signal registry (`signals/registry.ts`). TEST_INTEGRITY_TI15 and
  * SETUP_STALE_SI04 are not emitted since the release after v0.11.0; they stay so an older report still type-checks.
  */
 export type MessageCode =
@@ -271,23 +278,7 @@ export type MessageCode =
   | "AGENT_SETUP_EXPECTED_MISSING"
   | "TEST_INTEGRITY_MODE_IGNORED"
   | "TEST_INTEGRITY_OFF"
-  | "TEST_INTEGRITY_TI01"
-  | "TEST_INTEGRITY_TI02"
-  | "TEST_INTEGRITY_TI03"
-  | "TEST_INTEGRITY_TI04"
-  | "TEST_INTEGRITY_TI05"
-  | "TEST_INTEGRITY_TI06"
-  | "TEST_INTEGRITY_TI07"
-  | "TEST_INTEGRITY_TI08"
-  | "TEST_INTEGRITY_TI09"
-  | "TEST_INTEGRITY_TI10"
-  | "TEST_INTEGRITY_TI11"
-  | "TEST_INTEGRITY_TI12"
-  | "TEST_INTEGRITY_TI13"
-  | "TEST_INTEGRITY_TI14"
-  | "TEST_INTEGRITY_TI15"
-  | "TEST_INTEGRITY_TI16"
-  | "TEST_INTEGRITY_TI17"
+  | TestIntegrityMessageCode
   | "TEST_INTEGRITY_INDEX_UNAVAILABLE"
   | "TEST_INTEGRITY_TEXT_TRUNCATED"
   | "TEST_INTEGRITY_ACCEPTED"
@@ -528,122 +519,15 @@ export interface BuildReportInput {
   flakyMessages?: readonly Message[] | undefined;
 }
 
-/**
- * The one message each test-integrity signal id adds to a report that carries findings of that id. `paths` names the
- * top-severity files, or, for an id with `allPaths`, every file of the id, so the text does not depend on severity.
- * `notListed` is empty, or the sentence that says how many findings the cap left out.
- */
+/** The one message of each emitted signal id, from the registry, in its order (TI15 has none: not emitted). */
 const SIGNAL_MESSAGES: ReadonlyArray<{
   id: string;
   code: MessageCode;
-  allPaths?: true;
-  text: (top: "block" | "warn" | "info", paths: string, notListed: string) => string;
-}> = [
-  {
-    id: "TI01",
-    code: "TEST_INTEGRITY_TI01",
-    text: (top, paths) =>
-      top === "info"
-        ? `This change deletes test files together with the code they cover or replaces them: ${paths}.`
-        : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${paths}. Check that those tests were meant to go.`,
-  },
-  {
-    id: "TI02",
-    code: "TEST_INTEGRITY_TI02",
-    allPaths: true,
-    text: (_top, paths, notListed) =>
-      `This change removes tests from test files that stay, with no test of the same name or a similar body in the touched test files to take their place: ${paths}. Check that each removal was meant.${notListed}`,
-  },
-  {
-    id: "TI03",
-    code: "TEST_INTEGRITY_TI03",
-    text: (_top, paths) =>
-      `This change skips tests or marks them as expected to fail: ${paths}. Check that each skip was meant.`,
-  },
-  {
-    id: "TI04",
-    code: "TEST_INTEGRITY_TI04",
-    text: (_top, paths) =>
-      `This change adds \`.only\`, \`fit\` or \`fdescribe\`, which runs only the marked tests: ${paths}. Remove the markers before merging.`,
-  },
-  {
-    id: "TI05",
-    code: "TEST_INTEGRITY_TI05",
-    allPaths: true,
-    text: (_top, paths, notListed) =>
-      `This change leaves tests with fewer assertions than they had, or none: ${paths}. Check that each test still checks what it did.${notListed}`,
-  },
-  {
-    id: "TI06",
-    code: "TEST_INTEGRITY_TI06",
-    allPaths: true,
-    text: (_top, paths, notListed) =>
-      `This change weakens tests that stay: a stronger matcher became a weaker one, an assertion guard was lowered or removed, an assertion that compares a literal with itself was added, or an assertion moved into a try block or after an early return: ${paths}. Check that each test still checks what it did.${notListed}`,
-  },
-  {
-    id: "TI07",
-    code: "TEST_INTEGRITY_TI07",
-    allPaths: true,
-    text: (_top, paths, notListed) =>
-      `This change edits only the expected values of tests while it also edits source files, so the tests may have been made to agree with the code: ${paths}. Check that each new expected value is right.${notListed}`,
-  },
-  {
-    id: "TI08",
-    code: "TEST_INTEGRITY_TI08",
-    text: (_top, paths) =>
-      `This change regenerates or updates snapshots in bulk: ${paths}. Check that each new snapshot was reviewed.`,
-  },
-  {
-    id: "TI09",
-    code: "TEST_INTEGRITY_TI09",
-    allPaths: true,
-    text: (_top, paths, notListed) =>
-      `This change loosens test-runner settings so that fewer tests run, a weaker run passes or the coverage gate drops: ${paths}. Check that each looser setting was meant.${notListed}`,
-  },
-  {
-    id: "TI10",
-    code: "TEST_INTEGRITY_TI10",
-    text: (_top, paths) =>
-      `This change weakens a test script in package.json, so the test run can pass without the tests passing: ${paths}. Check that the change was meant.`,
-  },
-  {
-    id: "TI11",
-    code: "TEST_INTEGRITY_TI11",
-    text: (_top, paths) =>
-      `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`,
-  },
-  {
-    id: "TI12",
-    code: "TEST_INTEGRITY_TI12",
-    allPaths: true,
-    text: (_top, paths, notListed) =>
-      `This change mocks a module it also edits, so the tests may not run the code under review: ${paths}. Check that each mock was meant.${notListed}`,
-  },
-  {
-    id: "TI13",
-    code: "TEST_INTEGRITY_TI13",
-    text: (_top, paths) =>
-      `This change adds comments that leave code out of coverage: ${paths}. Check that each was meant.`,
-  },
-  {
-    id: "TI14",
-    code: "TEST_INTEGRITY_TI14",
-    text: (_top, paths) =>
-      `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Once merged, the looser setting applies to every later pull request; check that it was meant.`,
-  },
-  {
-    id: "TI16",
-    code: "TEST_INTEGRITY_TI16",
-    text: (_top, paths) =>
-      `This change adds comments that switch off a linter or type checker in test files: ${paths}.`,
-  },
-  {
-    id: "TI17",
-    code: "TEST_INTEGRITY_TI17",
-    text: (_top, paths) =>
-      `This change adds assertions that always pass to test files: ${paths}. Check that each test still compares a value that can fail.`,
-  },
-];
+  message: NonNullable<TestIntegritySignalDefinition["message"]>;
+}> = TEST_INTEGRITY_SIGNALS.flatMap((signal) => {
+  const { message }: TestIntegritySignalDefinition = signal;
+  return message === undefined ? [] : [{ id: signal.id, code: testIntegrityCode(signal.id), message }];
+});
 
 /**
  * The one `TEST_INTEGRITY_<id>` message per signal id found, in the fixed id order. A message's level is the highest
@@ -655,7 +539,11 @@ export function testIntegritySignalMessages(
   options: { omitted?: readonly OmittedSignals[]; previous?: readonly Message[] } = {},
 ): Message[] {
   const messages: Message[] = [];
-  for (const { id, code, allPaths, text } of SIGNAL_MESSAGES) {
+  for (const {
+    id,
+    code,
+    message: { allPaths, text },
+  } of SIGNAL_MESSAGES) {
     const own = signals.filter((signal) => signal.id === id);
     if (own.length === 0) continue;
     const top = own.some((s) => s.severity === "block")

@@ -85,7 +85,8 @@ describe("org policy rule P13 through check()", () => {
     expect(messages[0]?.text).toContain("It counts as an agent PR by: a bot author; a known agent as author.");
     expect(report.verdict).toBe("fail");
     const markdown = renderMarkdown(report);
-    expect(markdown).toContain("An agent PR may not widen its own or another agent's powers.");
+    // CORE-140: the hint is the code's fix.hint.
+    expect(markdown).toContain("  - Hint: Revert the edit that widens what an agent may do.");
     for (const text of [JSON.stringify(report), markdown]) {
       expect(text).not.toContain("SENTINEL");
       expect(text).not.toContain("acme");

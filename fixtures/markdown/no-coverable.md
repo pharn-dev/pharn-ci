@@ -20,7 +20,7 @@ No test-integrity findings (mode: warn).
 ### 💬 Messages (1)
 
 - ℹ️ `NO_COVERABLE_CHANGES` No added lines are tracked by the coverage report; nothing to measure.
-  - Hint: Nothing to do if the change has no code; otherwise check that the coverage report includes the changed files.
+  - Hint: Check that the coverage report tracks the source files this change edits.
 
 ### 🤖 Agent setup (1 file)
 

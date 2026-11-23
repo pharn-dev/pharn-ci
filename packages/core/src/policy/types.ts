@@ -1,28 +1,12 @@
 import type { TestIntegrityMode } from "../report.js";
 import type { AgentTool } from "../setup/summary.js";
+import type { TestIntegritySignalId } from "../signals/registry.js";
 
 /** How hard a finding bites: `block` fails the check, `off` switches it off. */
 export type PolicySeverity = "block" | "warn" | "info" | "off";
 
-/** A test-integrity signal id. */
-export type PolicySignalId =
-  | "TI01"
-  | "TI02"
-  | "TI03"
-  | "TI04"
-  | "TI05"
-  | "TI06"
-  | "TI07"
-  | "TI08"
-  | "TI09"
-  | "TI10"
-  | "TI11"
-  | "TI12"
-  | "TI13"
-  | "TI14"
-  | "TI15"
-  | "TI16"
-  | "TI17";
+/** A test-integrity signal id, from the signal registry (TI15 included: not emitted, still a valid key). */
+export type PolicySignalId = TestIntegritySignalId;
 
 /** A policy rule id. */
 export type PolicyRuleId =

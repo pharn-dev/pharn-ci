@@ -102,10 +102,11 @@ describe("the Policy section's violation list", { timeout: 60_000 }, () => {
     });
     expect(listed[0]).toBe("- ❌ **P01** — no agent setup files found");
     expect(listed[2]).toContain("a1.env");
-    // Every violation line is followed by its hint line; the P08 hint is the fixed POLICY_P08 hint.
+    // Every violation line is followed by its hint line; the P08 hint is the fixed POLICY_P08 hint (CORE-140: its
+    // fix.hint).
     for (const i of at) expect(section[i + 1] ?? "", section[i]).toMatch(/^ {2}- Hint: \S/);
     expect(section[(at[2] ?? 0) + 1]).toBe(
-      "  - Hint: Stop tracking the file (`git rm --cached` it and add it to `.gitignore`); the org policy forbids it in the repository.",
+      "  - Hint: Ask a maintainer to review the tracked files that match the org policy's forbidden patterns.",
     );
 
     // 10 open, then the last 2 in a details block.

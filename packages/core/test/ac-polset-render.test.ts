@@ -50,14 +50,15 @@ const IGNORED: Message = {
   code: "POLICY_OVERRIDE_IGNORED",
   text: "The policy file sets policy.rules.P02 lower than the default, so it was not applied.",
 };
+// CORE-140: the hints are each code's fix.hint; P02 to P06 share one.
+const REVIEW_POLICY = "Ask a maintainer or the policy owner to review the committed agent settings this rule names.";
 const HINTS: Record<string, string> = {
-  P02: "Narrow or remove the allow rule (or the defaultMode or additionalDirectories key) in the settings file, or ask the policy owner to change setup.forbidden_permissions.",
-  P04: "Remove the server, or ask the policy owner to add it to setup.allowed_mcp_servers.",
-  P05: "Remove the server from the MCP file.",
-  P06: "Add a command hook for the event whose matcher covers the required one (`*` or the same tool names), without an if condition.",
+  P02: REVIEW_POLICY,
+  P04: REVIEW_POLICY,
+  P05: REVIEW_POLICY,
+  P06: REVIEW_POLICY,
 };
-const INVALID_HINT =
-  "Keep agent settings files valid JSON and regular files under 512 KiB, and run on a checkout of the pull request head, so the org policy can check them.";
+const INVALID_HINT = "Check the policy settings and correct the ones the report names.";
 
 /** The section from `### 📜 Policy` up to and including the newline before the next `### ` line. */
 function policySection(markdown: string): string {

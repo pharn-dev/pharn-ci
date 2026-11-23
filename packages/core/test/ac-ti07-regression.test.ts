@@ -12,6 +12,8 @@ const DIST = "packages/action/dist/index.js";
 describe("the existing suite stays whole", () => {
   it("AC-16: the committed action dist carries TI07", () => {
     const dist = readFileSync(`${ROOT}${DIST}`, "utf8");
-    expect(dist, "the rebuilt dist carries TI07").toContain("TEST_INTEGRITY_TI07");
+    // CORE-140: the TEST_INTEGRITY_<id> codes are derived from the signal registry, so the dist carries the registry's
+    // TI07 entry (its id) rather than the code as a literal.
+    expect(dist, "the rebuilt dist carries TI07").toContain('id: "TI07"');
   });
 });

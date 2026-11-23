@@ -1,3 +1,4 @@
+import { TEST_INTEGRITY_SIGNAL_IDS } from "../signals/registry.js";
 import type {
   InjectionSignalId,
   PolicyProtectedPathsMode,
@@ -47,26 +48,8 @@ export const POLICY_MIN_WEEKLY_DOWNLOADS_MAX = 1000000000;
 /** The severities, strictest first. */
 export const POLICY_SEVERITIES = ["block", "warn", "info", "off"] as const satisfies readonly PolicySeverity[];
 
-/** The signal ids a `test_integrity.signals` map may name. */
-export const POLICY_SIGNAL_IDS = [
-  "TI01",
-  "TI02",
-  "TI03",
-  "TI04",
-  "TI05",
-  "TI06",
-  "TI07",
-  "TI08",
-  "TI09",
-  "TI10",
-  "TI11",
-  "TI12",
-  "TI13",
-  "TI14",
-  "TI15",
-  "TI16",
-  "TI17",
-] as const satisfies readonly PolicySignalId[];
+/** The signal ids a `test_integrity.signals` map may name: every id of the signal registry. */
+export const POLICY_SIGNAL_IDS: readonly PolicySignalId[] = TEST_INTEGRITY_SIGNAL_IDS;
 
 /** The rule ids a `policy.rules` map may name. */
 export const POLICY_RULE_IDS = [

@@ -1,11 +1,8 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { codeTable } from "./codeTable.js";
 
 // fix-hints (H6), AC-4. The core's fix tables are loaded inside the test body: the AC test is written before the build
 // adds them. The expected kinds are the SPEC's Data section, written out here.
-
-const ROOT = new URL("../../../", import.meta.url);
-const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 
 type Entry = { kind: string; hint: string };
 type Tables = { MESSAGE_FIXES?: Record<string, Entry>; SIGNAL_FIXES?: Record<string, Entry> };
@@ -61,13 +58,9 @@ const MESSAGE_KINDS: Record<string, string> = Object.fromEntries([
   ...OPERATIONAL.map((code) => [code, "none"]),
 ]);
 
+/** The codes of the code table of docs/output.md, which the schema's code description links to (CORE-140). */
 function documentedCodes(): string[] {
-  const schema = JSON.parse(read("schema/report.v2.json")) as {
-    $defs: { message: { properties: { code: { description: string } } } };
-  };
-  return [
-    ...new Set(schema.$defs.message.properties.code.description.match(/\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/g) ?? []),
-  ].sort();
+  return [...codeTable().keys()].sort();
 }
 
 async function tables(): Promise<Required<Tables>> {
@@ -90,7 +83,7 @@ describe("fix hints: the kind of every code and signal id", () => {
 
   it("AC-4: every message code has the kind of the SPEC's Data mapping, each signal-family message the kind of its signal, and the table has no other code", async () => {
     const { MESSAGE_FIXES, SIGNAL_FIXES } = await tables();
-    // Every code the schema documents is one the Data section maps.
+    // Every code the code table documents is one the Data section maps.
     for (const code of documentedCodes()) {
       expect(Object.keys(MESSAGE_KINDS), `the SPEC maps ${code}`).toContain(code);
       expect(MESSAGE_FIXES[code]?.kind, code).toBe(MESSAGE_KINDS[code]);

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { DiffFile } from "../src/diff/unified.js";
 import { type CheckInput, check, renderMarkdown, type StaleInstructionSources } from "../src/index.js";
 import { runDiff, signalsOf } from "./ac-e1-fix-shared.js";
+import { codeRow } from "./codeTable.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
@@ -69,7 +70,7 @@ describe("CORE-144: TI15 and SI04 are not emitted", () => {
     expect(report.messages.map((m) => m.code)).not.toContain("SETUP_STALE_SI04");
   });
 
-  it("an older report that holds TI15 and SI04 still validates, and both codes are still in schema/report.v2.json", () => {
+  it("an older report that holds TI15 and SI04 still validates, and both codes are still documented", () => {
     const older = JSON.parse(fixture("removed-signals/report-with-ti15-si04.json")) as {
       messages: { code: string }[];
       testIntegrity: { signals: { id: string }[] };
@@ -80,10 +81,11 @@ describe("CORE-144: TI15 and SI04 are not emitted", () => {
     expect(older.testIntegrity.signals.map((s) => s.id)).toEqual(["TI15"]);
     expect(older.setupHealth.stale.map((s) => s.id)).toEqual(["SI04"]);
 
-    const schema = read("schema/report.v2.json");
-    expect(schema).toContain("TEST_INTEGRITY_TI15 (");
-    expect(schema).toContain("SETUP_STALE_SI04 (");
-    expect(schema).toContain('"enum": ["SI01", "SI02", "SI03", "SI04"]');
+    // CORE-140: the schema's code description is one sentence and a link to the code table of docs/output.md, which
+    // keeps both rows; the schema still lists SI04 in the stale-finding id enum.
+    expect(codeRow("TEST_INTEGRITY_TI15")).toContain("Not emitted since the release after v0.11.0");
+    expect(codeRow("SETUP_STALE_SI04")).toContain("Not emitted since the release after v0.11.0");
+    expect(read("schema/report.v2.json")).toContain('"enum": ["SI01", "SI02", "SI03", "SI04"]');
 
     // The renderer does not throw on it; it lists no SI04 finding, since core emits none.
     const markdown = renderMarkdown(older as unknown as Parameters<typeof renderMarkdown>[0]);

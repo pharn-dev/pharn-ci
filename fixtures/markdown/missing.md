@@ -20,9 +20,9 @@ No test-integrity findings (mode: warn).
 ### 💬 Messages (2)
 
 - ❌ `COVERAGE_FILE_MISSING` Coverage file not found: coverage/lcov.info
-  - Hint: Run the tests with coverage before pharn-ci, and check the path (`coverage.file`, `coverage-file` or `--coverage`).
+  - Hint: Check that the test step writes the coverage file where the check reads it.
 - ℹ️ `NO_AGENT_SETUP_FILES` No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found.
-  - Hint: Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.
+  - Hint: Check whether the repository should have an agent instruction file such as AGENTS.md.
 
 ### 🤖 Agent setup (no files)
 

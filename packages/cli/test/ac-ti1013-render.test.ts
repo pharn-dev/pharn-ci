@@ -135,7 +135,8 @@ describe("TI10 and TI13 in the PR comment, the streaming reader and the CLI", ()
     expect(ti10Hint).toMatch(/\bPR\b/);
     const ti13Hint = hints.get("TI13") ?? "";
     expect(ti13Hint).toMatch(/\btest\b/i);
-    expect(ti13Hint).toMatch(/ignore comment/i);
+    // CORE-140: the hint is the code's fix.hint, which may not use the word "ignore", so it names the coverage pragma.
+    expect(ti13Hint).toMatch(/coverage pragma/i);
     for (const hint of [ti10Hint, ti13Hint]) {
       expect(hint).toMatch(/accept label/i);
       expect(hint).toMatch(/review/i);

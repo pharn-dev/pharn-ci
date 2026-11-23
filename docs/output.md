@@ -5,7 +5,8 @@ it. See [`schema/report.v2.json`](../schema/report.v2.json): Report v1
 ([`schema/report.v1.json`](../schema/report.v1.json), pharn-ci 0.1.x) plus a `testIntegrity` block on every
 report and a `meta` block (run metadata) from the Action, with `schemaVersion` the number 2. Every v1 field
 except `schemaVersion` (the string `"1"` in v1) keeps its name, type and meaning; a tool that validates the report switches on `schemaVersion`. Branch on
-message `code`s, not on text:
+message `code`s, not on text. This table is the list of codes the schema's `code` description points to: new codes may
+be added within v2, so a consumer must tolerate one it does not know, and no code is removed or renamed before 1.0.
 
 | Code                            | Meaning                                                        |
 | ------------------------------- | -------------------------------------------------------------- |
@@ -40,7 +41,7 @@ message `code`s, not on text:
 | `TEST_INTEGRITY_TI13`           | TI13: the change adds a comment that leaves code out of coverage (an Istanbul, V8 or C8 ignore hint in a JS/TS file, or a `# pragma: no cover` in a Python file that is not a test file) (`error` in mode `block`, `warn` in mode `warn`; `warn` in both for a hint that marks one line or branch of a file the change adds). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI14`           | TI14: the change lowers or removes the coverage threshold, or adds a coverage exclusion, in the pharn-ci config (`error` in mode `block`, `warn` in mode `warn`); a config that git shows as binary and that the change modifies, renames or deletes is one finding at the same levels. Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI08`           | TI08: the change regenerates or updates snapshots in bulk: more than 10 snapshot files modified, deleted or renamed with edits, 10 or more inline snapshots rewritten in a JS/TS test file, or a snapshot-update flag added to a test script or a pytest config file (`warn` in modes `block` and `warn`; it never blocks). Every finding is in `testIntegrity.signals` |
-| `TEST_INTEGRITY_TI15`           | Not emitted since the release after v0.11.0; the code stays in the schema, so an older report that holds it still validates. TI15 reported a condition in JS/TS or Python source that compares with a string or number a test file in the same change also adds (`info`) |
+| `TEST_INTEGRITY_TI15`           | Not emitted since the release after v0.11.0; the code stays valid, so an older report that holds it still validates. TI15 reported a condition in JS/TS or Python source that compares with a string or number a test file in the same change also adds (`info`), with at most 10 findings per change in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI16`           | TI16: the change adds a comment that switches off a linter or type checker in a JS/TS or Python test file (`info`; it never blocks and leaves the verdict at `pass`). Every finding is in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TI17`           | TI17: the change adds an assertion that always passes to a JS/TS or Python test file: a custom matcher whose pass is always true, a helper that always returns True, or a wildcard in place of an expected value (`warn` in modes `block` and `warn`; it never blocks unless an org policy sets it). One finding per test file, in `testIntegrity.signals` |
 | `TEST_INTEGRITY_TEXT_TRUNCATED` | A file a test-integrity signal reads has more than 5000 changed lines, so the signals read only the first 5000 and a finding past them is not seen (`warn`, or `error` in mode `block` for a JS/TS, Python or Go test file the change modifies, which the accept label lowers to `warn`; not in mode `off`). The text names the files |
@@ -53,7 +54,7 @@ message `code`s, not on text:
 | `SETUP_STALE_SI01` | An agent instruction file names a script the root `package.json` or a target the root `Makefile` does not define, and the change touches that file or removes the script or target (`warn`). The text names up to 5 path and line locations and the count; each finding is in `setupHealth.stale` |
 | `SETUP_STALE_SI02` | An agent instruction file names a path, in an inline code span, that is not in the repository, and the change touches that file or removes the path (`warn`) |
 | `SETUP_STALE_SI03` | An agent instruction file links to or `@`-imports a file that is not in the repository, and the change touches that file or removes the file (`warn`) |
-| `SETUP_STALE_SI04` | Not emitted since the release after v0.11.0; the code stays in the schema, so an older report that holds it still validates. SI04 reported an agent instruction file last changed more than 90 days before HEAD's commit that names a file this change edits (`info`) |
+| `SETUP_STALE_SI04` | Not emitted since the release after v0.11.0; the code stays valid, so an older report that holds it still validates. SI04 reported an agent instruction file last changed more than 90 days before HEAD's commit that names a file this change edits (`info`) |
 | `AGENT_CONFIG_SECRET_S01`       | A GitHub token is committed in an agent config file (`error`); the text names the id and up to 5 path and line locations, never the value |
 | `AGENT_CONFIG_SECRET_S02`       | An Anthropic API key is committed in an agent config file (`error`) |
 | `AGENT_CONFIG_SECRET_S03`       | An OpenAI API key is committed in an agent config file (`error`) |
@@ -124,8 +125,9 @@ id differ only in `target`.
 | `split-pr`          | Split the change into smaller pull requests                                          |
 | `none`              | No code change fixes this; the hint says what to check (an operational message)      |
 
-An agent may act on `fix.kind`, and should still read the `hint` and the rest of the report. The PR comment and the job
-summary do not change: the human `Hint:` text in the comment stays as it was. No kind or hint lowers a gate: none says to
+An agent may act on `fix.kind`, and should still read the `hint` and the rest of the report. Each code has one advice
+text: the `Hint:` line in the PR comment and the job summary is the same sentence as `fix.hint`; for the
+test-integrity codes whose findings the accept label can lower, a clause at its end names the label. No kind or hint lowers a gate: none says to
 lower a limit, add an exclusion, turn a test off, add an exemption or edit a policy. A hint says what to change, never
 that the change was made or was right; the next run's report is the only check. See
 [`docs/LIMITS.md`](LIMITS.md), Fix hints.

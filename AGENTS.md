@@ -31,8 +31,9 @@ policy from pharn.dev and uploads the redacted report there (rule 5).
    (the Node I/O helpers they share); cli and action gather inputs and pass plain data to core. This is enforced by core's tsconfig (`"types": []`), a Biome
    import ban and `packages/core/test/purity.test.ts`.
 2. **`schema/report.v2.json` is the source of truth.** Changing it is a versioned decision. Within
-   v2 you may only add optional fields, message codes or setup kinds (and document them in the
-   schema). Never remove, rename or retype a field; never silently break consumers. Update the
+   v2 you may only add optional fields, message codes or setup kinds (and document them: fields and
+   setup kinds in the schema, message codes in the code table of `docs/output.md`, which the schema's
+   `code` description links to). Never remove, rename or retype a field; never silently break consumers. Update the
    TypeScript types in `packages/core/src/report.ts` to match. Message `code`s are stable API.
 3. **Every core change ships with fixture-based tests.** Put inputs in `fixtures/` and assert on
    outputs. Reports produced in tests must be validated against the schema (`expectValidReport`).

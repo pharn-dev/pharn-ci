@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { check } from "../src/check.js";
-import { MESSAGE_HINTS, renderMarkdown } from "../src/render/markdown.js";
+import { MESSAGE_FIXES } from "../src/fix/table.js";
+import { renderMarkdown } from "../src/render/markdown.js";
 import {
   type Message,
   type Report,
@@ -69,17 +70,16 @@ describe("review finding 10: a signal id cut from the Test integrity section kee
 });
 
 describe("review finding 11: no hint tells the reader to loosen the gate", () => {
-  it("every MESSAGE_HINTS value and every per-signal hint lacks the loosening phrases", () => {
-    const hints = Object.entries(MESSAGE_HINTS).map(
-      ([code, hint]) => [code, typeof hint === "function" ? hint("`pharn-ci:accept`") : hint] as const,
-    );
+  it("every message hint and every per-signal hint lacks the loosening phrases", () => {
+    // CORE-140: the comment's hint is the code's fix.hint, so the fix table holds every message hint.
+    const hints = Object.entries(MESSAGE_FIXES).map(([code, entry]) => [code, entry.hint] as const);
     expect(hints.length).toBeGreaterThan(0);
     for (const [code, text] of hints) {
       for (const phrase of LOOSENING) expect(text, `${code} hint`).not.toContain(phrase);
     }
 
     // The per-signal hints under each finding, as rendered.
-    const ids = Array.from({ length: 16 }, (_, i) => `TI${String(i + 1).padStart(2, "0")}`);
+    const ids = Array.from({ length: 17 }, (_, i) => `TI${String(i + 1).padStart(2, "0")}`);
     const markdown = renderMarkdown(reportWith(ids.map((id, i) => signal(id, "warn", `src/t${i}.test.ts`, 1))));
     const hintLines = markdown.split("\n").filter((line) => line.startsWith("  - Hint: "));
     expect(hintLines.length).toBeGreaterThanOrEqual(ids.length);

@@ -140,6 +140,7 @@ describe("check(): empty agent setup files", () => {
     const report = runCheck(tracked(), new Map([["CLAUDE.md", 0]]));
     const markdown = renderMarkdown(report);
     expect(markdown).toContain("1 agent setup file is empty");
-    expect(markdown).toContain("Fill in the empty file or delete it");
+    // CORE-140: the hint is the code's fix.hint.
+    expect(markdown).toContain("  - Hint: Check why the agent setup file is empty and add its instructions.");
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { MESSAGE_FIXES } from "../src/fix/table.js";
 import { check, type Report, renderMarkdown } from "../src/index.js";
-import { MESSAGE_HINTS } from "../src/render/markdown.js";
 import { fixture } from "./helpers.js";
 import { addedFileDiff, injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";
@@ -32,23 +32,26 @@ describe("the Content section", { timeout: 60_000 }, () => {
         "### 🧬 Content",
         "",
         "- ❌ **PI01** `src/access.js:4` — right-to-left override U+202E and 3 more",
-        `  - Hint: ${MESSAGE_HINTS.INJECTION_PI01}`,
+        `  - Hint: ${MESSAGE_FIXES.INJECTION_PI01.hint}`,
         "- ❌ **PI01** `src/commenting-out.js:4` — right-to-left override U+202E and 3 more",
-        `  - Hint: ${MESSAGE_HINTS.INJECTION_PI01}`,
+        `  - Hint: ${MESSAGE_FIXES.INJECTION_PI01.hint}`,
         "- ⚠️ **PI02** `docs/translate.md:7` — phrase PH06 in an HTML comment",
-        `  - Hint: ${MESSAGE_HINTS.INJECTION_PI02}`,
+        `  - Hint: ${MESSAGE_FIXES.INJECTION_PI02.hint}`,
         "- ⚠️ **PI03** `docs/translate.md:5` — phrase PH07",
-        `  - Hint: ${MESSAGE_HINTS.INJECTION_PI03}`,
+        `  - Hint: ${MESSAGE_FIXES.INJECTION_PI03.hint}`,
         "- ⚠️ **PI03** `src/summarize.py:2` — phrase PH06",
-        `  - Hint: ${MESSAGE_HINTS.INJECTION_PI03}`,
+        `  - Hint: ${MESSAGE_FIXES.INJECTION_PI03.hint}`,
         "",
         "",
       ].join("\n"),
     );
     expect(markdown).not.toContain("`INJECTION_PI0");
     expect(markdown).toContain("5 content findings, 2 blocking");
-    // The hint shows the escape as text: no invisible character is in the comment.
-    expect(MESSAGE_HINTS.INJECTION_PI01).toContain("`\\u202E`");
+    // No invisible character is in the comment: the hints are fixed ASCII text (CORE-140: the comment's hint is the
+    // code's fix.hint).
+    for (const id of ["PI01", "PI02", "PI03", "PI04", "PI05"] as const) {
+      expect(MESSAGE_FIXES[`INJECTION_${id}`].hint, id).toMatch(/^[\x20-\x7e]+$/);
+    }
   });
 
   it("names a PI05 finding by path alone", () => {

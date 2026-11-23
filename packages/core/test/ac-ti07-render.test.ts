@@ -10,8 +10,9 @@ import { expectValidReport } from "./schema.js";
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const HEADING = "### 🔍 Test integrity";
 const CASE = "warn-tobe-number";
+// CORE-140: the hint is the code's fix.hint, the one advice text of TEST_INTEGRITY_TI07.
 const HINT =
-  "  - Hint: Check each new expected value against what the code should do, not what it now returns; if the behaviour change is meant, say so in the PR so a reviewer can confirm it.";
+  "  - Hint: Restore the expected values; if the behaviour really changed, say why in the pull request and have a reviewer confirm it.";
 const FINDING = /^- \S+ \*\*(TI\d\d)\*\* `([^`]+)`/;
 
 interface SourceFile {

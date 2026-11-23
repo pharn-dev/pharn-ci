@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { runDiff } from "./ac-e1-fix-shared.js";
+import { codeTable } from "./codeTable.js";
 import { validateReport } from "./schema.js";
 
 // ti17-always-true-matcher-2, AC-17. Both schemas are read inside the test body. The report signal id pattern accepts
@@ -15,7 +16,6 @@ const CODE = ["TEST_INTEGRITY_", ID].join("");
 
 const atHead = (file: string) => readFileSync(new URL(`schema/${file}`, ROOT), "utf8");
 
-type ReportSchema = { $defs: { message: { properties: { code: { description: string } } } } };
 type PolicySchema = {
   properties: {
     test_integrity: {
@@ -51,9 +51,16 @@ describe("schema/report.v2.json and schema/policy.v1.json accept TI17", () => {
     expect(validateReport(withId(ID)), JSON.stringify(validateReport.errors)).toBe(true);
     expect(validateReport(withId(["TI", "18"].join(""))), "TI18 is rejected").toBe(false);
 
-    // report.v2.json: the code description names TEST_INTEGRITY_TI17 once.
-    const headCodes = (JSON.parse(atHead("report.v2.json")) as ReportSchema).$defs.message.properties.code.description;
-    expect(headCodes.split(CODE).length - 1, "the description names the new code once").toBe(1);
+    // The code table names TEST_INTEGRITY_TI17 once (CORE-140: the report schema's code description is one sentence and a
+    // link to that table), and a message with the code validates.
+    expect(
+      [...codeTable().keys()].filter((code) => code === CODE),
+      "the table names the new code once",
+    ).toHaveLength(1);
+    expect(
+      validateReport({ ...report, messages: [{ level: "warn", code: CODE, text: "x" }] }),
+      JSON.stringify(validateReport.errors),
+    ).toBe(true);
 
     // policy.v1.json: a TI17 key like TI16, the two range descriptions edited.
     const policyHead = atHead("policy.v1.json");

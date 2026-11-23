@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { codeRow } from "./codeTable.js";
 
 // The files are read inside the test body: the build edits them, after this test. (CORE-133: the README, AGENTS.md,
 // THREAT-MODEL, LIMITS and CHANGELOG wording checks moved out; docs-contract.test.ts checks the README input and code
@@ -60,14 +61,6 @@ const defaultOf = (entry: string[] | undefined) => {
     .replace(/^"(.*)"$/, "$1");
 };
 
-/** Every string in a JSON value. */
-function strings(value: unknown, out: string[] = []): string[] {
-  if (typeof value === "string") out.push(value);
-  else if (Array.isArray(value)) for (const v of value) strings(v, out);
-  else if (value !== null && typeof value === "object") for (const v of Object.values(value)) strings(v, out);
-  return out;
-}
-
 describe("org policy metadata", () => {
   it("AC-28: action.yml, the schemas, the hints and the manifests describe the org policy", () => {
     // action.yml: the two inputs with their defaults, and no new output.
@@ -83,19 +76,12 @@ describe("org policy metadata", () => {
     expect(outputsNow).toContain("run-url");
     expect(outputsNow.filter((name) => name !== "run-url")).toEqual(OUTPUTS_AT_BASE);
 
-    // schema/report.v2.json: the two codes inside the one appended "Codes added in v0.4.0:" text.
-    const v2Text = read("schema/report.v2.json");
-    expect(v2Text.split(" Codes added in v0.4.0:").length - 1).toBe(1);
-    const description = strings(JSON.parse(v2Text)).find((s) => s.includes(" Codes added in v0.4.0:")) ?? "";
-    const appended = description.slice(description.indexOf(" Codes added in v0.4.0:"));
-    const unavailableAt = appended.indexOf("POLICY_UNAVAILABLE");
-    const ignoredAt = appended.indexOf("POLICY_OVERRIDE_IGNORED");
-    expect(unavailableAt).toBeGreaterThan(-1);
-    expect(ignoredAt).toBeGreaterThan(-1);
-    const afterUnavailable = appended.slice(unavailableAt, unavailableAt + 160);
-    expect(afterUnavailable).toContain("warn");
-    expect(afterUnavailable).toContain("error");
-    expect(appended.slice(ignoredAt, ignoredAt + 160)).toContain("warn");
+    // The code table documents the two codes with their levels (CORE-140: the schema's code description is one
+    // sentence and a link to that table).
+    const unavailable = codeRow("POLICY_UNAVAILABLE");
+    expect(unavailable).toContain("`warn`");
+    expect(unavailable).toContain("`error`");
+    expect(codeRow("POLICY_OVERRIDE_IGNORED")).toContain("`warn`");
 
     // schema/report.v1.json is the base's.
     expect(
@@ -104,13 +90,13 @@ describe("org policy metadata", () => {
         .digest("hex"),
     ).toBe(V1_AT_BASE);
 
-    // MESSAGE_HINTS has an entry for each new code.
-    const markdown = read("packages/core/src/render/markdown.ts");
-    const hintsAt = markdown.indexOf("MESSAGE_HINTS");
-    expect(hintsAt).toBeGreaterThan(-1);
-    const hints = markdown.slice(hintsAt);
-    expect(hints).toMatch(/\bPOLICY_UNAVAILABLE\s*:/);
-    expect(hints).toMatch(/\bPOLICY_OVERRIDE_IGNORED\s*:/);
+    // The fix table, whose hint the comment shows (CORE-140), has an entry for each new code.
+    const table = read("packages/core/src/fix/table.ts");
+    const fixesAt = table.indexOf("MESSAGE_FIXES");
+    expect(fixesAt).toBeGreaterThan(-1);
+    const fixes = table.slice(fixesAt);
+    expect(fixes).toMatch(/\bPOLICY_UNAVAILABLE\s*:/);
+    expect(fixes).toMatch(/\bPOLICY_OVERRIDE_IGNORED\s*:/);
 
     // No runtime dependency was added to any package manifest.
     for (const [manifest, dependencies] of Object.entries(DEPENDENCIES_AT_BASE)) {

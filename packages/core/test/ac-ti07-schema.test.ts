@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { codeRow } from "./codeTable.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { expectValidReport, validateReport } from "./schema.js";
 
@@ -33,15 +34,6 @@ function objectSchemas(node: Json, path: string, out: Array<{ path: string; sche
     }
   }
   return out;
-}
-
-/** The TI07 entry of the message-code description: from TEST_INTEGRITY_TI07 to the next TEST_INTEGRITY_ code. */
-function ti07Entry(description: string): string {
-  const at = description.indexOf("TEST_INTEGRITY_TI07");
-  if (at === -1) return "";
-  const rest = description.slice(at + "TEST_INTEGRITY_TI07".length);
-  const next = rest.search(/TEST_INTEGRITY_[A-Z0-9_]+/);
-  return next === -1 ? rest : rest.slice(0, next);
 }
 
 describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07", () => {
@@ -106,12 +98,9 @@ describe("schema/report.v2.json: testIntegrity.changes and TEST_INTEGRITY_TI07",
 
   // CORE-132: the comparisons of the rest of report.v2.json and of report.v1.json with an old commit were history pins
   // and are removed.
-  it("AC-13: the message-code description names TEST_INTEGRITY_TI07 with its level warn", () => {
-    const head = JSON.parse(live("schema/report.v2.json")) as Obj;
-    const code = (s: Obj) => ((((s.$defs as Obj).message as Obj).properties as Obj).code as Obj).description as string;
-
-    const description = code(head);
-    expect(description).toContain("TEST_INTEGRITY_TI07");
-    expect(ti07Entry(description), "the TI07 entry names its level").toMatch(/\bwarn\b/);
+  // CORE-140: the schema's code description became one sentence and a link to the code table of docs/output.md, so the
+  // TI07 row of that table is read.
+  it("AC-13: the code table documents TEST_INTEGRITY_TI07 with its level warn", () => {
+    expect(codeRow("TEST_INTEGRITY_TI07"), "the TI07 row names its level").toMatch(/`warn`/);
   });
 });

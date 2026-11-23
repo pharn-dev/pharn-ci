@@ -60,7 +60,8 @@ describe("TEST_INTEGRITY_TEXT_TRUNCATED", () => {
 
     const markdown = renderMarkdown(report);
     expect(markdown).toContain(`\`${CODE}\``);
-    expect(markdown).toContain("Review the named files by hand for skipped, focused or weakened tests");
+    // CORE-140: the hint is the code's fix.hint.
+    expect(markdown).toContain("Check the changed test lines past the cut by hand");
   });
 
   it.each([

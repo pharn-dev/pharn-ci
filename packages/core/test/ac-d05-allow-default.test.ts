@@ -41,7 +41,10 @@ describe("no allowed-hosts setting", () => {
     const { input, line } = privateHostCase();
     expect(line).toBe(21);
     const report = run(input);
-    const hint = "Remove the dependency from outside the allowed registries, or use the package's registry release.";
+    // CORE-140 changed the D05 fix hint on purpose (one advice text per code: it now names dependency-allowed-hosts, as
+    // the comment's hint did); the finding, its severity and the message are 0.9.1's.
+    const hint =
+      "Depend on a published registry version, or name the host of a registry your team runs in the dependency-allowed-hosts input; otherwise remove the dependency.";
     expect(report.dependencies?.signals).toEqual([
       {
         id: "D05",

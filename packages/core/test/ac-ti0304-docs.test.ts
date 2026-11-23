@@ -1,10 +1,10 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { codeRow } from "./codeTable.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 
 const ROOT = new URL("../../../", import.meta.url);
-const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
 /** The must-not-block cases of docs/PRECISION.md §1, each a TI03 fixture whose TI03 signals are all warn or absent. */
@@ -42,10 +42,10 @@ async function signalsOf(dir: string, name: string) {
 // CORE-133: the CHANGELOG, README, LIMITS and THREAT-MODEL wording checks moved out. CORE-132: the report.v1.json
 // comparison with an old commit was a history pin and is removed.
 describe("TI03 and TI04: schema and fixtures", () => {
-  it("AC-14: the v2 schema names both message codes", () => {
-    const schema = read("schema/report.v2.json");
-    expect(schema).toContain("TEST_INTEGRITY_TI03");
-    expect(schema).toContain("TEST_INTEGRITY_TI04");
+  // CORE-140: the schema's code description is one sentence and a link to the code table of docs/output.md.
+  it("AC-14: the code table names both message codes", () => {
+    expect(codeRow("TEST_INTEGRITY_TI03")).toContain("TI03:");
+    expect(codeRow("TEST_INTEGRITY_TI04")).toContain("TI04:");
   });
 
   it("AC-14: at least five must-trigger and five must-not-trigger diffs per id, the PRECISION cases among them, and they behave", async () => {

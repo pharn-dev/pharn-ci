@@ -25525,69 +25525,212 @@ function createGitHubApi(opts) {
 import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname as dirname2, resolve } from "node:path";
 
+// ../core/src/signals/registry.ts
+var TEST_INTEGRITY_SIGNALS = [
+  {
+    id: "TI01",
+    fix: {
+      kind: "restore-test",
+      hint: "Restore the deleted test file, or move its tests to a test file that still runs them."
+    },
+    binary: true,
+    message: {
+      text: (top, paths) => top === "info" ? `This change deletes test files together with the code they cover or replaces them: ${paths}.` : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${paths}. Check that those tests were meant to go.`
+    }
+  },
+  {
+    id: "TI02",
+    fix: {
+      kind: "restore-test",
+      hint: "Restore the removed test, or keep a test with the same assertions in one of the touched test files."
+    },
+    accept: "always",
+    message: {
+      allPaths: true,
+      text: (_top, paths, notListed) => `This change removes tests from test files that stay, with no test of the same name or a similar body in the touched test files to take their place: ${paths}. Check that each removal was meant.${notListed}`
+    }
+  },
+  {
+    id: "TI03",
+    fix: {
+      kind: "restore-test",
+      hint: "Remove the skipping of the test so it runs again, or say in the PR why it must stay, for example a test that fails in CI."
+    },
+    accept: "always",
+    message: {
+      text: (_top, paths) => `This change skips tests or marks them as expected to fail: ${paths}. Check that each skip was meant.`
+    }
+  },
+  {
+    id: "TI04",
+    fix: {
+      kind: "restore-test",
+      hint: "Remove the focused-run marker (.only, fit or fdescribe) so every test in the file runs again."
+    },
+    message: {
+      text: (_top, paths) => `This change adds \`.only\`, \`fit\` or \`fdescribe\`, which runs only the marked tests: ${paths}. Remove the markers before merging.`
+    }
+  },
+  {
+    id: "TI05",
+    fix: { kind: "restore-assertion", hint: "Restore the assertions this test had, so it checks the behaviour again." },
+    accept: "always",
+    message: {
+      allPaths: true,
+      text: (_top, paths, notListed) => `This change leaves tests with fewer assertions than they had, or none: ${paths}. Check that each test still checks what it did.${notListed}`
+    }
+  },
+  {
+    id: "TI06",
+    fix: {
+      kind: "restore-assertion",
+      hint: "Restore the stronger assertion this test had in place of the weaker one."
+    },
+    accept: "block",
+    message: {
+      allPaths: true,
+      text: (_top, paths, notListed) => `This change weakens tests that stay: a stronger matcher became a weaker one, an assertion guard was lowered or removed, an assertion that compares a literal with itself was added, or an assertion moved into a try block or after an early return: ${paths}. Check that each test still checks what it did.${notListed}`
+    }
+  },
+  {
+    id: "TI07",
+    fix: {
+      kind: "restore-assertion",
+      hint: "Restore the expected values; if the behaviour really changed, say why in the pull request and have a reviewer confirm it."
+    },
+    message: {
+      allPaths: true,
+      text: (_top, paths, notListed) => `This change edits only the expected values of tests while it also edits source files, so the tests may have been made to agree with the code: ${paths}. Check that each new expected value is right.${notListed}`
+    }
+  },
+  {
+    id: "TI08",
+    fix: {
+      kind: "request-review",
+      hint: "Ask a reviewer to confirm the snapshot changes are intended before merging."
+    },
+    message: {
+      text: (_top, paths) => `This change regenerates or updates snapshots in bulk: ${paths}. Check that each new snapshot was reviewed.`
+    }
+  },
+  {
+    id: "TI09",
+    fix: {
+      kind: "revert-config",
+      hint: "Revert the test-runner config change so the same tests run under the same rules, or say in the PR why it changes; a raised retry count or timeout is a warning only."
+    },
+    accept: "always",
+    message: {
+      allPaths: true,
+      text: (_top, paths, notListed) => `This change loosens test-runner settings so that fewer tests run, a weaker run passes or the coverage gate drops: ${paths}. Check that each looser setting was meant.${notListed}`
+    }
+  },
+  {
+    id: "TI10",
+    fix: {
+      kind: "revert-config",
+      hint: "Restore the test script in package.json so it runs the whole suite and fails when a test fails, or say in the PR why it changes."
+    },
+    accept: "always",
+    binary: true,
+    message: {
+      text: (_top, paths) => `This change weakens a test script in package.json, so the test run can pass without the tests passing: ${paths}. Check that the change was meant.`
+    }
+  },
+  {
+    id: "TI11",
+    fix: {
+      kind: "revert-config",
+      hint: "Revert the workflow change so CI runs the tests on pull requests as before."
+    },
+    binary: true,
+    message: {
+      text: (_top, paths) => `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`
+    }
+  },
+  {
+    id: "TI12",
+    fix: {
+      kind: "request-review",
+      hint: "Ask a reviewer to confirm that mocking the changed module still tests its real behaviour."
+    },
+    accept: "block",
+    message: {
+      allPaths: true,
+      text: (_top, paths, notListed) => `This change mocks a module it also edits, so the tests may not run the code under review: ${paths}. Check that each mock was meant.${notListed}`
+    }
+  },
+  {
+    id: "TI13",
+    fix: {
+      kind: "revert-config",
+      hint: "Remove the added coverage pragma and add a test that runs those lines, or say in the PR why they cannot be tested."
+    },
+    accept: "always",
+    message: {
+      text: (_top, paths) => `This change adds comments that leave code out of coverage: ${paths}. Check that each was meant.`
+    }
+  },
+  {
+    id: "TI14",
+    fix: {
+      kind: "revert-config",
+      hint: "Revert the change to the coverage settings of the pharn-ci config so the gate measures the same files as before."
+    },
+    binary: true,
+    message: {
+      text: (_top, paths) => `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Once merged, the looser setting applies to every later pull request; check that it was meant.`
+    }
+  },
+  {
+    // Not emitted since CORE-144: no message. The code TEST_INTEGRITY_TI15 and the policy key TI15 stay valid.
+    id: "TI15",
+    fix: {
+      kind: "request-review",
+      hint: "Ask a reviewer to confirm the code does not special-case the value the test checks."
+    }
+  },
+  {
+    id: "TI16",
+    fix: {
+      kind: "request-review",
+      hint: "Ask a reviewer to confirm the lint or type suppression added to the test file is needed."
+    },
+    message: {
+      text: (_top, paths) => `This change adds comments that switch off a linter or type checker in test files: ${paths}.`
+    }
+  },
+  {
+    id: "TI17",
+    fix: {
+      kind: "restore-assertion",
+      hint: "Restore an assertion that can fail in place of the one that always passes, or say in the PR why the test checks less now."
+    },
+    accept: "block",
+    message: {
+      text: (_top, paths) => `This change adds assertions that always pass to test files: ${paths}. Check that each test still compares a value that can fail.`
+    }
+  }
+];
+var TEST_INTEGRITY_SIGNAL_IDS = TEST_INTEGRITY_SIGNALS.map((s) => s.id);
+function testIntegrityCode(id) {
+  return `TEST_INTEGRITY_${id}`;
+}
+var TEST_INTEGRITY_SIGNAL_FIXES = Object.fromEntries(
+  TEST_INTEGRITY_SIGNALS.map((s) => [s.id, s.fix])
+);
+var TEST_INTEGRITY_MESSAGE_FIXES = Object.fromEntries(
+  TEST_INTEGRITY_SIGNALS.map((s) => [testIntegrityCode(s.id), s.fix])
+);
+function testIntegritySignal(id) {
+  return TEST_INTEGRITY_SIGNALS.find((s) => s.id === id);
+}
+
 // ../core/src/fix/table.ts
 var REVIEW_POLICY = "Ask a maintainer or the policy owner to review the committed agent settings this rule names.";
 var REVIEW_INJECTION = "Ask a reviewer to look at the added text that addresses an AI agent before merging.";
 var SIGNAL_FIXES = {
-  TI01: {
-    kind: "restore-test",
-    hint: "Restore the deleted test file, or move its tests to a test file that still runs them."
-  },
-  TI02: {
-    kind: "restore-test",
-    hint: "Restore the removed test, or keep a test with the same assertions in one of the touched test files."
-  },
-  TI03: { kind: "restore-test", hint: "Remove the marker that turns this test off, so it runs again." },
-  TI04: {
-    kind: "restore-test",
-    hint: "Remove the focused-run marker (.only, fit or fdescribe) so every test in the file runs again."
-  },
-  TI05: { kind: "restore-assertion", hint: "Restore the assertions this test had, so it checks the behaviour again." },
-  TI06: {
-    kind: "restore-assertion",
-    hint: "Restore the stronger assertion this test had in place of the weaker one."
-  },
-  TI07: {
-    kind: "restore-assertion",
-    hint: "Restore the expected values; if the behaviour really changed, say why in the pull request and have a reviewer confirm it."
-  },
-  TI08: { kind: "request-review", hint: "Ask a reviewer to confirm the snapshot changes are intended before merging." },
-  TI09: {
-    kind: "revert-config",
-    hint: "Revert the test-runner config change so the same tests run under the same rules as before."
-  },
-  TI10: {
-    kind: "revert-config",
-    hint: "Revert the test script change in package.json so it runs the whole suite and fails when a test fails."
-  },
-  TI11: {
-    kind: "revert-config",
-    hint: "Revert the workflow change so CI runs the tests on pull requests as before."
-  },
-  TI12: {
-    kind: "request-review",
-    hint: "Ask a reviewer to confirm that mocking the changed module still tests its real behaviour."
-  },
-  TI13: {
-    kind: "revert-config",
-    hint: "Remove the added coverage pragma and add tests that run those lines."
-  },
-  TI14: {
-    kind: "revert-config",
-    hint: "Revert the change to the coverage settings of the pharn-ci config so the gate measures the same files as before."
-  },
-  TI15: {
-    kind: "request-review",
-    hint: "Ask a reviewer to confirm the code does not special-case the value the test checks."
-  },
-  TI16: {
-    kind: "request-review",
-    hint: "Ask a reviewer to confirm the lint or type suppression added to the test file is needed."
-  },
-  TI17: {
-    kind: "restore-assertion",
-    hint: "Restore an assertion that can fail in place of the one that always passes."
-  },
+  ...TEST_INTEGRITY_SIGNAL_FIXES,
   P01: { kind: "none", hint: "A maintainer should add the agent setup files the org policy requires." },
   P02: { kind: "request-review", hint: REVIEW_POLICY },
   P03: { kind: "request-review", hint: REVIEW_POLICY },
@@ -25646,7 +25789,7 @@ var SIGNAL_FIXES = {
   },
   D05: {
     kind: "remove-dependency",
-    hint: "Remove the dependency from outside the allowed registries, or use the package's registry release."
+    hint: "Depend on a published registry version, or name the host of a registry your team runs in the dependency-allowed-hosts input; otherwise remove the dependency."
   }
 };
 var S = SIGNAL_FIXES;
@@ -25728,23 +25871,7 @@ var MESSAGE_FIXES = {
     hint: "Check the test integrity mode in the config; a config can only make the check stricter."
   },
   TEST_INTEGRITY_OFF: { kind: "none", hint: "Check why test integrity is off for this run." },
-  TEST_INTEGRITY_TI01: S.TI01,
-  TEST_INTEGRITY_TI02: S.TI02,
-  TEST_INTEGRITY_TI03: S.TI03,
-  TEST_INTEGRITY_TI04: S.TI04,
-  TEST_INTEGRITY_TI05: S.TI05,
-  TEST_INTEGRITY_TI06: S.TI06,
-  TEST_INTEGRITY_TI07: S.TI07,
-  TEST_INTEGRITY_TI08: S.TI08,
-  TEST_INTEGRITY_TI09: S.TI09,
-  TEST_INTEGRITY_TI10: S.TI10,
-  TEST_INTEGRITY_TI11: S.TI11,
-  TEST_INTEGRITY_TI12: S.TI12,
-  TEST_INTEGRITY_TI13: S.TI13,
-  TEST_INTEGRITY_TI14: S.TI14,
-  TEST_INTEGRITY_TI15: S.TI15,
-  TEST_INTEGRITY_TI16: S.TI16,
-  TEST_INTEGRITY_TI17: S.TI17,
+  ...TEST_INTEGRITY_MESSAGE_FIXES,
   TEST_INTEGRITY_INDEX_UNAVAILABLE: {
     kind: "none",
     hint: "Check that the touched test files can be read, so removed tests and assertions are compared; a -diff or binary attribute in .gitattributes, or a NUL byte in the file, can cause this."
@@ -25755,7 +25882,7 @@ var MESSAGE_FIXES = {
   },
   TEST_INTEGRITY_ACCEPTED: {
     kind: "none",
-    hint: "Check that the reviewer's sign-off covers the findings listed in the report."
+    hint: "Check that the sign-off covers the findings listed in the report, and remove the label if a later push should be judged again."
   },
   TEST_INTEGRITY_ACCEPT_IGNORED: {
     kind: "none",
@@ -25842,7 +25969,7 @@ var MESSAGE_FIXES = {
   },
   DEPENDENCY_CHECK_INCOMPLETE: {
     kind: "none",
-    hint: "Check that the manifest or lockfile the report names can be read and parsed."
+    hint: "Check that the manifest or lockfile the report names can be read and parsed, and keep it under 32 MiB."
   },
   POLICY_KEYS_UNKNOWN: {
     kind: "none",
@@ -26448,97 +26575,17 @@ var WHOLE_RUN_SENTENCE_LEADS = [TI0205_NOT_RUN_LEAD, TI09_NOT_RUN_LEAD];
 function emptyTestIntegrity() {
   return { mode: "warn", source: "default", verdict: "pass", signals: [], languages: [] };
 }
-var SIGNAL_MESSAGES = [
-  {
-    id: "TI01",
-    code: "TEST_INTEGRITY_TI01",
-    text: (top, paths) => top === "info" ? `This change deletes test files together with the code they cover or replaces them: ${paths}.` : `This change deletes or renames away test files that defined tests, with nothing in the change that accounts for them: ${paths}. Check that those tests were meant to go.`
-  },
-  {
-    id: "TI02",
-    code: "TEST_INTEGRITY_TI02",
-    allPaths: true,
-    text: (_top, paths, notListed) => `This change removes tests from test files that stay, with no test of the same name or a similar body in the touched test files to take their place: ${paths}. Check that each removal was meant.${notListed}`
-  },
-  {
-    id: "TI03",
-    code: "TEST_INTEGRITY_TI03",
-    text: (_top, paths) => `This change skips tests or marks them as expected to fail: ${paths}. Check that each skip was meant.`
-  },
-  {
-    id: "TI04",
-    code: "TEST_INTEGRITY_TI04",
-    text: (_top, paths) => `This change adds \`.only\`, \`fit\` or \`fdescribe\`, which runs only the marked tests: ${paths}. Remove the markers before merging.`
-  },
-  {
-    id: "TI05",
-    code: "TEST_INTEGRITY_TI05",
-    allPaths: true,
-    text: (_top, paths, notListed) => `This change leaves tests with fewer assertions than they had, or none: ${paths}. Check that each test still checks what it did.${notListed}`
-  },
-  {
-    id: "TI06",
-    code: "TEST_INTEGRITY_TI06",
-    allPaths: true,
-    text: (_top, paths, notListed) => `This change weakens tests that stay: a stronger matcher became a weaker one, an assertion guard was lowered or removed, an assertion that compares a literal with itself was added, or an assertion moved into a try block or after an early return: ${paths}. Check that each test still checks what it did.${notListed}`
-  },
-  {
-    id: "TI07",
-    code: "TEST_INTEGRITY_TI07",
-    allPaths: true,
-    text: (_top, paths, notListed) => `This change edits only the expected values of tests while it also edits source files, so the tests may have been made to agree with the code: ${paths}. Check that each new expected value is right.${notListed}`
-  },
-  {
-    id: "TI08",
-    code: "TEST_INTEGRITY_TI08",
-    text: (_top, paths) => `This change regenerates or updates snapshots in bulk: ${paths}. Check that each new snapshot was reviewed.`
-  },
-  {
-    id: "TI09",
-    code: "TEST_INTEGRITY_TI09",
-    allPaths: true,
-    text: (_top, paths, notListed) => `This change loosens test-runner settings so that fewer tests run, a weaker run passes or the coverage gate drops: ${paths}. Check that each looser setting was meant.${notListed}`
-  },
-  {
-    id: "TI10",
-    code: "TEST_INTEGRITY_TI10",
-    text: (_top, paths) => `This change weakens a test script in package.json, so the test run can pass without the tests passing: ${paths}. Check that the change was meant.`
-  },
-  {
-    id: "TI11",
-    code: "TEST_INTEGRITY_TI11",
-    text: (_top, paths) => `This change edits a workflow so that CI may run fewer tests or ignore their failures: ${paths}. Check that the removed step or trigger, the reduced matrix or the added condition was meant.`
-  },
-  {
-    id: "TI12",
-    code: "TEST_INTEGRITY_TI12",
-    allPaths: true,
-    text: (_top, paths, notListed) => `This change mocks a module it also edits, so the tests may not run the code under review: ${paths}. Check that each mock was meant.${notListed}`
-  },
-  {
-    id: "TI13",
-    code: "TEST_INTEGRITY_TI13",
-    text: (_top, paths) => `This change adds comments that leave code out of coverage: ${paths}. Check that each was meant.`
-  },
-  {
-    id: "TI14",
-    code: "TEST_INTEGRITY_TI14",
-    text: (_top, paths) => `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Once merged, the looser setting applies to every later pull request; check that it was meant.`
-  },
-  {
-    id: "TI16",
-    code: "TEST_INTEGRITY_TI16",
-    text: (_top, paths) => `This change adds comments that switch off a linter or type checker in test files: ${paths}.`
-  },
-  {
-    id: "TI17",
-    code: "TEST_INTEGRITY_TI17",
-    text: (_top, paths) => `This change adds assertions that always pass to test files: ${paths}. Check that each test still compares a value that can fail.`
-  }
-];
+var SIGNAL_MESSAGES = TEST_INTEGRITY_SIGNALS.flatMap((signal2) => {
+  const { message } = signal2;
+  return message === void 0 ? [] : [{ id: signal2.id, code: testIntegrityCode(signal2.id), message }];
+});
 function testIntegritySignalMessages(signals, options = {}) {
   const messages = [];
-  for (const { id, code: code2, allPaths, text } of SIGNAL_MESSAGES) {
+  for (const {
+    id,
+    code: code2,
+    message: { allPaths, text }
+  } of SIGNAL_MESSAGES) {
     const own = signals.filter((signal2) => signal2.id === id);
     if (own.length === 0) continue;
     const top = own.some((s) => s.severity === "block") ? "block" : own.some((s) => s.severity === "warn") ? "warn" : "info";
@@ -32397,25 +32444,7 @@ var POLICY_MIN_AGE_DAYS_MAX = 3650;
 var POLICY_MIN_WEEKLY_DOWNLOADS_MIN = 0;
 var POLICY_MIN_WEEKLY_DOWNLOADS_MAX = 1e9;
 var POLICY_SEVERITIES = ["block", "warn", "info", "off"];
-var POLICY_SIGNAL_IDS = [
-  "TI01",
-  "TI02",
-  "TI03",
-  "TI04",
-  "TI05",
-  "TI06",
-  "TI07",
-  "TI08",
-  "TI09",
-  "TI10",
-  "TI11",
-  "TI12",
-  "TI13",
-  "TI14",
-  "TI15",
-  "TI16",
-  "TI17"
-];
+var POLICY_SIGNAL_IDS = TEST_INTEGRITY_SIGNAL_IDS;
 var POLICY_RULE_IDS = [
   "P01",
   "P02",
@@ -45126,119 +45155,23 @@ function acceptLabelOf(report) {
   const configured = report.testIntegrity.acceptLabel;
   return typeof configured === "string" && configured !== "" ? configured : DEFAULT_ACCEPT_LABEL;
 }
-var SECRET_HINT = "Revoke the credential at its provider, remove it from the file and from git history, and load it from an environment variable or a secret store.";
-var MESSAGE_HINTS = {
-  DIFF_COVERAGE_BELOW_THRESHOLD: "Add tests that exercise the uncovered lines listed in the table above.",
-  DIFF_COVERAGE_UNGATED: "To gate diff coverage, set a threshold above 0 (`coverage.threshold`, `threshold` or `--threshold`).",
-  NO_COVERABLE_CHANGES: "Nothing to do if the change has no code; otherwise check that the coverage report includes the changed files.",
-  COVERAGE_FILE_MISSING: "Run the tests with coverage before pharn-ci, and check the path (`coverage.file`, `coverage-file` or `--coverage`).",
-  COVERAGE_FILE_EMPTY: "Run the tests with coverage enabled before pharn-ci, and check that the report covers this repo's sources.",
-  COVERAGE_FORMAT_UNSUPPORTED: "Have the test runner write lcov or Cobertura XML; if it already does, set `coverage.format` explicitly.",
-  DIFF_UNAVAILABLE: "Check out full history (`actions/checkout` with `fetch-depth: 0`) or set the base (`base-ref` or `--base`).",
-  COVERAGE_PATHS_UNMATCHED: "Write coverage paths relative to the repository root, or set the directory they start from (`coverage.root`, `coverage-root` or `--coverage-root`).",
-  COVERAGE_PATHS_PARTIALLY_UNMATCHED: "Nothing to do if those files are generated or outside the repo; if changed files are missing from the table, check the coverage root.",
-  COVERAGE_LINES_SKIPPED: "Regenerate the coverage report and check that the reporter finished writing it; a truncated or hand-edited file can show more coverage than the tests gave.",
-  CONFIG_CHANGED_IN_DIFF: "Review the config and workflow changes before trusting the verdict; protect `.pharn/ci.yml` and `.github/workflows/` with CODEOWNERS.",
-  COVERAGE_FILE_TRACKED: "Generate the coverage file in CI and stop tracking it (`git rm --cached` it and add it to `.gitignore`).",
-  DIFF_BINARY_COVERED_FILE: "Remove `-diff` or `binary` attributes for source files from `.gitattributes` so their changes are measured.",
-  TEST_FILES_DELETED: "Check that the deleted or renamed tests were meant to go, or that their cases moved to a file the test runner still runs.",
-  NO_AGENT_SETUP_FILES: "Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.",
-  AGENT_SETUP_FILE_EMPTY: "Fill in the empty file or delete it; an agent reads nothing from an empty file.",
-  AGENT_SETUP_EXPECTED_MISSING: "Add a setup file for each missing tool (for example AGENTS.md, CLAUDE.md or .cursor/rules/), or ask whoever owns `setup.expect` (the org policy owner, or the maintainers for `.pharn/ci.yml`) to change it.",
-  TEST_INTEGRITY_MODE_IGNORED: "Set the mode with the `test-integrity` input in the workflow; `test_integrity.mode` in `.pharn/ci.yml` can only make the check stricter, so remove the looser value.",
-  TEST_INTEGRITY_OFF: "Set the `test-integrity` input to `warn` or `block` in the workflow to check for weakened tests.",
-  TEST_INTEGRITY_TI01: "Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
-  TEST_INTEGRITY_TI02: (label) => `Restore the removed tests, or say in the PR why they go; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}. A test that only moved or was renamed is not reported when its body is the same or close to it.`,
-  TEST_INTEGRITY_TI03: (label) => `Remove the skip so the test runs again, or say in the PR why it must stay, for example a test that fails in CI; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
-  TEST_INTEGRITY_TI04: "Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
-  TEST_INTEGRITY_TI05: (label) => `Restore the assertions the test had, or say in the PR why it checks less now; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
-  TEST_INTEGRITY_TI06: "Restore the stronger matcher, guard or placement of the assertion, or say in the PR why the test checks less now.",
-  TEST_INTEGRITY_TI07: "Check each new expected value against what the code should do, not what it now returns; if the behaviour change is meant, say so in the PR so a reviewer can confirm it.",
-  TEST_INTEGRITY_TI08: "Review the snapshot changes, or regenerate them in a separate change, and keep snapshot-update flags out of the test command.",
-  TEST_INTEGRITY_TI09: (label) => `Restore the setting, or say in the PR why it changes; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}. A raised retry count or timeout is a warning only.`,
-  TEST_INTEGRITY_TI12: "Mock a collaborator of the code under test instead of the code itself, or say in the PR why this module is mocked.",
-  TEST_INTEGRITY_TI10: (label) => `Restore the test script, or say in the PR why it changes so a reviewer can confirm it; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
-  TEST_INTEGRITY_TI13: (label) => `Write a test for the code in place of the ignore comment, or say in the PR why it cannot be tested; a reviewer who is not the PR author can record that sign-off by applying the accept label ${label}.`,
-  TEST_INTEGRITY_TI11: "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
-  TEST_INTEGRITY_TI14: "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
-  // TI15 and SI04 are not emitted since CORE-144; their hints stay because every message code has one.
-  TEST_INTEGRITY_TI15: "Check that the code handles the general case and not only the test's value, and add a test with another input.",
-  TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
-  TEST_INTEGRITY_TI17: "Restore the assertion that can fail, or say in the PR why the test checks less now.",
-  TEST_INTEGRITY_INDEX_UNAVAILABLE: "A file over 512 KiB or nested too deeply, one with many syntax errors, more than 200 touched test files, a missing Python 3.8 or newer for `.py` files, or git objects that could not be read stop the comparison. A test file git shows as binary (a `-diff` or `binary` attribute in `.gitattributes`) hides its changed lines from the signals that read the diff, and non-text content such as a NUL byte also stops the comparison. Review the named test files by hand for removed tests and weakened assertions.",
-  TEST_INTEGRITY_TEXT_TRUNCATED: "Review the named files by hand for skipped, focused or weakened tests, or split the change so each file stays under the limit.",
-  TEST_INTEGRITY_ACCEPTED: "A reviewer other than the PR author signed off, so the block findings are warnings. The sign-off belongs to the pull request, not to a commit: remove the label if a later push should be judged again.",
-  TEST_INTEGRITY_ACCEPT_IGNORED: "The block findings stand. Fix them, or ask a reviewer who is not the PR author to apply the label; it counts only when a user account other than the author applied it last.",
-  AGENT_CONFIG_SECRET_S01: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S02: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S03: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S04: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S05: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S06: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S07: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S08: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S09: SECRET_HINT,
-  AGENT_CONFIG_SECRET_S10: "If the value is a real secret, revoke it at its provider, remove it from the file and from git history, and load it from an environment variable or a secret store. If it is not a secret, a reviewer can confirm that.",
-  AGENT_CONFIG_SECRET_S11: "Move the literal value into the environment, like the other secrets in the same file, so no secret is committed.",
-  AGENT_CONFIG_SECRET_UNSCANNED: "Keep agent config files text, under 512 KiB and inside the repository, and run on a checkout of the pull request head (not PR-number mode or a compare-API diff), so they can be scanned for committed secrets.",
-  POLICY_UNAVAILABLE: "Give the job `permissions: id-token: write` (fork pull requests get no OIDC token) and check that the pharn.dev app is installed for this repository.",
-  POLICY_OVERRIDE_IGNORED: "The org policy's value applies. Raise the setting in the workflow inputs or `.pharn/ci.yml` to match, or ask the policy owner to change the policy.",
-  UPLOAD_TOO_LARGE: "Nothing in the pull request needs fixing; the full report is in the job summary and report.json.",
-  POLICY_P08: "Stop tracking the file (`git rm --cached` it and add it to `.gitignore`); the org policy forbids it in the repository.",
-  POLICY_P09: "Revert the edit, or ask the policy owner to make it; a pull request cannot loosen the check it is graded by.",
-  POLICY_P11: "Agent PRs may not change these paths under the org policy. Move the change to a pull request by a person, or ask the policy owner to change `agents.protected_paths`.",
-  POLICY_P07: "Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.",
-  POLICY_P13: "An agent PR may not widen its own or another agent's powers. Move the change to a pull request by a person, or ask the policy owner to change `policy.rules.P13`.",
-  AGENT_PR_DETECTION_INCOMPLETE: "Re-run the job if the GitHub API failed. A pull request with more than 250 commits, an author GitHub does not name, or an edited policy file whose base cannot be read always counts as an agent PR.",
-  // E3 item 23 (policy settings): the hints of P02 to P06 and of the settings problems.
-  POLICY_P02: "Narrow or remove the allow rule (or the defaultMode or additionalDirectories key) in the settings file, or ask the policy owner to change setup.forbidden_permissions.",
-  POLICY_P03: "Add a deny rule equal to or broader than the required one to the .claude/settings.json of each directory named.",
-  POLICY_P04: "Remove the server, or ask the policy owner to add it to setup.allowed_mcp_servers.",
-  POLICY_P05: "Remove the server from the MCP file.",
-  POLICY_P06: "Add a command hook for the event whose matcher covers the required one (`*` or the same tool names), without an if condition.",
-  POLICY_SETTINGS_INVALID: "Keep agent settings files valid JSON and regular files under 512 KiB, and run on a checkout of the pull request head, so the org policy can check them.",
-  POLICY_P14: "Split the agent pull request into smaller ones, one per area named, or ask the policy owner to change `agents.max_files` or `agents.max_changed_lines`. Lockfiles, snapshots and `*.generated.*` files do not count.",
-  TESTS_NOT_EXERCISING_CHANGES: "Add or update a test that imports each listed file and asserts on the changed behaviour, or say in the PR why no test changes. This is a warning only.",
-  // Stale instructions (H3): the instruction file is what to fix, never the check.
-  SETUP_STALE_SI01: "Make the command match a script in the root package.json or a target in the root Makefile, or remove it from the instruction file.",
-  SETUP_STALE_SI02: "Point the instruction at the path where the file now lives, or remove the line.",
-  SETUP_STALE_SI03: "Point the link or `@` import at a file that exists, or remove it.",
-  SETUP_STALE_SI04: "Read the instruction file next to the files this change edits, and update it where it no longer matches.",
-  // H4 (prompt-injection scan): the hints of PI01 to PI05 and of the cut scan.
-  INJECTION_PI01: "Remove the invisible or bidirectional character, or write it as an escape (such as `\\u202E`) where the code needs it.",
-  INJECTION_PI02: "Remove the hidden text, or move what it says into visible text a reviewer can read.",
-  INJECTION_PI03: "Remove the phrase. If the file documents prompt injection on purpose, keep such samples in test files or under `fixtures/`.",
-  INJECTION_PI04: "Remove the blob from the instruction file; point to a reviewed file in the repository instead.",
-  INJECTION_PI05: "Remove the instruction file from the vendored directory, or keep vendored code out of the repository.",
-  INJECTION_TEXT_TRUNCATED: "Split the change into smaller pull requests, so every added line is scanned.",
-  // Flaky tests (A6): the JUnit paths and the test step are what to fix; test results never change the verdict.
-  JUNIT_NOT_FOUND: "Point `junit-paths` (or `--junit`) at the files the test step writes, run pharn-ci after the test step, and keep the test step from stopping the job first (`if: always()` on the pharn-ci step).",
-  JUNIT_INVALID: "Have the test runner write plain JUnit XML: one `testsuites` or `testsuite` root, no DOCTYPE, every element closed.",
-  JUNIT_TOO_LARGE: "Narrow `junit-paths` to the files of this job, or merge the reports; the results past the limits are not counted or uploaded.",
-  FLAKY_QUARANTINED_FAILURES: "Nothing to fix in the pull request; the org's quarantine list on pharn.dev says which tests are known to be flaky.",
-  // Dependency safety (A13): the dependency is what to fix, never the check.
-  DEPENDENCY_D01: "Check the package name against the registry: an agent may have invented it, and anyone can publish a package under an invented name. Use the real package, or remove the dependency.",
-  DEPENDENCY_D02: "Check who publishes the package and why it is new before you merge; prefer an established package. This is a warning only.",
-  DEPENDENCY_D03: "Check that this is the package you meant (a typo of a popular name is a common trap) and who publishes it. This is a warning only.",
-  DEPENDENCY_D04: "Run the package manager's install so the lockfile matches the manifest, and commit both; a lockfile that changes a hash for the same version needs an explanation.",
-  DEPENDENCY_D05: "Depend on a published registry version instead, or have a person review where the code comes from; a git, URL or local source is not covered by the registry's checks. For a registry your team runs (Artifactory, Nexus, a private PyPI index), name its host in the dependency-allowed-hosts input or the org policy's dependencies.allowed_hosts.",
-  DEPENDENCY_LOOKUP_UNAVAILABLE: "Re-run the job; the registry lookups fail open, so D01 to D03 were not checked for the packages counted.",
-  DEPENDENCY_CHECK_INCOMPLETE: "Keep manifests and lockfiles valid and under 32 MiB, and run on a checkout of the pull request head with fetch-depth: 0, so they can be compared.",
-  POLICY_KEYS_UNKNOWN: "Update the pharn-dev/pharn-ci pin in the workflow to a release that knows these keys; until then the rest of the org policy applies without them."
-};
-var BLOCK_ONLY_ACCEPT_CLAUSE = /* @__PURE__ */ new Set([
-  "TEST_INTEGRITY_TI06",
-  "TEST_INTEGRITY_TI12",
-  "TEST_INTEGRITY_TI17",
+function withAcceptClause(hint, label) {
+  return `${hint.slice(0, -1)}; a reviewer who is not the PR author can record that sign-off by applying the accept label ${labelSpan(label)}.`;
+}
+var LIFTABLE_CODES = /* @__PURE__ */ new Set([
   "TEST_INTEGRITY_INDEX_UNAVAILABLE",
   "TEST_INTEGRITY_TEXT_TRUNCATED"
 ]);
+var TI_CODE_PREFIX = "TEST_INTEGRITY_";
+function acceptOf(code2) {
+  if (LIFTABLE_CODES.has(code2)) return "block";
+  return code2.startsWith(TI_CODE_PREFIX) ? testIntegritySignal(code2.slice(TI_CODE_PREFIX.length))?.accept : void 0;
+}
 function hintFor(code2, label, blocks = false) {
-  if (!Object.hasOwn(MESSAGE_HINTS, code2)) return void 0;
-  const hint = MESSAGE_HINTS[code2];
-  if (typeof hint === "function") return hint(labelSpan(label));
-  if (!blocks || !BLOCK_ONLY_ACCEPT_CLAUSE.has(code2)) return hint;
-  return `${hint.slice(0, -1)}; a reviewer who is not the PR author can record that sign-off by applying the accept label ${labelSpan(label)}.`;
+  const hint = messageFix(code2)?.hint;
+  if (hint === void 0) return void 0;
+  const accept = acceptOf(code2);
+  return accept === "always" || accept === "block" && blocks ? withAcceptClause(hint, label) : hint;
 }
 function labelSpan(text) {
   const safe = replaceUnsafeChars(text, "\uFFFD");
@@ -45247,31 +45180,12 @@ function labelSpan(text) {
   const pad = /^[` ]|[` ]$/.test(safe) ? " " : "";
   return `${fence}${pad}${safe}${pad}${fence}`;
 }
-var SIGNAL_HINT_IDS = /* @__PURE__ */ new Set([
-  "TI01",
-  "TI02",
-  "TI03",
-  "TI04",
-  "TI05",
-  "TI06",
-  "TI07",
-  "TI08",
-  "TI09",
-  "TI10",
-  "TI11",
-  "TI12",
-  "TI13",
-  "TI14",
-  "TI15",
-  "TI16",
-  "TI17"
-]);
 var BINARY_HINT_SENTENCE = "Git shows this file as binary: if a `-diff` or `binary` attribute in `.gitattributes` matches it, remove that attribute; if none does, the file holds non-text content such as a NUL byte, so store it as UTF-8 text.";
-var BINARY_FINDING_IDS = /* @__PURE__ */ new Set(["TI01", "TI10", "TI11", "TI14"]);
 function signalHint(id, label, blocks, detail) {
-  if (!SIGNAL_HINT_IDS.has(id)) return void 0;
-  const hint = hintFor(`TEST_INTEGRITY_${id}`, label, blocks);
-  if (hint === void 0 || detail === void 0 || !BINARY_FINDING_IDS.has(id) || !isBinaryDetail(detail)) return hint;
+  const signal2 = testIntegritySignal(id);
+  if (signal2 === void 0) return void 0;
+  const hint = hintFor(`${TI_CODE_PREFIX}${id}`, label, blocks);
+  if (hint === void 0 || detail === void 0 || signal2.binary !== true || !isBinaryDetail(detail)) return hint;
   return `${hint} ${BINARY_HINT_SENTENCE}`;
 }
 var MAX_FINDINGS = 20;
@@ -45856,10 +45770,10 @@ function policyCell(report) {
 }
 function renderMessage(m, report) {
   const line = `- ${LEVEL_ICON[m.level]} \`${m.code}\` ${inlineText(m.text)}`;
-  const lifted = m.code === "TEST_INTEGRITY_INDEX_UNAVAILABLE" || m.code === "TEST_INTEGRITY_TEXT_TRUNCATED";
+  const lifted = LIFTABLE_CODES.has(m.code);
   const base = hintFor(m.code, acceptLabelOf(report), lifted ? isLiftableUnreadableError(m) : m.level === "error");
   const binary = base !== void 0 && report.testIntegrity.signals.some(
-    (s) => BINARY_FINDING_IDS.has(s.id) && `TEST_INTEGRITY_${s.id}` === m.code && isBinaryDetail(s.detail)
+    (s) => testIntegritySignal(s.id)?.binary === true && `${TI_CODE_PREFIX}${s.id}` === m.code && isBinaryDetail(s.detail)
   );
   const hint = binary ? `${base} ${BINARY_HINT_SENTENCE}` : base;
   return hint === void 0 ? line : `${line}

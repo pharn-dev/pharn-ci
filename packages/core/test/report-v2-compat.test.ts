@@ -2,17 +2,18 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { codeTable, messageCodes } from "./codeTable.js";
 import { validateReport } from "./schema.js";
 
 // Report v2 compatibility (CORE-132, AGENTS.md rule 2): within v2 nothing is removed, renamed or retyped.
 // 1. Every report committed under fixtures/ (report*.json) validates against the current schema/report.v2.json, so a
 //    removed or retyped property, or a narrowed enum, fails here.
 // 2. Every message code a release shipped, listed append-only in fixtures/release/codes.txt (docs/RELEASING.md), is
-//    still a MessageCode member in report.ts and still named by the schema's message-code description.
+//    still a MessageCode, still valid in a message the schema checks, and still has a row in the code table of
+//    docs/output.md that the schema's message-code description links to (CORE-140).
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
-const CODE = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
 
 describe("Report v2 compatibility", () => {
   it("every committed report fixture is a v2 report that validates against schema/report.v2.json", () => {
@@ -28,7 +29,7 @@ describe("Report v2 compatibility", () => {
     }
   });
 
-  it("every released message code is still a MessageCode in report.ts and named by the schema", () => {
+  it("every released message code is still a MessageCode, valid in a schema-checked message, and documented", () => {
     const released = read("fixtures/release/codes.txt")
       .split("\n")
       .map((line) => line.trim())
@@ -37,19 +38,26 @@ describe("Report v2 compatibility", () => {
     expect(new Set(released).size, "no code is listed twice").toBe(released.length);
     for (const code of released) expect(code, "a code word").toMatch(/^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$/);
 
-    const union = /export type MessageCode =([\s\S]*?);/.exec(read("packages/core/src/report.ts"))?.[1] ?? "";
-    const inCode = new Set([...union.matchAll(/"([A-Z0-9_]+)"/g)].map((m) => m[1]));
-    const schema = JSON.parse(read("schema/report.v2.json")) as {
-      $defs: { message: { properties: { code: { description: string } } } };
-    };
-    const inSchema = new Set(schema.$defs.message.properties.code.description.match(CODE));
+    // CORE-140: the MessageCode union is partly derived (the TEST_INTEGRITY_<id> codes come from the signal registry),
+    // so the codes are read from MESSAGE_FIXES, a Record over that union, not from the text of report.ts. The schema
+    // names no code since its code description became one sentence and a link (it has a pattern and no enum), so each
+    // code is checked in a message the schema validates and against the code table the schema links to.
+    const inCode = new Set(messageCodes());
+    const documented = codeTable();
     expect(
       released.filter((code) => !inCode.has(code)),
-      "released codes missing from MessageCode in report.ts",
+      "released codes missing from MessageCode",
     ).toEqual([]);
     expect(
-      released.filter((code) => !inSchema.has(code)),
-      "released codes missing from the schema",
+      released.filter((code) => !documented.has(code)),
+      "released codes missing from the code table",
     ).toEqual([]);
+    const report = JSON.parse(read("fixtures/golden/report.json")) as { messages: unknown[] };
+    for (const code of released) {
+      const withCode = { ...report, messages: [{ level: "info", code, text: "released code" }] };
+      expect(validateReport(withCode), `${code}: ${JSON.stringify(validateReport.errors)}`).toBe(true);
+    }
+    // Control: a code word the pattern refuses fails the same check.
+    expect(validateReport({ ...report, messages: [{ level: "info", code: "lower_case", text: "x" }] })).toBe(false);
   });
 });

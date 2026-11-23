@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fixture, foldCallout, foldCoverageBar, foldIntegrityColumn } from "./helpers.js";
+import { foldHintsToBase } from "./hints-at-base.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
 
@@ -146,8 +147,9 @@ describe("check(): some coverage paths are not tracked files", () => {
       // test-integrity-mode added the "🔍 Test integrity" section on purpose: its four lines are folded out too.
       // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out too.
       // The comment-coverage-bar change added the diff-coverage bar line on purpose: it is folded out too.
-      const markdown = foldCallout(
-        foldTestIntegrity(foldIntegrityColumn(foldCoverageBar(renderMarkdown(report)))),
+      // CORE-140 made each hint its code's fix.hint on purpose: the hint lines are folded back too.
+      const markdown = foldHintsToBase(
+        foldCallout(foldTestIntegrity(foldIntegrityColumn(foldCoverageBar(renderMarkdown(report))))),
       ).split("\n");
       const messageLines = markdown.filter((line) => line.includes(`\`${CODE}\``));
       expect(messageLines, `${dir} report.md lines naming the code`).toHaveLength(1);

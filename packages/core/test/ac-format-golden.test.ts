@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { fixture, foldCallout, foldCoverageBar, foldIntegrityColumn } from "./helpers.js";
+import { foldHintsToBase } from "./hints-at-base.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";
 
@@ -110,7 +111,10 @@ describe("golden reports and the coverage format", () => {
     // test-integrity-mode added the "🔍 Test integrity" section on purpose: its four lines are folded out too.
     // The comment-layout change added the summary table's Test integrity column on purpose: it is folded out too.
     // The comment-coverage-bar change added the diff-coverage bar line on purpose: it is folded out too.
-    const markdownLines = foldCallout(foldTestIntegrity(foldIntegrityColumn(foldCoverageBar(markdown)))).split("\n");
+    // CORE-140 made each hint its code's fix.hint on purpose: the hint lines are folded back too.
+    const markdownLines = foldHintsToBase(
+      foldCallout(foldTestIntegrity(foldIntegrityColumn(foldCoverageBar(markdown)))),
+    ).split("\n");
     expect(markdownLines.filter((line) => line.includes(`\`${partialCode}\``))).toHaveLength(1);
     const partialAt = markdownLines.findIndex((line) => line.includes(`\`${partialCode}\``));
     expect(markdownLines[partialAt + 1]).toMatch(/^ {2}- Hint: \S/);

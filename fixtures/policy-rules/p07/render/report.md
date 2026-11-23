@@ -22,20 +22,20 @@ No test-integrity findings (mode: warn).
 Org policy v3
 
 - ⚠️ **P07** — 1 agent instruction file was not compared (binary, too large, past the read caps or an unsafe path)
-  - Hint: Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.
+  - Hint: A maintainer should make the agent instruction files agree on one package manager and one test runner.
 - ⚠️ **P07** `AGENTS.md:3` — package manager: pnpm here, npm in CLAUDE.md:4
-  - Hint: Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.
+  - Hint: A maintainer should make the agent instruction files agree on one package manager and one test runner.
 - ⚠️ **P07** `CLAUDE.md:4` — package manager: npm here, pnpm in AGENTS.md:3
-  - Hint: Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.
+  - Hint: A maintainer should make the agent instruction files agree on one package manager and one test runner.
 - ⚠️ **P07** `packages/we'ird<!--\|x/AGENTS.md:2` — test runner: jest here, vitest in packages/web/AGENTS.md:2
-  - Hint: Make the instruction files in one directory name the same package manager and test runner, or move a file into the package it describes; an agent follows whichever file it reads first.
+  - Hint: A maintainer should make the agent instruction files agree on one package manager and one test runner.
 
 ### 💬 Messages (2)
 
 - ⚠️ `COVERAGE_FILE_MISSING` Coverage file not found: coverage/lcov.info
-  - Hint: Run the tests with coverage before pharn-ci, and check the path (`coverage.file`, `coverage-file` or `--coverage`).
+  - Hint: Check that the test step writes the coverage file where the check reads it.
 - ℹ️ `NO_AGENT_SETUP_FILES` No agent setup files (CLAUDE.md, AGENTS.md, .cursor/rules, ...) were found.
-  - Hint: Add an AGENTS.md or CLAUDE.md at the repository root that tells agents how to build and test.
+  - Hint: Check whether the repository should have an agent instruction file such as AGENTS.md.
 
 ### 🤖 Agent setup (no files)
 

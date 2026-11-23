@@ -147,6 +147,7 @@ describe("check(): COVERAGE_LINES_SKIPPED", () => {
     expectValidReport(report);
     const markdown = renderMarkdown(report);
     expect(markdown).toContain(CODE);
-    expect(markdown).toContain("Regenerate the coverage report");
+    // CORE-140: the hint is the code's fix.hint.
+    expect(markdown).toContain("  - Hint: Check that the coverage reporter finished writing the file.");
   });
 });

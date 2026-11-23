@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { withCore95Ti14Before } from "../../core/test/core95-ti14.js";
 import { foldCoverageBar, foldLogoPin } from "../../core/test/helpers.js";
+import { foldHintsToBase } from "../../core/test/hints-at-base.js";
 import { withoutFix, withoutFixJson } from "../../core/test/v090-codes.js";
 
 // check() and renderMarkdown() are loaded inside the test body: the AC tests are written before the accept label
@@ -167,11 +168,12 @@ const ADDED_AFTER_BASE: ReadonlySet<string> = new Set([
 ]);
 
 /** The TI01, TI04, TI11 and TI14 hints as renderMarkdown() gave them at the base commit a1089fd. */
+// CORE-140: each hint is its code's fix.hint now, on purpose; these four still name no accept label.
 const UNCHANGED_HINTS: Record<string, string> = {
-  TI01: "  - Hint: Restore the deleted tests, or say in the PR why they go so a reviewer can confirm it.",
-  TI04: "  - Hint: Remove the marker so the whole suite runs, or say in the PR why only the marked tests should run.",
-  TI11: "  - Hint: Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
-  TI14: "  - Hint: Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
+  TI01: "  - Hint: Restore the deleted test file, or move its tests to a test file that still runs them.",
+  TI04: "  - Hint: Remove the focused-run marker (.only, fit or fdescribe) so every test in the file runs again.",
+  TI11: "  - Hint: Revert the workflow change so CI runs the tests on pull requests as before.",
+  TI14: "  - Hint: Revert the change to the coverage settings of the pharn-ci config so the gate measures the same files as before.",
 };
 
 /** CORE-50: the detail of a deleted test file that git shows as binary, and the sentence its hint gains. */
@@ -256,9 +258,10 @@ describe("the accept label leaves the existing signals, hints, golden outputs an
       // added the diff-coverage bar line on purpose: it is folded out too.
       // fix-hints (H6): report.json now carries a `fix` on each message; it is taken out too, so its base bytes stay pinned.
       // CORE-124 pinned the logo line's raw URL to a commit SHA instead of `main` on purpose: it is folded back too.
+      // CORE-140 made each hint its code's fix.hint on purpose: the hint lines are folded back too.
       const asAtBase =
         name === "report.md"
-          ? foldIntegrityColumn(foldCoverageBar(foldLogoPin(bytes.toString("utf8"))))
+          ? foldHintsToBase(foldIntegrityColumn(foldCoverageBar(foldLogoPin(bytes.toString("utf8")))))
           : name === "report.json"
             ? withoutFixJson(bytes.toString("utf8"))
             : bytes;
