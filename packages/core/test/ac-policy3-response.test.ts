@@ -20,11 +20,10 @@ const SKIPPED_CASES: Record<string, string> = {
   "settings-extra-key": "settings.zzz-extra",
 };
 
-const SMALL_CASES = [
-  "missing-key",
-  "version-0",
-  "version-1.5",
-  "version-string",
+// CORE-123 (R5.6): `etag`, `updatedAt` and `settings.redactMessages` are not read by the Action, so they are optional
+// and not validated: these cases of invalid.json are accepted, with nothing named as unknown and the response holding
+// only the keys the Action reads. Every other case still fails as before.
+const UNREAD_CASES = [
   "etag-empty",
   "etag-201",
   "etag-e-acute",
@@ -33,14 +32,28 @@ const SMALL_CASES = [
   "updatedAt-no-z",
   "updatedAt-lower-t",
   "updatedAt-hour-24",
+  "settings-missing-redact",
+];
+
+const SMALL_CASES = [
+  "missing-key",
+  "version-0",
+  "version-1.5",
+  "version-string",
   "policy-threshold",
   "quarantine-empty-item",
   "quarantine-u0085",
-  "settings-missing-redact",
   "max-bytes-255",
   "max-bytes-65537",
   "max-bytes-300.5",
 ];
+
+/** The envelope as the Action reads it: no `etag`, `updatedAt` or `settings.redactMessages`. */
+function asRead(envelope: Record<string, unknown>): Record<string, unknown> {
+  const { etag: _etag, updatedAt: _updatedAt, settings, ...rest } = envelope;
+  const { redactMessages: _redact, ...used } = settings as Record<string, unknown>;
+  return { ...rest, settings: used };
+}
 
 /** The leaf values and keys of `invalid` that differ from `valid`, as strings of at least three characters. */
 function offendingValues(valid: unknown, invalid: unknown): string[] {
@@ -89,18 +102,28 @@ describe("the policy response envelope", () => {
     const accepted = validatePolicyResponse(valid);
     expect(accepted.ok).toBe(true);
     if (accepted.ok) {
-      expect(Object.keys(accepted.response).sort()).toEqual(Object.keys(valid).sort());
-      expect(accepted.response).toEqual(valid);
+      expect(Object.keys(accepted.response).sort()).toEqual(["policy", "quarantine", "settings", "version"]);
+      expect(accepted.response).toEqual(asRead(valid));
     }
 
     const invalid = JSON.parse(fixture("policy-response/invalid.json")) as Record<string, unknown>;
-    expect(Object.keys(invalid).sort()).toEqual([...SMALL_CASES, ...Object.keys(SKIPPED_CASES)].sort());
+    expect(Object.keys(invalid).sort()).toEqual(
+      [...SMALL_CASES, ...UNREAD_CASES, ...Object.keys(SKIPPED_CASES)].sort(),
+    );
     for (const [name, unknownName] of Object.entries(SKIPPED_CASES)) {
       const skipped = validatePolicyResponse(invalid[name]) as Validation & { unknown?: unknown };
       expect(skipped.ok, name).toBe(true);
       if (skipped.ok) {
-        expect(skipped.response, `${name}: the unknown key is left out`).toEqual(valid);
+        expect(skipped.response, `${name}: the unknown key is left out`).toEqual(asRead(valid));
         expect(skipped.unknown, name).toEqual({ names: [unknownName], total: 1 });
+      }
+    }
+    for (const name of UNREAD_CASES) {
+      const unread = validatePolicyResponse(invalid[name]) as Validation & { unknown?: unknown };
+      expect(unread.ok, name).toBe(true);
+      if (unread.ok) {
+        expect(unread.response, `${name}: only the keys the Action reads`).toEqual(asRead(valid));
+        expect(unread.unknown, name).toEqual({ names: [], total: 0 });
       }
     }
     for (const name of SMALL_CASES) {

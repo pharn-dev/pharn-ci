@@ -1849,7 +1849,7 @@ run. What it does not do:
   sent as they are. The cap is the smaller of 2048 bytes and the org's `settings.messageMaxBytes` from the same run's
   policy response, used only when that response was a `200` that validated whole (never under `policy: never` or a
   `file:` policy, never from a refused or missing response); the app can lower the cap, never raise it.
-- **`settings.redactMessages` is validated and not applied.** The Action never turns redaction off.
+- **`settings.redactMessages` is not read.** It is optional and skipped; the Action never turns redaction off.
   `settings.uploadJunit: false` keeps the JUnit results out of the upload; the response's `quarantine` list is applied
   to the JUnit results (see Flaky tests and JUnit results).
 - **The JUnit results are rebuilt, not sent.** With JUnit results, the archive also holds `junit/results.xml`, rebuilt

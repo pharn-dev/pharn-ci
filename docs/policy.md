@@ -52,8 +52,10 @@ paths and every other key it knows), and one `POLICY_KEYS_UNKNOWN` warning names
 paths such as `policy.test_integrity.signals.TI18` or `policy.setup.expect[new-tool]`, sorted, each cut to 64
 characters, and a count of the rest. A skipped key is not enforced until the pin is updated. A key it knows with a value
 it cannot use (a threshold that is a string, a mode it has no name for) still makes the response invalid: that is a
-`POLICY_UNAVAILABLE` warning, or an error under `policy: required`. `updatedAt` may carry `Z` or a numeric offset
-(`+00:00`). A `file:` policy is not lenient: an unknown key there fails the step, as before.
+`POLICY_UNAVAILABLE` warning, or an error under `policy: required`. The envelope's `version`, `policy`, `quarantine`,
+`settings.uploadJunit` and `settings.messageMaxBytes` are required; `etag`, `updatedAt` and `settings.redactMessages`
+are not read, so they are optional and whatever they hold is skipped (versions up to 0.11 still require them, so the
+app keeps sending them). A `file:` policy is not lenient: an unknown key there fails the step, as before.
 
 **`policy: file:<path>`.** A policy document read from the workspace (in the CLI, `--policy-file <path>`). The pull
 request carries the file, so it can only tighten: a higher threshold, `setup.require: true`, a stricter mode, more

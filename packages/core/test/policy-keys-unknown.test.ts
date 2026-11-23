@@ -64,7 +64,8 @@ describe("validatePolicyResponse skips what it does not know (CORE-118)", () => 
     // An unknown tool leaves the list, never the whole list; a required hook with an unknown key stays required.
     expect(document.setup).toEqual({ expect: ["codex"], required_hooks: [{ event: "PreToolUse", matcher: "Bash" }] });
     expect(Object.hasOwn(document, "future_block")).toBe(false);
-    expect(result.response.settings).toEqual({ uploadJunit: false, redactMessages: true, messageMaxBytes: 4096 });
+    // CORE-123: settings.redactMessages is not read, so it is not in the validated settings.
+    expect(result.response.settings).toEqual({ uploadJunit: false, messageMaxBytes: 4096 });
   });
 
   it("still voids the response for a known key with a bad value, unknown keys or not", () => {
@@ -96,13 +97,13 @@ describe("validatePolicyResponse skips what it does not know (CORE-118)", () => 
     }
   });
 
-  it("accepts updatedAt with Z or a numeric offset, and refuses an offset out of range", () => {
-    for (const time of ["2026-10-26T10:00:00Z", "2026-10-26T10:00:00+00:00", "2026-10-26T10:00:00.5-05:30"]) {
-      const envelope = baseline();
-      envelope.updatedAt = time;
-      expect(validatePolicyResponse(envelope).ok, time).toBe(true);
-    }
+  // CORE-123 (R5.6): updatedAt is not read, so it is no longer checked as an RFC 3339 time. Every value, an offset out of
+  // range included, is skipped unread and names nothing; the CORE-118 offset forms are still accepted.
+  it("accepts updatedAt with Z or a numeric offset, and skips any other value unread", () => {
     for (const time of [
+      "2026-10-26T10:00:00Z",
+      "2026-10-26T10:00:00+00:00",
+      "2026-10-26T10:00:00.5-05:30",
       "2026-10-26T10:00:00",
       "2026-10-26T10:00:00+24:00",
       "2026-10-26T10:00:00+05:60",
@@ -111,7 +112,12 @@ describe("validatePolicyResponse skips what it does not know (CORE-118)", () => 
     ]) {
       const envelope = baseline();
       envelope.updatedAt = time;
-      expect(validatePolicyResponse(envelope).ok, time).toBe(false);
+      const result = validatePolicyResponse(envelope);
+      expect(result.ok, time).toBe(true);
+      if (result.ok) {
+        expect(result.unknown, time).toEqual({ names: [], total: 0 });
+        expect(Object.hasOwn(result.response, "updatedAt"), time).toBe(false);
+      }
     }
   });
 
