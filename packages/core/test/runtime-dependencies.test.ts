@@ -22,11 +22,26 @@ const ALLOWED: Record<string, Record<string, string>> = {
   "packages/node-io/package.json": {},
 };
 
-/** Keys whose entries install with the package besides `dependencies`; each must be absent or empty. */
+/**
+ * Keys whose entries install with the package besides `dependencies`; each must be absent, `false` or empty
+ * (`bundleDependencies: true` bundles every dependency).
+ */
 const ALSO_INSTALLED = ["optionalDependencies", "peerDependencies", "bundleDependencies", "bundledDependencies"];
 
-/** A registry version range: digits, `x`/`*`, dots, comparators, `^`, `~`, hyphens, `||`, spaces and prerelease tags. */
-const RANGE = /^[\w.*^~<>=|\s+-]+$/;
+/** One semver comparator: an optional operator, a version of up to three parts (`x` and `*` allowed), tags. */
+const COMPARATOR =
+  /^(?:[<>]=?|=|\^|~>?)?v?(?:\d+|[xX*])(?:\.(?:\d+|[xX*])){0,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+/** A registry version range: comparators joined by spaces, ` - ` and `||`. Anything else (a path, `x.tgz`, a tag) is not. */
+function isRange(spec: string): boolean {
+  return spec.split("||").every((part) => {
+    const tokens = part
+      .trim()
+      .split(/\s+/)
+      .filter((token) => token !== "-");
+    return tokens.length > 0 && tokens.every((token) => COMPARATOR.test(token));
+  });
+}
 
 /** The registry package a spec installs, or undefined when it does not install one from the registry by version. */
 function registryPackage(name: string, spec: string): string | undefined {
@@ -34,9 +49,9 @@ function registryPackage(name: string, spec: string): string | undefined {
     const rest = spec.slice(4);
     const at = rest.lastIndexOf("@");
     if (at <= 0) return undefined;
-    return RANGE.test(rest.slice(at + 1)) ? rest.slice(0, at) : undefined;
+    return isRange(rest.slice(at + 1)) ? rest.slice(0, at) : undefined;
   }
-  return RANGE.test(spec) && !spec.includes(":") ? name : undefined;
+  return isRange(spec) ? name : undefined;
 }
 
 /** What is wrong with a manifest's runtime dependencies against its allow-list entry; empty when nothing is. */
@@ -52,8 +67,12 @@ function problems(manifest: Record<string, unknown>, allowed: Record<string, str
     if (!Object.hasOwn(dependencies, name)) found.push(`dependencies.${name} is on the allow-list but gone`);
   for (const key of ALSO_INSTALLED) {
     const value = manifest[key];
-    const count = Array.isArray(value) ? value.length : Object.keys((value ?? {}) as object).length;
-    if (count > 0) found.push(`${key} is not empty`);
+    const empty =
+      value === undefined ||
+      value === false ||
+      (Array.isArray(value) && value.length === 0) ||
+      (typeof value === "object" && value !== null && !Array.isArray(value) && Object.keys(value).length === 0);
+    if (!empty) found.push(`${key} is not empty`);
   }
   return found;
 }
@@ -91,8 +110,29 @@ describe("AGENTS.md rule 6: direct runtime dependencies", () => {
       "file:../ts",
       "https://example.com/ts.tgz",
       "workspace:*",
+      "ts.tgz",
+      "5.9.3.tgz",
+      "./vendor/ts",
+      "latest",
+      "npm:typescript@ts.tgz",
     ])
       expect(problems({ dependencies: { typescript5: spec } }, allowed), spec).toHaveLength(1);
+    for (const spec of ["5.9.3", "^5.9.3", "~5.9", ">=5.0.0 <6", "5.x", "*", "1.2.3 - 2.3.4", "^4 || ^5", "5.0.0-rc.1"])
+      expect(problems({ dependencies: { typescript5: `npm:typescript@${spec}` } }, allowed), spec).toEqual([]);
+    for (const [key, value] of [
+      ["bundleDependencies", true],
+      ["bundledDependencies", true],
+      ["bundledDependencies", ["typescript5"]],
+      ["peerDependencies", { typescript: "^5" }],
+    ] as const)
+      expect(
+        problems({ dependencies: { typescript5: "npm:typescript@5.9.3" }, [key]: value }, allowed),
+        `${key}: ${JSON.stringify(value)}`,
+      ).toEqual([`${key} is not empty`]);
+    for (const value of [false, [], {}])
+      expect(
+        problems({ dependencies: { typescript5: "npm:typescript@5.9.3" }, bundleDependencies: value }, allowed),
+      ).toEqual([]);
     expect(problems({}, allowed)).toEqual(["dependencies.typescript5 is on the allow-list but gone"]);
     expect(
       problems(
