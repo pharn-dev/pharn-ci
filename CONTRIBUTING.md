@@ -5,10 +5,12 @@ safely work in your repo.
 
 ## Project shape
 
-pharn-ci is a pnpm monorepo with three packages: `packages/core` (pure functions: parsers, diff
-coverage, the agent setup scan, the Report v1 builder and the markdown renderer),
-`packages/cli` (`pharn-ci check`) and `packages/action` (the GitHub Action). `schema/report.v1.json`
-is the source of truth for all output. [`AGENTS.md`](./AGENTS.md) describes the layout and holds the
+pharn-ci is a pnpm monorepo with four packages: `packages/core` (pure functions: parsers, diff
+coverage, the agent setup scan, test-integrity signals, org policy rules, the Report v2 builder and
+the markdown renderer), `packages/cli` (`pharn-ci check`), `packages/action` (the GitHub Action) and
+`packages/node-io` (private shared Node I/O for the CLI and the Action, bundled into their dists).
+`schema/report.v2.json` is the source of truth for all output (`schema/report.v1.json` is the
+earlier version). [`AGENTS.md`](./AGENTS.md) describes the layout and holds the
 hard rules every change follows; read it before your first PR.
 
 ## Getting set up
