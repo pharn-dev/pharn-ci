@@ -1368,7 +1368,9 @@ a text filter for content aimed at the next agent, not a judgement of what a tex
   the check for that reason; split the change. The rarer Markdown extensions (`.mdown`, `.mkd`) and plain text
   count against the budget for other files, so a cut there only warns. At most 20 findings per signal and file and 200 in
   all are listed; the messages count the rest.
-  At most 100 of an app policy's phrases are matched.
+  At most 100 of a policy's phrases are matched. For a `file:` policy united with the copy at the base commit, the base
+  copy's phrases are kept first and the pull request's own additions fill what is left, so a pull request cannot push
+  the base's phrases out by adding phrases that sort earlier; only a base copy with more than 100 phrases loses some.
 - **A pre-parsed diff must carry the text.** A program that calls `check()` with a diff it parsed itself gets no
   findings unless it parsed with `readDiffChunks` or the reader's `keepAddedText` option (and, for the separate
   budget of instruction and Markdown files, `priorityAddedText: injectionTextPriority`).
@@ -1599,13 +1601,15 @@ applied once per run. What it does not do:
   effective settings only when it is a tightening-only document and no lower layer holds a value above it that the
   app would have named: an app value above a lower layer's is recorded as `looser`, while the same file value above it
   is not, so the two reports then differ by one `POLICY_OVERRIDE_IGNORED` message.
-- **A `file:` policy is united with its merge-base copy only when that copy can be read.** The Action and the CLI read
-  the file at the merge base and apply each setting a file may carry as the stricter of that copy and the pull
-  request's (the per-key rules are in [Changing a `file:` policy](policy.md)). The copy is read only from a local diff:
-  in PR-number mode, with a compare-API diff, or when the file is new, unreadable or not a valid policy at the merge
-  base, every setting comes from the pull request's copy alone, and no message says the union did not happen; P09 still
-  reports the edit. A deleted base value equal to its default is not named (`agents.protected_paths_mode` is the one
-  exception), and a united list is not held to the 1000-entry input cap (at most twice that).
+- **A `file:` policy is united with its copy at the base commit only when that copy can be read.** The Action and the
+  CLI read the file at the base commit the local diff is taken against (the base branch's copy, not necessarily the
+  merge base) and apply each setting a file may carry as the stricter of that copy and the pull request's (the per-key
+  rules are in [Changing a `file:` policy](policy.md)). The copy is read only from a local diff: in PR-number mode,
+  with a compare-API diff, or when the file is new, unreadable or not a valid policy at the base commit, every setting
+  comes from the policy file in the checkout alone, and no message says the union did not happen; P09 still reports the
+  edit. A deleted base value equal to its default is not named (`agents.protected_paths_mode` is the one exception),
+  and a united list is not held to the 1000-entry input cap (at most twice that; the cap validates one document's
+  input and has no effect at run time).
 - **An older build skips what a newer policy adds.** A key, id or agent tool the app serves that this version does
   not know is left out, the rest of the policy applies, and `POLICY_KEYS_UNKNOWN` names it (up to 20 names). Until the
   Action pin is updated, a skipped signal, rule or tool is not checked, and a new key that would qualify a known setting
@@ -1693,10 +1697,11 @@ P08 matches the tracked paths of the repository against `setup.forbidden_files`.
   `POLICY_OVERRIDE_IGNORED` and not applied, because the pull request carries the file.
 - **The CLI has no pull request.** It gathers no agent PR facts, so P11 never fires there.
 - **At most 50 violations are listed.** The rest are counted in the `POLICY_P11` text, which names up to 20 paths.
-- **The merge-base read needs a local diff.** The `file:` policy is read at the merge base only for a diff from the
+- **The base-commit read needs a local diff.** The `file:` policy is read at the base commit only for a diff from the
   local checkout. PR-number mode and the compare API fail closed: an edited policy file then makes the pull request an
-  agent PR (`policy-lists-unreadable`). The protected paths and `protected_paths_mode` then come from the pull
-  request's copy alone (see [Org policy](#org-policy)).
+  agent PR (`policy-lists-unreadable`). The protected paths and `protected_paths_mode` then come from the policy file
+  in the checkout alone, which in PR-number mode is not the pull request's copy, and nothing is united with it (see
+  [Org policy](#org-policy)).
 - **Dependabot and Renovate count as agent PRs.** Protecting `package.json` or a lockfile blocks their updates: do not
   protect files those bots must update.
 - **Other `agents` keys are not applied.** `require_human_approval` (rule P12) is validated and carried, not applied by
@@ -1721,7 +1726,7 @@ What it misses:
   apply, and a repository whose config already excludes wide paths counts less.
 - **Only agent PRs that identify themselves.** As for P11 (§9): an agent that commits through a person's account with
   no trailer, label or known login is judged as a person's, and the CLI, which has no pull request, never runs P14.
-- **An unreadable merge base fails closed only while the file still sets a cap.** When the merge-base `file:` policy
+- **An unreadable base copy fails closed only while the file still sets a cap.** When the `file:` policy at the base commit
   cannot be read (PR-number mode, a compare-API diff), a pull request that edits the file and removes every cap is not
   checked, the same gap P11 has for removed protected paths; the pull request still counts as an agent PR.
 

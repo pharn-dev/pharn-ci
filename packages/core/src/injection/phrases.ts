@@ -163,13 +163,19 @@ export const BUILT_IN_MATCHERS: readonly PhraseMatcher[] = INJECTION_PHRASES.map
 
 /**
  * The org policy's extra phrases (`injection.phrases`) as matchers of scope `any`: each normalized, empty ones and
- * repeats dropped, sorted in code-unit order, the first `MAX_POLICY_PHRASES` kept and named `PX01`, `PX02`, ... in that
- * order, so the same list always gives the same ids. A finding names the id, never the phrase.
+ * repeats dropped, at most `MAX_POLICY_PHRASES` kept, then sorted in code-unit order and named `PX01`, `PX02`, ... in
+ * that order, so the same list always gives the same ids. A finding names the id, never the phrase.
+ *
+ * Which phrases are kept when there are more than the cap: the `preferred` ones first (a `file:` policy's phrases at the
+ * base commit, sorted in code-unit order), then the others (sorted), so a pull request that adds phrases to its copy of
+ * the policy file cannot push the base copy's phrases out of the scan. Only more than `MAX_POLICY_PHRASES` preferred
+ * phrases drop one of them. Without `preferred`, or at most the cap in all, every phrase is kept as before.
  */
-export function policyPhraseMatchers(phrases: readonly string[]): PhraseMatcher[] {
-  const texts = [...new Set(phrases.map(normalizeForPhrases).filter((text) => text !== ""))]
-    .sort(byCodeUnit)
-    .slice(0, MAX_POLICY_PHRASES);
+export function policyPhraseMatchers(phrases: readonly string[], preferred: readonly string[] = []): PhraseMatcher[] {
+  const all = [...new Set(phrases.map(normalizeForPhrases).filter((text) => text !== ""))].sort(byCodeUnit);
+  const first = new Set(preferred.map(normalizeForPhrases));
+  const ordered = [...all.filter((text) => first.has(text)), ...all.filter((text) => !first.has(text))];
+  const texts = ordered.slice(0, MAX_POLICY_PHRASES).sort(byCodeUnit);
   return texts.map((text, i) => phraseMatcher(`PX${String(i + 1).padStart(2, "0")}`, text, "any"));
 }
 

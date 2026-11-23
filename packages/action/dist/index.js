@@ -31316,111 +31316,6 @@ function isProsePath(path) {
   return extension === "" || PROSE_EXTENSIONS.has(extension) || isMarkdownPath(path);
 }
 
-// ../core/src/injection/policy.ts
-var INJECTION_SIGNAL_IDS = ["PI01", "PI02", "PI03", "PI04", "PI05"];
-var DEFAULT_INJECTION_SEVERITIES = {
-  PI01: "block",
-  PI02: "warn",
-  PI03: "warn",
-  PI04: "warn",
-  PI05: "warn"
-};
-var RANK = { off: 0, info: 1, warn: 2, block: 3 };
-function tidy(...lists) {
-  const out = /* @__PURE__ */ new Set();
-  for (const list of lists) {
-    if (!Array.isArray(list)) continue;
-    for (const value of list) if (typeof value === "string") out.add(value);
-  }
-  return [...out].sort(byCodeUnit);
-}
-function injectionSettingsOf(policy, base) {
-  const severities = { ...DEFAULT_INJECTION_SEVERITIES };
-  const settings2 = { exempt: [], phrases: [], severities, ignored: [] };
-  const document2 = policy?.document;
-  if (policy === void 0 || policy.source === "none" || document2 === null || document2 === void 0) return settings2;
-  const injection2 = document2.injection;
-  if (policy.source === "app") {
-    if (injection2 === void 0) return settings2;
-    const wanted2 = injection2.signals ?? {};
-    settings2.exempt = tidy(injection2.exempt);
-    settings2.phrases = tidy(injection2.phrases);
-    for (const id of INJECTION_SIGNAL_IDS) {
-      const value = Object.hasOwn(wanted2, id) ? wanted2[id] : void 0;
-      if (value !== void 0) severities[id] = value === "off" ? null : value;
-    }
-    return settings2;
-  }
-  const baseInjection = base?.kind === "document" ? base.document.injection : void 0;
-  settings2.phrases = tidy(injection2?.phrases, baseInjection?.phrases);
-  if (injection2?.exempt !== void 0 && injection2.exempt.length > 0) {
-    settings2.ignored.push({ setting: "injection.exempt", reason: "not-allowed" });
-  }
-  const wanted = injection2?.signals ?? {};
-  const baseWanted = baseInjection?.signals ?? {};
-  const headWanted = policy.copies === void 0 ? wanted : policy.copies.head.injection?.signals ?? {};
-  for (const id of INJECTION_SIGNAL_IDS) {
-    const fallback = DEFAULT_INJECTION_SEVERITIES[id];
-    const baseValue = Object.hasOwn(baseWanted, id) ? baseWanted[id] : void 0;
-    if (baseValue !== void 0 && RANK[baseValue] > RANK[fallback]) severities[id] = baseValue;
-    const value = Object.hasOwn(wanted, id) ? wanted[id] : void 0;
-    if (value === void 0) continue;
-    const current = severities[id];
-    if (RANK[value] > RANK[current]) severities[id] = value;
-    const headValue = Object.hasOwn(headWanted, id) ? headWanted[id] : void 0;
-    const below = policy.copies === void 0 ? value : headValue;
-    if (below !== void 0 && RANK[below] < RANK[policy.copies === void 0 ? current : fallback]) {
-      settings2.ignored.push({ setting: `injection.signals.${id}`, reason: "looser" });
-    }
-  }
-  return settings2;
-}
-
-// ../core/src/injection/messages.ts
-var MAX_LOCATIONS = 5;
-var MAX_CUT_FILES = 5;
-var CODES = {
-  PI01: "INJECTION_PI01",
-  PI02: "INJECTION_PI02",
-  PI03: "INJECTION_PI03",
-  PI04: "INJECTION_PI04",
-  PI05: "INJECTION_PI05"
-};
-var SENTENCES = {
-  PI01: "This change adds invisible or bidirectional Unicode characters, which can hide text from a reviewer or reorder what an agent reads (PI01)",
-  PI02: "This change adds hidden Markdown text (an HTML comment, a link title or a reference definition) that addresses an agent (PI02)",
-  PI03: "This change adds known prompt-injection phrases (PI03)",
-  PI04: "This change adds a long base64 or hex blob to an agent instruction file, which an agent may decode and follow (PI04)",
-  PI05: "This change adds agent instruction files inside a vendored directory, where an agent may read them as instructions (PI05)"
-};
-function locations2(signals) {
-  const named = signals.slice(0, MAX_LOCATIONS).map((signal2) => signal2.line === null ? codeSpan(signal2.path) : `${codeSpan(signal2.path)} line ${signal2.line}`).join(", ");
-  const more = signals.length - MAX_LOCATIONS;
-  return more > 0 ? `${named} and ${more} more` : named;
-}
-function injectionMessages(signals, omitted, cut) {
-  const messages = [];
-  for (const id of INJECTION_SIGNAL_IDS) {
-    const own = signals.filter((signal2) => signal2.id === id);
-    if (own.length === 0) continue;
-    const level = own.some((s) => s.severity === "block") ? "error" : own.some((s) => s.severity === "warn") ? "warn" : "info";
-    const left = omitted.filter((entry) => entry.id === id).reduce((sum, entry) => sum + entry.count, 0);
-    const notListed = left > 0 ? ` ${left} more ${left === 1 ? "finding is" : "findings are"} not listed.` : "";
-    messages.push({ level, code: CODES[id], text: `${SENTENCES[id]}: ${locations2(own)}.${notListed}` });
-  }
-  if (cut.length > 0) {
-    const named = cut.slice(0, MAX_CUT_FILES).map(codeSpan).join(", ");
-    const more = cut.length - MAX_CUT_FILES;
-    const p = cut.some(isPriorityInjectionPath);
-    messages.push({
-      level: p ? "error" : "warn",
-      code: "INJECTION_TEXT_TRUNCATED",
-      text: `This change is too large to scan in full for hidden instructions: the content scan reads the first ${MAX_ADDED_TEXT_LINES} added lines of a file and ${MAX_ADDED_TEXT_CHARS} characters of added text per budget, so a finding past them is not seen in ${named}${more > 0 ? ` and ${more} more` : ""}. The cut files count against ${p && !cut.every(isPriorityInjectionPath) ? "both budgets" : `the budget for ${p ? "instruction and Markdown" : "other"} files`}.`
-    });
-  }
-  return messages;
-}
-
 // ../core/src/injection/phrases.ts
 var w = (...words) => words.join(" ");
 var INJECTION_PHRASES = [
@@ -31509,8 +31404,11 @@ function phraseMatcher(id, text, scope) {
 var BUILT_IN_MATCHERS = INJECTION_PHRASES.map(
   (phrase) => phraseMatcher(phrase.id, phrase.text, phrase.scope)
 );
-function policyPhraseMatchers(phrases) {
-  const texts = [...new Set(phrases.map(normalizeForPhrases).filter((text) => text !== ""))].sort(byCodeUnit).slice(0, MAX_POLICY_PHRASES);
+function policyPhraseMatchers(phrases, preferred = []) {
+  const all = [...new Set(phrases.map(normalizeForPhrases).filter((text) => text !== ""))].sort(byCodeUnit);
+  const first = new Set(preferred.map(normalizeForPhrases));
+  const ordered = [...all.filter((text) => first.has(text)), ...all.filter((text) => !first.has(text))];
+  const texts = ordered.slice(0, MAX_POLICY_PHRASES).sort(byCodeUnit);
   return texts.map((text, i) => phraseMatcher(`PX${String(i + 1).padStart(2, "0")}`, text, "any"));
 }
 function phraseOccurs(text, matcher) {
@@ -31535,6 +31433,115 @@ function firstPhrase(text, matchers, options) {
     if (phraseOccurs(text, matcher)) return matcher;
   }
   return null;
+}
+
+// ../core/src/injection/policy.ts
+var INJECTION_SIGNAL_IDS = ["PI01", "PI02", "PI03", "PI04", "PI05"];
+var DEFAULT_INJECTION_SEVERITIES = {
+  PI01: "block",
+  PI02: "warn",
+  PI03: "warn",
+  PI04: "warn",
+  PI05: "warn"
+};
+var RANK = { off: 0, info: 1, warn: 2, block: 3 };
+function tidy(...lists) {
+  const out = /* @__PURE__ */ new Set();
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    for (const value of list) if (typeof value === "string") out.add(value);
+  }
+  return [...out].sort(byCodeUnit);
+}
+function injectionSettingsOf(policy, base) {
+  const severities = { ...DEFAULT_INJECTION_SEVERITIES };
+  const settings2 = { exempt: [], phrases: [], severities, ignored: [] };
+  const document2 = policy?.document;
+  if (policy === void 0 || policy.source === "none" || document2 === null || document2 === void 0) return settings2;
+  const injection2 = document2.injection;
+  if (policy.source === "app") {
+    if (injection2 === void 0) return settings2;
+    const wanted2 = injection2.signals ?? {};
+    settings2.exempt = tidy(injection2.exempt);
+    settings2.phrases = tidy(injection2.phrases);
+    for (const id of INJECTION_SIGNAL_IDS) {
+      const value = Object.hasOwn(wanted2, id) ? wanted2[id] : void 0;
+      if (value !== void 0) severities[id] = value === "off" ? null : value;
+    }
+    return settings2;
+  }
+  const baseInjection = base?.kind === "document" ? base.document.injection : void 0;
+  settings2.phrases = tidy(injection2?.phrases, baseInjection?.phrases);
+  if (settings2.phrases.length > MAX_POLICY_PHRASES) {
+    const basePhrases = tidy(baseInjection?.phrases, policy.copies?.base.injection?.phrases);
+    if (basePhrases.length > 0) settings2.basePhrases = basePhrases;
+  }
+  if (injection2?.exempt !== void 0 && injection2.exempt.length > 0) {
+    settings2.ignored.push({ setting: "injection.exempt", reason: "not-allowed" });
+  }
+  const wanted = injection2?.signals ?? {};
+  const baseWanted = baseInjection?.signals ?? {};
+  const headWanted = policy.copies === void 0 ? wanted : policy.copies.head.injection?.signals ?? {};
+  for (const id of INJECTION_SIGNAL_IDS) {
+    const fallback = DEFAULT_INJECTION_SEVERITIES[id];
+    const baseValue = Object.hasOwn(baseWanted, id) ? baseWanted[id] : void 0;
+    if (baseValue !== void 0 && RANK[baseValue] > RANK[fallback]) severities[id] = baseValue;
+    const value = Object.hasOwn(wanted, id) ? wanted[id] : void 0;
+    if (value === void 0) continue;
+    const current = severities[id];
+    if (RANK[value] > RANK[current]) severities[id] = value;
+    const headValue = Object.hasOwn(headWanted, id) ? headWanted[id] : void 0;
+    const below = policy.copies === void 0 ? value : headValue;
+    if (below !== void 0 && RANK[below] < RANK[policy.copies === void 0 ? current : fallback]) {
+      settings2.ignored.push({ setting: `injection.signals.${id}`, reason: "looser" });
+    }
+  }
+  return settings2;
+}
+
+// ../core/src/injection/messages.ts
+var MAX_LOCATIONS = 5;
+var MAX_CUT_FILES = 5;
+var CODES = {
+  PI01: "INJECTION_PI01",
+  PI02: "INJECTION_PI02",
+  PI03: "INJECTION_PI03",
+  PI04: "INJECTION_PI04",
+  PI05: "INJECTION_PI05"
+};
+var SENTENCES = {
+  PI01: "This change adds invisible or bidirectional Unicode characters, which can hide text from a reviewer or reorder what an agent reads (PI01)",
+  PI02: "This change adds hidden Markdown text (an HTML comment, a link title or a reference definition) that addresses an agent (PI02)",
+  PI03: "This change adds known prompt-injection phrases (PI03)",
+  PI04: "This change adds a long base64 or hex blob to an agent instruction file, which an agent may decode and follow (PI04)",
+  PI05: "This change adds agent instruction files inside a vendored directory, where an agent may read them as instructions (PI05)"
+};
+function locations2(signals) {
+  const named = signals.slice(0, MAX_LOCATIONS).map((signal2) => signal2.line === null ? codeSpan(signal2.path) : `${codeSpan(signal2.path)} line ${signal2.line}`).join(", ");
+  const more = signals.length - MAX_LOCATIONS;
+  return more > 0 ? `${named} and ${more} more` : named;
+}
+function injectionMessages(signals, omitted, cut) {
+  const messages = [];
+  for (const id of INJECTION_SIGNAL_IDS) {
+    const own = signals.filter((signal2) => signal2.id === id);
+    if (own.length === 0) continue;
+    const level = own.some((s) => s.severity === "block") ? "error" : own.some((s) => s.severity === "warn") ? "warn" : "info";
+    const left = omitted.filter((entry) => entry.id === id).reduce((sum, entry) => sum + entry.count, 0);
+    const notListed = left > 0 ? ` ${left} more ${left === 1 ? "finding is" : "findings are"} not listed.` : "";
+    messages.push({ level, code: CODES[id], text: `${SENTENCES[id]}: ${locations2(own)}.${notListed}` });
+  }
+  if (cut.length > 0) {
+    const named = cut.slice(0, MAX_CUT_FILES).map(codeSpan).join(", ");
+    const more = cut.length - MAX_CUT_FILES;
+    const p = cut.some(isPriorityInjectionPath);
+    messages.push({
+      level: p ? "error" : "warn",
+      code: "INJECTION_TEXT_TRUNCATED",
+      text: `This change is too large to scan in full for hidden instructions: the content scan reads the first ${MAX_ADDED_TEXT_LINES} added lines of a file and ${MAX_ADDED_TEXT_CHARS} characters of added text per budget, so a finding past them is not seen in ${named}${more > 0 ? ` and ${more} more` : ""}. The cut files count against ${p && !cut.every(isPriorityInjectionPath) ? "both budgets" : `the budget for ${p ? "instruction and Markdown" : "other"} files`}.`
+    });
+  }
+  return messages;
 }
 
 // ../core/src/injection/unicode.ts
@@ -31769,7 +31776,10 @@ function pathRules(extraExempt) {
 var ALL_SCOPES = ["any", "line-start", "hidden"];
 function scanInjection(diff, options = {}) {
   const rules = pathRules(options.exempt ?? []);
-  const matchers = [...BUILT_IN_MATCHERS, ...policyPhraseMatchers(options.phrases ?? [])];
+  const matchers = [
+    ...BUILT_IN_MATCHERS,
+    ...policyPhraseMatchers(options.phrases ?? [], options.preferredPhrases ?? [])
+  ];
   const findings = [];
   const cut = /* @__PURE__ */ new Set();
   for (const file of diff) {
@@ -31842,7 +31852,11 @@ function sortFindings(findings) {
   return findings.sort((a, b) => byCodeUnit(a.id, b.id) || byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 function detectInjection(diff, settings2) {
-  const scan = scanInjection(diff, { exempt: settings2.exempt, phrases: settings2.phrases });
+  const scan = scanInjection(diff, {
+    exempt: settings2.exempt,
+    phrases: settings2.phrases,
+    ...settings2.basePhrases === void 0 ? {} : { preferredPhrases: settings2.basePhrases }
+  });
   const kept = [];
   const omitted = /* @__PURE__ */ new Map();
   const perFile = /* @__PURE__ */ new Map();
@@ -45152,7 +45166,8 @@ function uniteDocuments(head, base, ignored) {
     const b = base.test_integrity;
     const out = {};
     put(out, "mode", strictest(MODE_RANK, h?.mode, b?.mode));
-    if (belowBase(MODE_RANK, "warn", h?.mode, b?.mode)) looser("test_integrity.mode");
+    const modeDropped = h?.mode !== void 0 ? b?.mode !== void 0 && MODE_RANK[h.mode] < MODE_RANK[b.mode] : belowBase(MODE_RANK, "warn", void 0, b?.mode);
+    if (modeDropped) looser("test_integrity.mode");
     put(out, "signals", strictestRecord(SEVERITY_RANK2, h?.signals, b?.signals));
     put(out, "accept_label", h?.accept_label);
     if (h !== void 0 || Object.keys(out).length > 0) united.test_integrity = out;
@@ -45304,22 +45319,25 @@ function applyCoverage(layers, document2, headDocument, app, inputs, ignored) {
   if (coverage2.threshold !== void 0) {
     const theirs = coverage2.threshold;
     const inForce = resolved.threshold;
-    const headValue = app ? theirs : headDocument.coverage?.threshold;
-    if (inForce === null) {
-      inputs.threshold = theirs;
-    } else {
-      if (app ? inForce < theirs : headValue !== void 0 && headValue < inForce) {
+    const applied = inForce === null ? theirs : Math.max(theirs, inForce);
+    if (app) {
+      if (inForce !== null && inForce < theirs) {
         const inputInForce = raw.threshold !== void 0 && !(Number(raw.threshold.trim()) < inForce);
         ignored.push({
           setting: "coverage.threshold",
           reason: "looser",
-          ...app ? { layer: inputInForce ? "input" : "config" } : {},
-          given: Math.min(headValue ?? theirs, inForce),
-          applied: Math.max(theirs, inForce)
+          layer: inputInForce ? "input" : "config",
+          given: inForce,
+          applied
         });
       }
-      inputs.threshold = Math.max(theirs, inForce);
+    } else {
+      const headValue = headDocument.coverage?.threshold;
+      if (headValue !== void 0 && headValue < applied) {
+        ignored.push({ setting: "coverage.threshold", reason: "looser", given: headValue, applied });
+      }
     }
+    inputs.threshold = applied;
   }
   if (coverage2.exclude !== void 0) {
     if (app) {

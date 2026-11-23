@@ -72,14 +72,15 @@ check. Change the policy in a pull request of its own, have it reviewed, and hav
 check as your branch protection allows. The pull requests after it are checked against the merged file. A policy
 served by the app is changed in the app, where no pull request can edit it.
 
-The Action and the CLI also read the file as the merge base has it, and unite that copy with the pull request's, key by
-key, before anything is applied, so a pull request that edits the file cannot loosen any setting the file may carry. The
+The Action and the CLI also read the file at the base commit the diff is taken against (the base branch's copy), and
+unite that copy with the pull request's, key by key, before anything is applied, so a pull request that edits the file cannot loosen any setting the file may carry. The
 stricter of the two copies applies:
 
 - Lists are unions (the pull request's entries, then the base's the pull request lacks): `setup.expect`,
   `setup.forbidden_permissions`, `setup.required_permissions_deny`, `setup.forbidden_mcp_servers`,
   `setup.required_hooks` (an entry is its event and matcher), `setup.forbidden_files`, `agents.labels`,
-  `agents.extra_logins`, `agents.protected_paths` and `injection.phrases`.
+  `agents.extra_logins`, `agents.protected_paths` and `injection.phrases`. At most 100 policy phrases are scanned; the
+  base copy's are kept first, so phrases the pull request adds cannot push them out.
 - `setup.allowed_mcp_servers` is the servers both copies name; when they share none it is the base's list, and when
   only one copy sets it, that copy's.
 - Numbers: `coverage.threshold`, `dependencies.min_age_days` and `dependencies.min_weekly_downloads` take the higher
@@ -92,11 +93,12 @@ stricter of the two copies applies:
   `policy.required`, `dependencies.registries`, `dependencies.allowed_hosts` and `injection.exempt`. The base's value
   of these is neither applied nor named.
 
-A setting the pull request's copy has looser than the merge base's (a lower value, a deleted key or object, a list that
-lost an entry, a wider allowlist) is named in `POLICY_OVERRIDE_IGNORED` and not applied. Looser is judged on what
-applies, the default included: a base value equal to the setting's default that the pull request deletes is not named.
-`agents.protected_paths_mode` is the one exception: a base `block` the pull request deletes or lowers is named, though
-`block` is the default. Where the merge-base copy is `absent` (a pull request that adds the file), cannot be read, or
+A setting the pull request's copy has looser than the base copy's (a lower value, a deleted key or object, a list that
+lost an entry, a wider allowlist) is named in `POLICY_OVERRIDE_IGNORED` and not applied; a lower threshold is named
+with both numbers. Looser is judged on what applies, the default included: a base value equal to the setting's default
+that the pull request deletes is not named. Two exceptions: a base `agents.protected_paths_mode: block` the pull
+request deletes or lowers is named, though `block` is the default; and a `test_integrity.mode` the pull request sets
+below the base's mode is named, even when the inputs give `off`. Where the base copy is `absent` (a pull request that adds the file), cannot be read, or
 there is no local diff to name the base (the Action in PR-number mode, a compare-API diff), only the pull request's copy
 applies, as before.
 
@@ -142,7 +144,7 @@ Every path of the diff that matches a glob is one violation (a rename counts by 
 never a glob, label or login. A person's pull request is never subject to P11. A missing diff fails closed: an agent
 pull request whose diff is unavailable gets one violation that says so. A `file:` policy always blocks: a lower
 `protected_paths_mode` or `policy.rules.P11` is named in `POLICY_OVERRIDE_IGNORED` and does not apply, and the policy
-file is also read at the merge base so that editing it removes nothing. Dependabot and Renovate count as agent PRs, so
+file is also read at the base commit so that editing it removes nothing. Dependabot and Renovate count as agent PRs, so
 protecting `package.json` or a lockfile blocks them: do not protect files those bots must update. At most 50 violations
 are listed (the rest are counted in the message). The accept label never touches P11.
 
@@ -204,8 +206,8 @@ evidence that made the pull request an agent PR, as fixed words. A person's pull
 missing diff fails closed with one violation that says so. The severity is `block`; an app policy may set
 `policy.rules.P14` to `warn`, `info` or `off`, and a `file:` policy can only raise it (a lower value is named in
 `POLICY_OVERRIDE_IGNORED`). A `file:` policy can lower a cap but never raise or remove one: when the pull request edits
-the file, each cap is the smaller of its value at the merge base and at head (a cap set on one side only applies), and
-an edited file that cannot be read at the merge base fails closed. What P14 misses is in
+the file, each cap is the smaller of its value at the base commit and at head (a cap set on one side only applies), and
+an edited file that cannot be read at the base commit fails closed. What P14 misses is in
 [`docs/LIMITS.md`](LIMITS.md).
 
 ## Policy mode

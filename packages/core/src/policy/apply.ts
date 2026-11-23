@@ -136,29 +136,32 @@ function applyCoverage(
   const coverage = document.coverage;
   if (coverage === undefined) return;
 
-  // Threshold: the largest of the policy's and the value in force (the larger of the input and the config). The
-  // smaller of the two is recorded when it is the one the policy beat (app) or the one the file carried (file: the head
-  // copy's value, which the merge-base copy's may have raised in `theirs`).
+  // Threshold: the largest of the policy's and the value in force (the larger of the input and the config). An app
+  // policy records the layer value it beat. A file records the head copy's value whenever it is below the threshold
+  // that applies, whether the layers or the copy at the base commit (united into `theirs`) raised it, with both numbers.
   if (coverage.threshold !== undefined) {
     const theirs = coverage.threshold;
     const inForce = resolved.threshold;
-    const headValue = app ? theirs : headDocument.coverage?.threshold;
-    if (inForce === null) {
-      inputs.threshold = theirs;
-    } else {
-      if (app ? inForce < theirs : headValue !== undefined && headValue < inForce) {
+    const applied = inForce === null ? theirs : Math.max(theirs, inForce);
+    if (app) {
+      if (inForce !== null && inForce < theirs) {
         // The layer an app policy beat: the input's, unless the config's was larger (a tie names the input).
         const inputInForce = raw.threshold !== undefined && !(Number(raw.threshold.trim()) < inForce);
         ignored.push({
           setting: "coverage.threshold",
           reason: "looser",
-          ...(app ? { layer: inputInForce ? "input" : "config" } : {}),
-          given: Math.min(headValue ?? theirs, inForce),
-          applied: Math.max(theirs, inForce),
+          layer: inputInForce ? "input" : "config",
+          given: inForce,
+          applied,
         });
       }
-      inputs.threshold = Math.max(theirs, inForce);
+    } else {
+      const headValue = headDocument.coverage?.threshold;
+      if (headValue !== undefined && headValue < applied) {
+        ignored.push({ setting: "coverage.threshold", reason: "looser", given: headValue, applied });
+      }
     }
+    inputs.threshold = applied;
   }
 
   // Exclusions: the app's list replaces every lower layer's; a file can add none.

@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "coverage": { "threshold": 50 },
+  "test_integrity": { "mode": "off" }
+}

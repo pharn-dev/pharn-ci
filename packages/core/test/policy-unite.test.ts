@@ -226,12 +226,13 @@ describe("uniteFilePolicy, the single rules", () => {
     const result = unite({ version: 1 }, base);
     expect(result.ignored).toEqual([]);
     // A head below the default is named against the layers and the default elsewhere; against a base at the default
-    // its effective value is equal, so uniteFilePolicy records nothing.
+    // its effective value is equal, so uniteFilePolicy records nothing for it. The mode is the exception: a mode the
+    // head sets is compared with the base's mode itself, because the inputs can give `off`, below the default.
     const lowered = unite(
       { version: 1, test_integrity: { mode: "off" }, injection: { signals: { PI02: "off" } } },
       base,
     );
-    expect(lowered.ignored).toEqual([]);
+    expect(lowered.ignored).toEqual(["test_integrity.mode"]);
   });
 
   it("records a raised PI severity the head deletes or lowers, and a dependencies floor it lowers", () => {

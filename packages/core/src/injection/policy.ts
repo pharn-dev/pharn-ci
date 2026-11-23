@@ -2,6 +2,7 @@ import type { PolicyFileBase } from "../policy/agents.js";
 import type { IgnoredSetting, ResolvedPolicy } from "../policy/resolved.js";
 import type { InjectionSignalId, PolicySeverity } from "../policy/types.js";
 import { byCodeUnit } from "../text.js";
+import { MAX_POLICY_PHRASES } from "./phrases.js";
 
 /** The prompt-injection signal ids, in order. */
 export const INJECTION_SIGNAL_IDS: readonly InjectionSignalId[] = ["PI01", "PI02", "PI03", "PI04", "PI05"];
@@ -24,8 +25,14 @@ const RANK: Readonly<Record<PolicySeverity, number>> = { off: 0, info: 1, warn: 
 export interface InjectionSettings {
   /** Extra exempt globs: an app policy's `injection.exempt`. Never from a policy file. */
   exempt: string[];
-  /** Extra phrases: the policy's `injection.phrases` (a policy file's united with its merge-base list). */
+  /** Extra phrases: the policy's `injection.phrases` (a policy file's united with its list at the base commit). */
   phrases: string[];
+  /**
+   * A `file:` policy's phrases at the base commit, which the scan keeps first when `phrases` holds more than the scanner's
+   * cap (`MAX_POLICY_PHRASES`), so the head copy cannot push them out. Set only then: with at most the cap every phrase
+   * is scanned and the order does not matter.
+   */
+  basePhrases?: string[];
   /** The severity of each signal, or null when an app policy switched it off. */
   severities: Record<InjectionSignalId, InjectionSeverity | null>;
   /** The policy-file settings that were not applied: its exemptions (`not-allowed`) and lowered severities (`looser`). */
@@ -72,6 +79,10 @@ export function injectionSettingsOf(policy: ResolvedPolicy | undefined, base?: P
   // A `file:` policy: the head copy's `injection` key may be missing, while the merge base's still applies.
   const baseInjection = base?.kind === "document" ? base.document.injection : undefined;
   settings.phrases = tidy(injection?.phrases, baseInjection?.phrases);
+  if (settings.phrases.length > MAX_POLICY_PHRASES) {
+    const basePhrases = tidy(baseInjection?.phrases, policy.copies?.base.injection?.phrases);
+    if (basePhrases.length > 0) settings.basePhrases = basePhrases;
+  }
   if (injection?.exempt !== undefined && injection.exempt.length > 0) {
     settings.ignored.push({ setting: "injection.exempt", reason: "not-allowed" });
   }

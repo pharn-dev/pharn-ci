@@ -199,7 +199,13 @@ function uniteDocuments(head: PolicyDocument, base: PolicyDocument, ignored: Ign
     const b = base.test_integrity;
     const out: PolicyTestIntegrity = {};
     put(out, "mode", strictest(MODE_RANK, h?.mode, b?.mode));
-    if (belowBase(MODE_RANK, "warn", h?.mode, b?.mode)) looser("test_integrity.mode");
+    // A mode the head sets is compared with the base's mode itself (a head `off` under a base `warn` is named even when
+    // the inputs give `off`); a deleted one by effective value, so a dropped base `warn`, the default, is not named.
+    const modeDropped =
+      h?.mode !== undefined
+        ? b?.mode !== undefined && MODE_RANK[h.mode] < MODE_RANK[b.mode]
+        : belowBase(MODE_RANK, "warn", undefined, b?.mode);
+    if (modeDropped) looser("test_integrity.mode");
     put(out, "signals", strictestRecord(SEVERITY_RANK, h?.signals, b?.signals));
     put(out, "accept_label", h?.accept_label);
     if (h !== undefined || Object.keys(out).length > 0) united.test_integrity = out;
@@ -308,7 +314,8 @@ function uniteDocuments(head: PolicyDocument, base: PolicyDocument, ignored: Ign
  * `ignored` names, as `looser`, each setting whose head value is looser than the base's, effective meaning
  * `max(default, value)` on the setting's own order; a head that deletes a base value equal to the default is not looser.
  * The one named exception is `agents.protected_paths_mode`: a base `block` the head deletes is recorded although `block`
- * is the default. `test_integrity.signals.*` and `policy.rules.*` have no static default (the finding's severity is
+ * is the default. A `test_integrity.mode` the head sets is compared with the base's mode itself, not the default (the
+ * inputs can give `off`, below it). `test_integrity.signals.*` and `policy.rules.*` have no static default (the finding's severity is
  * the default), so they are compared where the finding is resolved, from `copies`.
  *
  * An app policy, a policy of source none, and a `file:` policy whose base is `absent`, `unreadable` or not read are

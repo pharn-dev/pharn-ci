@@ -243,10 +243,13 @@ const ALL_SCOPES = ["any", "line-start", "hidden"] as const;
  */
 export function scanInjection(
   diff: readonly DiffFile[],
-  options: { exempt?: readonly string[]; phrases?: readonly string[] } = {},
+  options: { exempt?: readonly string[]; phrases?: readonly string[]; preferredPhrases?: readonly string[] } = {},
 ): { findings: InjectionFinding[]; cut: string[] } {
   const rules = pathRules(options.exempt ?? []);
-  const matchers: PhraseMatcher[] = [...BUILT_IN_MATCHERS, ...policyPhraseMatchers(options.phrases ?? [])];
+  const matchers: PhraseMatcher[] = [
+    ...BUILT_IN_MATCHERS,
+    ...policyPhraseMatchers(options.phrases ?? [], options.preferredPhrases ?? []),
+  ];
   const findings: InjectionFinding[] = [];
   const cut = new Set<string>();
   for (const file of diff) {
@@ -337,7 +340,11 @@ export function detectInjection(
   diff: readonly DiffFile[],
   settings: InjectionSettings,
 ): { signals: InjectionSignal[]; omitted: OmittedInjection[]; cut: string[] } {
-  const scan = scanInjection(diff, { exempt: settings.exempt, phrases: settings.phrases });
+  const scan = scanInjection(diff, {
+    exempt: settings.exempt,
+    phrases: settings.phrases,
+    ...(settings.basePhrases === undefined ? {} : { preferredPhrases: settings.basePhrases }),
+  });
   const kept: InjectionSignal[] = [];
   const omitted = new Map<string, OmittedInjection>();
   const perFile = new Map<string, number>();
