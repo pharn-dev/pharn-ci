@@ -188,7 +188,7 @@
               "$ref": "#/$defs/severity"
             },
             "TI15": {
-              "description": "Severity of signal TI15. Tighten: block > warn > info > off.",
+              "description": "Severity of signal TI15. Validated and not applied: this release emits no TI15, so the value changes nothing. Tighten: block > warn > info > off.",
               "$ref": "#/$defs/severity"
             },
             "TI16": {

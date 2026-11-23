@@ -120,6 +120,7 @@ export const MESSAGE_HINTS: Readonly<Record<MessageCode, Hint>> = {
     "Restore the test step or trigger, or say in the PR why CI stops running these tests so a reviewer can confirm it.",
   TEST_INTEGRITY_TI14:
     "Restore the threshold or the exclusions, or say in the PR why they change so a reviewer can confirm it.",
+  // TI15 and SI04 are not emitted since CORE-144; their hints stay because every message code has one.
   TEST_INTEGRITY_TI15:
     "Check that the code handles the general case and not only the test's value, and add a test with another input.",
   TEST_INTEGRITY_TI16: "Fix the lint or type error the comment hides, or say in the PR why the test needs it.",
@@ -608,7 +609,8 @@ function policyLines(report: Report, maxRows: number): string[] {
   return lines;
 }
 
-const STALE_IDS: readonly string[] = ["SI01", "SI02", "SI03", "SI04"];
+/** The stale-instruction ids core emits; SI04 is not emitted since CORE-144, so a hand-built SI04 entry is not rendered. */
+const STALE_IDS: readonly string[] = ["SI01", "SI02", "SI03"];
 /** Fixed words per kind; the token, when the report carries one, is a code span. */
 const STALE_WORDS: Readonly<Record<string, (token: string) => string>> = {
   command: (token) => `command${token} is not defined in the root package.json or Makefile`,
@@ -633,7 +635,7 @@ function staleFindingsOf(report: Report): ReportStaleInstruction[] {
 }
 
 /**
- * The Instructions section: each stale-instruction finding (warnings first) as the id, `path:line` and fixed words with
+ * The Instructions section: each stale-instruction finding (all warnings) as the id, `path:line` and fixed words with
  * the token as a code span, then one hint per id found. Nothing but the report's paths, numbers and tokens.
  */
 function staleLines(report: Report, maxRows: number): string[] {
@@ -641,16 +643,11 @@ function staleLines(report: Report, maxRows: number): string[] {
   if (findings.length === 0) return [];
   const label = acceptLabelOf(report);
   const lines: string[] = ["### 📄 Instructions", ""];
-  const ordered = [...findings.filter((f) => f.id !== "SI04"), ...findings.filter((f) => f.id === "SI04")];
-  const listed = ordered.slice(0, Math.min(MAX_FINDINGS, maxRows));
+  const listed = findings.slice(0, Math.min(MAX_FINDINGS, maxRows));
   const findingLine = (finding: ReportStaleInstruction): string => {
     const token = typeof finding.token === "string" ? ` ${code(finding.token)}` : "";
-    const words =
-      finding.id === "SI04"
-        ? `last changed more than 90 days ago, and names${token === "" ? " a file" : token}, which this change edits`
-        : (STALE_WORDS[finding.kind] as (token: string) => string)(token);
-    const icon = finding.id === "SI04" ? LEVEL_ICON.info : LEVEL_ICON.warn;
-    return `- ${icon} **${finding.id}** ${code(`${finding.path}:${finding.line}`)} — ${words}`;
+    const words = (STALE_WORDS[finding.kind] as (token: string) => string)(token);
+    return `- ${LEVEL_ICON.warn} **${finding.id}** ${code(`${finding.path}:${finding.line}`)} — ${words}`;
   };
   for (const finding of listed.slice(0, OPEN_FINDINGS)) lines.push(findingLine(finding));
   const folded = listed.slice(OPEN_FINDINGS);

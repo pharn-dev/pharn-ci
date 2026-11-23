@@ -15,8 +15,10 @@ instruction kinds: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursor/rules`, `.cla
   matches `packages/core/src/check.ts`).
 - **SI03** (`warn`): a file the instructions tell the agent to read that is not tracked: a relative Markdown link
   `[text](path)` and a Claude-style `@path` import.
-- **SI04** (`info`): an instruction file whose last commit is more than 90 days older than HEAD's commit, while the
-  change edits a file it names. It needs the history (`fetch-depth: 0`); on a shallow checkout every file looks new.
+- **SI04**: not emitted since the release after v0.11.0. It reported an instruction file whose last commit was more
+  than 90 days older than HEAD's commit while the change edited a file it named; it needed the history, so on the
+  default shallow checkout it was silent, and it cost a `git log` call per file. The `SETUP_STALE_SI04` code stays in
+  the schema, so an older report that holds it still validates.
 
 **Diff-aware.** A finding is reported only when the change touches the instruction file itself, or deletes or renames
 the path or file an instruction names, or removes the `package.json` script or `Makefile` target it names. Otherwise
@@ -27,8 +29,7 @@ up to 5 locations, and the comment lists them under **📄 Instructions**. A `wa
 
 **What is read.** This is a read of the Markdown instruction files: their committed text at `HEAD` (`git cat-file`,
 never the working tree, never a file a symlink points to; 50 files, 256 KiB each), the root `package.json` and
-`Makefile` at `HEAD` (and at the merge base when the change edits them), and, for SI04, `git log -1 --format=%ct` of
-at most 20 instruction files. Only inline code spans, shell-fenced blocks, link targets and `@` imports are read;
+`Makefile` at `HEAD` (and at the merge base when the change edits them). No commit time is read. Only inline code spans, shell-fenced blocks, link targets and `@` imports are read;
 prose, other fenced blocks (examples), indented code, HTML comments, frontmatter and lines or sections with words
 such as `not`, `never`, `deprecated`, `removed` or `example` are not. URLs, globs, `<placeholders>`, `$VARS`, `~/`
 and absolute paths, `node_modules` and build output, flags, versions, scoped package names and `.env` or `.local`

@@ -52,10 +52,9 @@ The branch must be up to date with `main` before it can merge.
 - Golden files (`fixtures/golden/*`) change only when the output intentionally changes. Regenerate
   them with `pnpm test -u` and review the diff.
 - Test-integrity fixtures under `fixtures/test-integrity/<id>/` are named for the result they pin, with a
-  `block-`, `warn-`, `info-` or `pass-` prefix. Two keep historical names, and their tests say so:
-  `TI15/warn-*.diff` give `info` since TI15 became an info signal (0.3.0), and
+  `block-`, `warn-`, `info-` or `pass-` prefix. One keeps a historical name, and its tests say so:
   `TI02/pass-moved-to-other-file` gives one TI02 block since a cross-file move needs body evidence.
-  Renaming them would re-pin the fixture digests of several base-pinned tests.
+  Renaming it would re-pin the fixture digests of several base-pinned tests.
 - Secret-pattern tests (S01–S11) build their tokens at test time, inline or from `fixtures/secrets/`, and never
   commit a whole token, so gitleaks and GitHub push protection never see one. That is why they are not fixture files
   like the test-integrity cases.

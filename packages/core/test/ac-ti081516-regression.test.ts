@@ -30,12 +30,15 @@ const none = (report: Report, label: string) => {
 
 describe("TI08, TI15 and TI16 leave the earlier outputs alone", () => {
   it("AC-15: the golden report is unchanged, the Epic 1 fixtures gain none of the three, and the Skylos nine (hard-coded-answer included) give no TI15", async () => {
-    // Control: a change the three detectors read gives a TI15 signal, so the "none" below is a decision, not a gap.
+    // Control: a change the three detectors read gave a TI15 signal, so the "none" below was a decision, not a gap.
+    // CORE-144 (decision Q6): TI15 is no longer emitted, so the control now gives none, and the TI08 control is kept.
     const control = await runDiff(
       add("src/discount.test.ts", [`  expect(price("${SUMMER}")).toBe(0);`]) +
         add("src/discount.ts", [`  if (code === "${SUMMER}") return 0;`]),
     );
-    expect(signalsOf(control, TI15).map((s) => `${s.path}:${s.line}`)).toEqual(["src/discount.ts:12"]);
+    expect(signalsOf(control, TI15)).toEqual([]);
+    const ti08Control = await runDiff(fixture("test-integrity/TI08/warn-script-update-flag.diff"));
+    expect(signalsOf(ti08Control, NEW_IDS[0] as string).length).toBeGreaterThan(0);
 
     // The golden report, byte for byte as fixtures/golden/report.json holds it.
     const { check } = await import("../src/check.js");

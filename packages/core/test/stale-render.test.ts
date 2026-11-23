@@ -8,8 +8,8 @@ const STALE: ReportStaleInstruction[] = [
   { id: "SI01", path: "CLAUDE.md", line: 4, kind: "command", token: "pnpm run format" },
   { id: "SI02", path: "CLAUDE.md", line: 11, kind: "path", token: "scripts/changelog.sh" },
   { id: "SI03", path: "CLAUDE.md", line: 15, kind: "file" },
-  { id: "SI04", path: "AGENTS.md", line: 1, kind: "path", token: "src/index.ts" },
 ];
+// CORE-144: the SI04 entry (and its line and hint below) left with SI04, which is no longer emitted.
 
 function reportWith(stale: ReportStaleInstruction[]): Report {
   return buildReport({
@@ -24,7 +24,7 @@ function reportWith(stale: ReportStaleInstruction[]): Report {
 }
 
 describe("the Instructions section", () => {
-  it("lists each finding with its id, location and fixed words, warnings first, then one hint per id; the messages section leaves the stale messages out", () => {
+  it("lists each finding with its id, location and fixed words, then one hint per id; the messages section leaves the stale messages out", () => {
     const markdown = renderMarkdown(reportWith(STALE));
     const section = markdown.slice(markdown.indexOf("### 📄 Instructions"), markdown.indexOf("### 💬 Messages"));
     expect(section.split("\n")).toEqual([
@@ -33,11 +33,9 @@ describe("the Instructions section", () => {
       "- ⚠️ **SI01** `CLAUDE.md:4` — command `pnpm run format` is not defined in the root package.json or Makefile",
       "- ⚠️ **SI02** `CLAUDE.md:11` — path `scripts/changelog.sh` is not in the repository",
       "- ⚠️ **SI03** `CLAUDE.md:15` — file to read is not in the repository",
-      "- ℹ️ **SI04** `AGENTS.md:1` — last changed more than 90 days ago, and names `src/index.ts`, which this change edits",
       "- SI01 hint: Make the command match a script in the root package.json or a target in the root Makefile, or remove it from the instruction file.",
       "- SI02 hint: Point the instruction at the path where the file now lives, or remove the line.",
       "- SI03 hint: Point the link or `@` import at a file that exists, or remove it.",
-      "- SI04 hint: Read the instruction file next to the files this change edits, and update it where it no longer matches.",
       "",
       "",
     ]);

@@ -9,7 +9,7 @@ tests weaker? The `test-integrity` input takes `block`, `warn` or `off`, and the
 
 `test_integrity.mode` in `.pharn/ci.yml` can only make the mode stricter, never looser, so a pull request cannot loosen
 its own gate by editing the config. The signals so far are TI01, TI02, TI03, TI04, TI05, TI06, TI07, TI08, TI09, TI10,
-TI11, TI12, TI13, TI14, TI15, TI16 and TI17:
+TI11, TI12, TI13, TI14, TI16 and TI17; TI15 is not emitted since the release after v0.11.0:
 
 | Signal | What it reports | Severity in mode `block` | JS/TS | Python |
 | --- | --- | --- | --- | --- |
@@ -27,12 +27,12 @@ TI11, TI12, TI13, TI14, TI15, TI16 and TI17:
 | TI12 | a module under test mocked: a new `vi.mock`, `jest.mock` or Python `patch` of a source file the change also edits | `warn` | yes | yes |
 | TI13 | a coverage-ignore comment added to source | block; `warn` for a hint that marks one line or branch (`# pragma: no cover`, or an Istanbul, V8 or C8 `ignore next`, `ignore if` or `ignore else`) in a file the change adds. A whole-file or range hint (`ignore file`, `ignore start`, `ignore next` with a count) in a new file, and any hint added to an existing file, is a block | yes | yes |
 | TI14 | a lower coverage threshold or a wider exclusion in the pharn-ci config | block | yes | not applicable |
-| TI15 | a source condition that compares with a value the tests add | `info` | yes | yes |
+| TI15 | not emitted since the release after v0.11.0 (it reported a source condition that compares with a value the tests add; 0 of 30 sampled findings were right) | none | no | no |
 | TI16 | a lint or type suppression comment added to a test file | `info` | yes | yes |
 | TI17 | an assertion that always passes: a custom matcher whose pass is always true, a Python helper that always returns True, or a wildcard in place of an expected value | `warn` | yes | yes |
 
-In mode `warn` every `block` above is a `warn`. TI06, TI07, TI08, TI12 and TI17 warn and TI15 and TI16 give an `info`
-finding in both `block` and `warn`, so those seven never fail the check. Each reads the diff, and TI02, TI05, TI06, TI07 and TI12
+In mode `warn` every `block` above is a `warn`. TI06, TI07, TI08, TI12 and TI17 warn and TI16 gives an `info`
+finding in both `block` and `warn`, so those six never fail the check. Each reads the diff, and TI02, TI05, TI06, TI07 and TI12
 also read the text of the JS/TS and Python test files the change modifies at the merge base and at HEAD, parsed without
 running them: a test counts as removed only when no test of the same name or a similar body is left in the touched test
 files (a test of the same name in another touched file counts only when it holds the removed test's body), and
@@ -96,7 +96,7 @@ The benchmark for this is Skylos's list of nine ways to hide a failing test. The
 under `fixtures/skylos-nine/` and pinned by tests: the signals of v0.11.0 catch **8 of 9** (`deleted-test` by TI01,
 `added-skip` by TI03, `emptied-assertion` by TI05, `deselect-setting` by TI09, `replaced-test` by TI02,
 `loosened-assertion` by TI06, `edited-expected-value` by TI07 and `always-true-matcher` by TI17). The other one is
-missed: TI15 exists and misses `hard-coded-answer`. What each signal misses is in [docs/LIMITS.md](../LIMITS.md#what-test-integrity-does-not-catch).
+missed: `hard-coded-answer`, which TI15 also missed before it stopped being emitted. What each signal misses is in [docs/LIMITS.md](../LIMITS.md#what-test-integrity-does-not-catch).
 
 The same nine are reproduced for pytest under `fixtures/skylos-nine-pytest/`, where the signals catch **8 of 9**; the
 case-by-case table is in [docs/PRECISION.md](../PRECISION.md#3-skylos-nine-what-pharn-ci-catches).

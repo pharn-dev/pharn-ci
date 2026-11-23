@@ -11,9 +11,8 @@ const j = (...parts: string[]) => parts.join("");
 /** Each id's directory and the file-name prefix and severity of its must-trigger diffs. */
 const DIRS: Array<[id: string, prefix: string, severity: string]> = [
   [j("TI", "08"), "warn-", "warn"],
-  // precision-v030: TI15 became an info signal (0 of 30 sampled findings were right); its must-trigger diffs keep the
-  // `warn-` file names and now expect severity info.
-  [j("TI", "15"), "warn-", "info"],
+  // CORE-144 (decision Q6): TI15 is no longer emitted, so its fixture directory was deleted with it (core144-not-emitted
+  // asserts the shapes it caught give nothing).
   [j("TI", "16"), "info-", "info"],
 ];
 

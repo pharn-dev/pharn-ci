@@ -78,7 +78,6 @@ import { detectTI11 } from "./signals/ti11.js";
 import { detectTI12 } from "./signals/ti12.js";
 import { detectTI13 } from "./signals/ti13.js";
 import { detectTI14 } from "./signals/ti14.js";
-import { detectTI15 } from "./signals/ti15.js";
 import { detectTI16 } from "./signals/ti16.js";
 import { detectTI17 } from "./signals/ti17.js";
 import { deletedTestFiles } from "./testFiles.js";
@@ -255,8 +254,8 @@ export interface CheckInput {
    */
   selfModificationSources?: TestSources;
   /**
-   * What the stale-instruction signals (SI01 to SI04) read, gathered by the CLI and the Action when the diff is
-   * available: the instruction files at HEAD, the root package.json and Makefile, and SI04's commit times (see
+   * What the stale-instruction signals (SI01 to SI03; SI04 is not emitted) read, gathered by the CLI and the Action
+   * when the diff is available: the instruction files at HEAD and the root package.json and Makefile (see
    * `StaleInstructionSources`). Only a diff starts them, and a finding is kept only when the change touches the
    * instruction file or removes what it names. Absent means the signals add nothing and the report is the one it was.
    */
@@ -337,11 +336,7 @@ export function check(input: CheckInput): Report {
     touched === null || parsedDiff === null || input.testSources === undefined
       ? undefined
       : movedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex, touched);
-  // Mode off computes nothing; the signals carry their effective severity for the mode.
-  const sourceMatches =
-    parsedDiff === null || testIntegrity.mode === "off"
-      ? { signals: [], omitted: [] }
-      : detectTI15(parsedDiff, { repoFiles: input.repoFiles });
+  // Mode off computes nothing; the signals carry their effective severity for the mode. TI15 is not emitted (CORE-144).
   const testIntegritySignals =
     parsedDiff === null || testIntegrity.mode === "off"
       ? []
@@ -369,7 +364,6 @@ export function check(input: CheckInput): Report {
             exclude: [...(input.exclude ?? []), ...(input.headConfigExclude ?? [])],
             mode: testIntegrity.mode,
           }),
-          ...sourceMatches.signals,
           ...detectTI16(parsedDiff),
           ...detectTI17(parsedDiff),
         ]);
@@ -520,7 +514,7 @@ export function check(input: CheckInput): Report {
   const bytes = input.repoFileBytes;
   const emptyAgentSetupFiles =
     bytes === undefined ? [] : agentSetup.files.filter((file) => bytes.get(file.path) === 0).map((file) => file.path);
-  const omittedBeforePolicy: OmittedSignals[] = [...(comparison?.omitted ?? []), ...sourceMatches.omitted];
+  const omittedBeforePolicy: OmittedSignals[] = [...(comparison?.omitted ?? [])];
   // Per-signal severities from the org policy, applied to what the detectors computed (mode off computed nothing).
   const overridden =
     input.signalOverrides === undefined || testIntegrity.mode === "off"
@@ -645,7 +639,7 @@ export function check(input: CheckInput): Report {
     input.agentConfigSources === undefined
       ? []
       : agentConfigSecretMessages(input.agentConfigSources, agentConfigSecretPaths(agentSetup));
-  // Stale instructions (SI01 to SI04) need the diff: without one nothing runs, so there is no finding and no message.
+  // Stale instructions (SI01 to SI03) need the diff: without one nothing runs, so there is no finding and no message.
   const stale =
     parsedDiff === null || input.staleInstructionSources === undefined
       ? null

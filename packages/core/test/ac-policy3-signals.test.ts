@@ -5,7 +5,7 @@ import { expectValidReport } from "./schema.js";
 // applyPolicy(), check(), acceptTestIntegrity() and the fixtures under fixtures/policy-precedence/signals/ are loaded
 // inside the test body: the AC test is written before per-signal policy overrides exist, so nothing the build adds
 // may run while the file loads. The fixture is written by the build, so the test first checks that, in mode block and
-// with no policy, it gives TI01 at block, TI06 at warn and TI15 at info.
+// with no policy, it gives TI01 at block and TI06 at warn (and, since CORE-144, no TI15: it is no longer emitted).
 
 type Signal = { id: string; severity: string; path: string; line: number | null; detail: string };
 type Message = { level: string; code: string; text: string };
@@ -86,8 +86,9 @@ describe("per-signal severities from a policy", () => {
     expect(severities(base, "TI01").length).toBeGreaterThan(0);
     expect(new Set(severities(base, "TI01"))).toEqual(new Set(["block"]));
     expect(new Set(severities(base, "TI06"))).toEqual(new Set(["warn"]));
-    expect(new Set(severities(base, "TI15"))).toEqual(new Set(["info"]));
-    expect(withCode(base, "TEST_INTEGRITY_TI15").length).toBeGreaterThan(0);
+    // CORE-144 (decision Q6): TI15 is no longer emitted, so the fixture's TI15 case gives no finding and no message.
+    expect(severities(base, "TI15")).toEqual([]);
+    expect(withCode(base, "TEST_INTEGRITY_TI15")).toEqual([]);
     const ti06Count = severities(base, "TI06").length;
 
     // App TI06: block replaces warn and fails.
@@ -98,7 +99,8 @@ describe("per-signal severities from a policy", () => {
     expect(raised.testIntegrity.verdict).toBe("fail");
     expect(raised.verdict).toBe("fail");
 
-    // App TI15: off drops the finding, its message and its omitted-count entry.
+    // App TI15: off is still a valid setting; with TI15 no longer emitted (CORE-144) there is nothing to drop, and the
+    // other signals are as without it.
     const dropped = await signalsRun(app({ signals: { TI15: "off" } }), "block");
     expect(severities(dropped, "TI15")).toEqual([]);
     expect(withCode(dropped, "TEST_INTEGRITY_TI15")).toEqual([]);

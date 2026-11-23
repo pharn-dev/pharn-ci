@@ -20,6 +20,13 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   missing Python interpreter (or another unavailable Python test index) on stderr, as the Action logs it; it was
   silent. Under `--policy-file` the CLI also reads the files rule P13 compares, which it does not run without a pull
   request, and `--dependencies lookup` always says on stderr that the CLI makes no registry lookups.
+- TI15 and SI04 are no longer emitted (CORE-144, decision Q6). TI15 (a source condition that compares with a value
+  the tests add) was `info`, 0 of 30 sampled findings were right (`docs/PRECISION.md`), and it missed its own Skylos
+  case; SI04 (an old instruction file that names a file the change edits) was `info` and silent on the default
+  shallow checkout, and it cost a `git log` call per instruction file, which is gone: the stale-instruction reader no
+  longer runs `git log`. `TEST_INTEGRITY_TI15` and `SETUP_STALE_SI04` stay in `schema/report.v2.json`, so an older
+  report that holds them still validates, and a policy's `test_integrity.signals.TI15` still validates and changes
+  nothing. The Skylos nine stay at 8 of 9.
 - Policy findings and messages are simpler (CORE-123). P09 no longer reports an edited agent settings or MCP file that
   complies (`info`) or that supplies a required deny rule or hook (`warn`); its block and warn entries for a file that
   fails P02 to P06 or could not be checked are unchanged. `POLICY_OVERRIDE_IGNORED` names each setting and no longer

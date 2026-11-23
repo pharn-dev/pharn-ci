@@ -138,8 +138,8 @@ never the value. [Secrets in agent configs](docs/checks/secrets.md).
 ### Stale agent instructions
 
 An instruction file that names a script, path or file the repository no longer has produces a confidently wrong agent
-PR. When a change touches an instruction file, or removes what one names, SI01 to SI04 report the stale command, path
-or link. [Stale agent instructions](docs/checks/stale-instructions.md).
+PR. When a change touches an instruction file, or removes what one names, SI01 to SI03 report the stale command, path
+or link (SI04 is not emitted since the release after v0.11.0). [Stale agent instructions](docs/checks/stale-instructions.md).
 
 ### Prompt-injection scan
 

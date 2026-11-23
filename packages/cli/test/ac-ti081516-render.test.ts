@@ -102,14 +102,15 @@ describe("TI08, TI15 and TI16 in the PR comment and the CLI", () => {
       testIntegrityMode: { input: "block" as const },
     };
 
-    // The report from check() carries one signal of each of the three ids.
+    // The report from check() carries one signal of TI08 and of TI16, and (CORE-144, decision Q6) none of TI15, which
+    // is no longer emitted.
     const whole = check({ ...base, diff: { text: DIFF } } as Parameters<typeof check>[0]);
     expectValidReport(whole);
     for (const id of IDS) {
       expect(
         whole.testIntegrity.signals.filter((s) => String(s.id) === id),
         id,
-      ).toHaveLength(1);
+      ).toHaveLength(id === TI15 ? 0 : 1);
     }
     const ti08 = whole.testIntegrity.signals.find((s) => String(s.id) === TI08);
     expect(ti08?.line).toBeNull();
@@ -187,5 +188,18 @@ describe("TI08, TI15 and TI16 in the PR comment and the CLI", () => {
     expect(signals.filter((s) => s.id === TI16)).toEqual([
       expect.objectContaining({ id: TI16, path: "src/a.test.ts", severity: "info", line: 12 }),
     ]);
+
+    // CORE-144: the CLI JSON on the diff with the matching test and source literal holds no TI15 signal or message.
+    const all15 = fakeRepo(DIFF);
+    expect(
+      await main(
+        ["check", "--coverage", "coverage/lcov.info", "--format", "json", "--test-integrity", "block"],
+        all15.deps as never,
+      ),
+    ).not.toBe(2);
+    const full = JSON.parse(all15.stdout());
+    expectValidReport(full);
+    expect((full.testIntegrity.signals as Array<{ id: string }>).filter((s) => s.id === TI15)).toEqual([]);
+    expect((full.messages as Array<{ code: string }>).map((m) => m.code)).not.toContain(code(TI15));
   });
 });

@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 2,
+  "tool": {
+    "name": "pharn-ci",
+    "version": "0.11.0"
+  },
+  "verdict": "pass",
+  "diffCoverage": {
+    "format": "lcov",
+    "percent": 100,
+    "threshold": 80,
+    "coveredLines": 1,
+    "coverableLines": 1,
+    "files": [
+      {
+        "path": "src/discount.ts",
+        "percent": 100,
+        "coveredLines": 1,
+        "coverableLines": 1,
+        "uncoveredLines": []
+      }
+    ]
+  },
+  "agentSetup": {
+    "files": [
+      {
+        "path": "AGENTS.md",
+        "kind": "agents-md"
+      }
+    ],
+    "summary": {
+      "byKind": {
+        "agents-md": 1
+      },
+      "tools": ["amp", "codex", "jules", "opencode", "zed"]
+    }
+  },
+  "messages": [
+    {
+      "level": "info",
+      "code": "TEST_INTEGRITY_TI15",
+      "text": "This change adds conditions in source that compare against values its tests add, so the code may special-case the tests: `src/discount.ts`. Check that each is real logic.",
+      "fix": {
+        "kind": "request-review",
+        "hint": "Ask a reviewer to confirm the code does not special-case the value the test checks."
+      }
+    },
+    {
+      "level": "info",
+      "code": "SETUP_STALE_SI04",
+      "text": "Agent instruction files last changed more than 90 days before this commit name files this change edits: `AGENTS.md:1`. Check that the instructions still describe the code.",
+      "fix": {
+        "kind": "none",
+        "hint": "Check that this old agent instruction file still describes the file this change edits."
+      }
+    }
+  ],
+  "testIntegrity": {
+    "mode": "warn",
+    "source": "default",
+    "verdict": "pass",
+    "signals": [
+      {
+        "id": "TI15",
+        "severity": "info",
+        "path": "src/discount.ts",
+        "line": 12,
+        "detail": "src/discount.ts:12 compares with a 10-character string literal that src/discount.test.ts also adds.",
+        "fix": {
+          "kind": "request-review",
+          "target": "src/discount.ts:12",
+          "hint": "Ask a reviewer to confirm the code does not special-case the value the test checks."
+        }
+      }
+    ],
+    "languages": []
+  },
+  "setupHealth": {
+    "stale": [
+      {
+        "id": "SI04",
+        "path": "AGENTS.md",
+        "line": 1,
+        "kind": "path",
+        "token": "src/discount.ts",
+        "fix": {
+          "kind": "none",
+          "target": "AGENTS.md:1",
+          "hint": "Check that this old agent instruction file still describes the file this change edits."
+        }
+      }
+    ]
+  }
+}

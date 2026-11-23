@@ -17,12 +17,13 @@ import {
  * Stale instructions (Horizon 2 item H3): agent instruction files that name a command, a path or a file the repository
  * does not have. SI01 a package-manager script or make target that does not exist, SI02 a path in an inline code span
  * that is not tracked, SI03 a file the instructions tell the agent to read (a Markdown link or an `@path` import) that
- * is not tracked, SI04 (info) an instruction file last changed more than 90 days before HEAD's commit while the change
- * edits a file it names. Diff-aware: a finding is kept only when the change touches the instruction file itself, or
- * removes the path, file, script or target the instruction names; without a diff nothing runs. Pure; never throws.
+ * is not tracked. SI04 (an old instruction file that names a file the change edits) is not emitted since CORE-144
+ * (decision Q6): it needed git history, so it was silent on a shallow checkout. Diff-aware: a finding is kept only when
+ * the change touches the instruction file itself, or removes the path, file, script or target the instruction names;
+ * without a diff nothing runs. Pure; never throws.
  */
 
-export type StaleId = "SI01" | "SI02" | "SI03" | "SI04";
+export type StaleId = "SI01" | "SI02" | "SI03";
 export type StaleKind = "command" | "path" | "file";
 
 /** One stale-instruction finding as the report carries it. `token` is present only when it passes the allow-list. */
@@ -38,14 +39,12 @@ export interface StaleFinding {
  * What the CLI and the Action gather for the stale-instruction signals. `instructions` is the text of the instruction
  * files at HEAD (`readAgentConfigSources`). `packageJson` and `makefile` hold the root file's text at HEAD (null when it
  * is not tracked) and, when the change touches it, at the merge base (null when it did not exist there); absent means
- * not read, so no command is checked. `commitTimes` (SI04) holds HEAD's commit time and the last commit time of the
- * instruction files that `staleTimestampPaths` named, in seconds; absent means SI04 does not run.
+ * not read, so no command is checked.
  */
 export interface StaleInstructionSources {
   instructions: AgentConfigSources;
   packageJson?: { head: string | null; base?: string | null };
   makefile?: { head: string | null; base?: string | null };
-  commitTimes?: { head: number; files: readonly { path: string; time: number }[] };
 }
 
 /** The most instruction files read, in code-unit order of path. */
@@ -54,10 +53,6 @@ export const MAX_INSTRUCTION_FILES = 50;
 export const MAX_STALE_PER_FILE = 20;
 /** The most findings the report carries. */
 export const MAX_STALE_FINDINGS = 100;
-/** The most instruction files SI04 reads a commit time for. */
-export const MAX_TIMESTAMP_FILES = 20;
-/** SI04's age: an instruction file whose last commit is older than this, before HEAD's commit, is old. */
-export const STALE_AGE_SECONDS = 90 * 24 * 60 * 60;
 
 /** The instruction files the stale-instruction signals read: the inventory's instruction kinds, sorted, at most 50. */
 export function staleInstructionFiles(inventory: AgentSetupInventory): AgentSetupFile[] {
@@ -225,47 +220,6 @@ function targetsAt(text: string | null | undefined): ReadonlySet<string> | null 
 const directoryOf = (path: string): string => path.slice(0, path.lastIndexOf("/") + 1);
 
 /**
- * The instruction files SI04 needs a commit time for: files the change does not touch that name, by an exact path, a
- * file the change adds, modifies or renames. At most `MAX_TIMESTAMP_FILES`, sorted. The CLI and the Action read the
- * last commit time of these files only.
- */
-export function staleTimestampPaths(input: {
-  instructions: AgentConfigSources;
-  diff: readonly DiffFile[];
-  repoFiles: readonly string[];
-  agentSetup: AgentSetupInventory;
-}): string[] {
-  const texts = textsOf(input.instructions);
-  if (texts.size === 0) return [];
-  const index = indexRepo(input.repoFiles);
-  const facts = diffFacts(input.diff, index);
-  const out: string[] = [];
-  for (const file of staleInstructionFiles(input.agentSetup)) {
-    if (out.length >= MAX_TIMESTAMP_FILES) break;
-    const text = texts.get(file.path);
-    if (text === undefined || facts.touched.has(file.path)) continue;
-    if (namedChange(scanInstructionTokens(text).references, directoryOf(file.path), index, facts) !== null) {
-      out.push(file.path);
-    }
-  }
-  return out;
-}
-
-/** The first reference that names, by an exact tracked path, a file the change touches; null when none does. */
-function namedChange(
-  references: readonly InstructionReference[],
-  dir: string,
-  index: RepoIndex,
-  facts: DiffFacts,
-): InstructionReference | null {
-  for (const reference of references) {
-    if (reference.bare) continue;
-    if (candidatesOf(reference, dir).some((path) => index.files.has(path) && facts.touched.has(path))) return reference;
-  }
-  return null;
-}
-
-/**
  * The token a path finding carries: the repository path a `./` or `../` token resolves to, else the token as written;
  * only when every character is allowed.
  */
@@ -301,9 +255,6 @@ export function detectStaleInstructions(input: {
   const headTargets = targetsAt(sources.makefile?.head);
   const baseTargets = targetsAt(sources.makefile?.base);
   const dependencies: ReadonlySet<string> = headScripts?.binaries ?? new Set();
-  const times = sources.commitTimes;
-  const timeOf = new Map<string, number>();
-  if (times !== undefined) for (const entry of times.files) timeOf.set(entry.path, entry.time);
 
   const found: StaleFinding[] = [];
   for (const file of staleInstructionFiles(input.agentSetup)) {
@@ -355,22 +306,6 @@ export function detectStaleInstructions(input: {
         ...(token === undefined ? {} : { token }),
       });
     }
-
-    // SI04: an old instruction file that names a file the change edits.
-    const time = timeOf.get(file.path);
-    if (times !== undefined && time !== undefined && !fileTouched && times.head - time > STALE_AGE_SECONDS) {
-      const reference = namedChange(tokens.references, dir, index, facts);
-      if (reference !== null) {
-        const token = referenceToken(reference, candidatesOf(reference, dir));
-        found.push({
-          id: "SI04",
-          path: file.path,
-          line: reference.line,
-          kind: reference.kind,
-          ...(token === undefined ? {} : { token }),
-        });
-      }
-    }
   }
   return capStale(found);
 }
@@ -407,7 +342,7 @@ function capStale(found: StaleFinding[]): { findings: StaleFinding[]; omitted: P
   return { findings, omitted };
 }
 
-const STALE_IDS: readonly StaleId[] = ["SI01", "SI02", "SI03", "SI04"];
+const STALE_IDS: readonly StaleId[] = ["SI01", "SI02", "SI03"];
 /** Most locations a message names; the rest are counted. */
 const MAX_NAMED_LOCATIONS = 5;
 
@@ -417,9 +352,7 @@ function span(text: string): string {
 }
 
 /** The fixed words of each message: the subject before the locations and the advice after. */
-const STALE_TEXT: Readonly<
-  Record<StaleId, { code: MessageCode; level: "warn" | "info"; text: string; after: string }>
-> = {
+const STALE_TEXT: Readonly<Record<StaleId, { code: MessageCode; level: "warn"; text: string; after: string }>> = {
   SI01: {
     code: "SETUP_STALE_SI01",
     level: "warn",
@@ -438,16 +371,10 @@ const STALE_TEXT: Readonly<
     text: "Agent instruction files tell the agent to read files that are not in the repository",
     after: "Fix the link or import, or restore the file.",
   },
-  SI04: {
-    code: "SETUP_STALE_SI04",
-    level: "info",
-    text: "Agent instruction files last changed more than 90 days before this commit name files this change edits",
-    after: "Check that the instructions still describe the code.",
-  },
 };
 
 /**
- * One message per stale-instruction id found, in id order: SI01 to SI03 `warn`, SI04 `info`. Each names up to 5
+ * One message per stale-instruction id found, in id order, each `warn`. Each names up to 5
  * locations as `path:line` code spans, then how many more there are (the caps' omitted findings included). Fixed words,
  * paths and numbers only: never a token or any other text of an instruction file.
  */

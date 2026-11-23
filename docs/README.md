@@ -19,9 +19,9 @@ The [README](../README.md) gets you to a working check. These pages are the refe
 
 ## Checks
 
-- [Test integrity](checks/test-integrity.md): TI01 to TI17.
+- [Test integrity](checks/test-integrity.md): TI01 to TI17 (TI15 is not emitted).
 - [Secrets in agent configs](checks/secrets.md): A7, S01 to S11.
-- [Stale agent instructions](checks/stale-instructions.md): SI01 to SI04.
+- [Stale agent instructions](checks/stale-instructions.md): SI01 to SI03 (SI04 is not emitted).
 - [Prompt-injection scan](checks/prompt-injection.md): PI01 to PI05.
 - [Flaky tests and JUnit results](checks/flaky-tests.md).
 - [Dependency safety](checks/dependencies.md): D01 to D05.

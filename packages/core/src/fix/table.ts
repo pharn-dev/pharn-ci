@@ -35,7 +35,7 @@ export interface FixHint {
 
 /**
  * Every signal id core produces: TI01 to TI17, the P ids with a rule file (there is no P12), SI01 to SI04, PI01 to PI05
- * and D01 to D05.
+ * and D01 to D05. TI15 and SI04 are not emitted since CORE-144; their entries stay because their message codes stay.
  */
 export type FixSignalId =
   | "TI01"

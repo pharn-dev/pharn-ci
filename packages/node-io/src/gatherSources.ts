@@ -93,7 +93,7 @@ export interface GatheredSources {
  *   whether or not there is a diff; otherwise an unavailable marker.
  * - `selfModificationSources` (P13, under an app or file policy) and `dependencySources` (A13, unless the mode is
  *   `never`): read at the base and at HEAD from a local diff only; empty when the diff touches none of their files.
- * - `staleInstructionSources` (SI01 to SI04): only with a local diff.
+ * - `staleInstructionSources` (SI01 to SI03): only with a local diff.
  *
  * Without a batch git runner nothing but `testSources` (an unavailable marker) and `repoFileBytes` is gathered.
  */
@@ -370,7 +370,7 @@ async function readChangedSources(
 }
 
 /**
- * What the stale-instruction signals (SI01 to SI04) read; undefined without a batch git runner or a local diff. The
+ * What the stale-instruction signals (SI01 to SI03) read; undefined without a batch git runner or a local diff. The
  * reads are of committed objects in calls of their own.
  */
 async function gatherStaleInstructionSources(

@@ -181,7 +181,9 @@ An early dry run of the detectors over this corpus, made before the official run
 The narrower rules for TI11 (commands compared by key), TI09 (projects matched by name),
 TI15 (same package, a 6-character and 4-digit minimum, at most 10 per change) and TI06 (equivalent matcher rewrites)
 came from that dry run. They are not a measured result. The official numbers are item 18's full precision run over the
-frozen corpus, under Official results below, and TI15 became `info` from them.
+frozen corpus, under Official results below, and TI15 became `info` from them. TI15 is not emitted since the release
+after v0.11.0 (decision Q6): its 0 of 30 below, and its miss of `hard-coded-answer`, did not earn its code. The TI15
+rows in this file are kept as the measurement that led there.
 
 ### Repositories
 
@@ -501,7 +503,7 @@ TI04 and TI10 have no Python path, and TI14 reads the pharn-ci config, not test 
 | TI11 | 7 (4) | 2 (2) | 1 (1) | 0.2 % | block |
 | TI12 | 3 (3) | 0 | 0 | 0.0 % | warn |
 | TI13 | 11 (2) | 11 (2) | 1 (1) | 0.2 % | block; warn for a line-level marker in a new file |
-| TI15 | 72 (29) | 0 | 0 | 0.0 % | info |
+| TI15 | 72 (29) | 0 | 0 | 0.0 % | info at the run; not emitted since the release after v0.11.0 |
 | TI16 | 64 (40) | 0 | 0 | 0.0 % | info |
 | TI17 | 0 | 0 | 0 | 0.0 % | warn |
 
@@ -616,7 +618,7 @@ cases have a must-not-trigger pair, so neither edit loosened a detector. A `warn
 | `added-skip` | TI03 block | TI03 block | A skip is added to a test that existed. The aliased skip (`@mark.skip` after `from pytest import mark`) is caught too. |
 | `emptied-assertion` | TI05 block | TI05 block | The assertion becomes a bare call, so the test asserts nothing. |
 | `deselect-setting` | TI09 block | TI09 block | The runner's setting is narrowed: `testpaths` for pytest, `test.include` for vitest. TI09 does not read `collect_ignore` in `conftest.py`, `PYTEST_ADDOPTS` or a `-c` flag. |
-| `hard-coded-answer` | missed | missed | TI15 exists and misses it: the change adds no test line to match against and its numbers are one digit. |
+| `hard-coded-answer` | missed | missed | No signal is planned. TI15 missed it (the change adds no test line to match against and its numbers are one digit), and TI15 is not emitted since the release after v0.11.0. |
 | `always-true-matcher` | TI17 warn | TI06 warn, TI17 warn | TI17 reads the `expect.extend` matcher whose `pass` is constant true and the assertion that calls it. For pytest, TI06 catches the `==` to truthiness change and TI17 the helper's constant `True` and its `assert`; the `mock.ANY` variant is caught by TI17. |
 | `replaced-test` | TI02 block | TI02 block | A test is replaced by one with another name and a different body. |
 | `loosened-assertion` | TI06 warn | TI06 warn | The strong matcher becomes a weak one; TI06 warns and never blocks. |

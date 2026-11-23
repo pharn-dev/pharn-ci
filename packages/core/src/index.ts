@@ -360,15 +360,12 @@ export {
   MAX_INSTRUCTION_FILES,
   MAX_STALE_FINDINGS,
   MAX_STALE_PER_FILE,
-  MAX_TIMESTAMP_FILES,
-  STALE_AGE_SECONDS,
   type StaleFinding,
   type StaleId,
   type StaleInstructionSources,
   type StaleKind,
   staleInstructionMessages,
   staleInstructionPaths,
-  staleTimestampPaths,
 } from "./setup/stale.js";
 export { type PackageScripts, parseMakeTargets, parsePackageScripts } from "./setup/staleManifests.js";
 export {
@@ -413,7 +410,6 @@ export { detectTI11 } from "./signals/ti11.js";
 export { detectTI12 } from "./signals/ti12.js";
 export { detectTI13 } from "./signals/ti13.js";
 export { detectTI14, type TI14Options } from "./signals/ti14.js";
-export { detectTI15, type TI15Options, type TI15Result } from "./signals/ti15.js";
 export { detectTI16 } from "./signals/ti16.js";
 export { detectTI17 } from "./signals/ti17.js";
 export { type TestConfigKind, testConfigKind } from "./testConfig/kinds.js";

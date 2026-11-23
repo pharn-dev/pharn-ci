@@ -4,15 +4,14 @@ import {
   detectStaleInstructions,
   MAX_STALE_FINDINGS,
   MAX_STALE_PER_FILE,
-  STALE_AGE_SECONDS,
   type StaleInstructionSources,
   scanAgentSetup,
   staleInstructionMessages,
-  staleTimestampPaths,
 } from "../src/index.js";
 import { fixture } from "./helpers.js";
 
-// Stale instructions (Horizon 2 item H3): SI01 to SI04 against a fixed tree, diff-aware. The instruction texts and
+// Stale instructions (Horizon 2 item H3): SI01 to SI03 against a fixed tree, diff-aware (SI04 is not emitted since
+// CORE-144; its tests went with it). The instruction texts and
 // manifests come from fixtures/stale-instructions/ (stored as .txt, so this repository's inventory never lists them).
 
 const REPO_FILES = [
@@ -178,39 +177,6 @@ describe("diff-awareness: no finding unless the change touches the file or remov
   });
 });
 
-describe("SI04: an old instruction file that names a file the change edits", () => {
-  const HEAD = 2_000_000_000;
-  const text = "The entry point is `src/index.ts`.\n";
-  it("must trigger: last changed more than 90 days before HEAD, untouched, naming an edited file", () => {
-    const src = sources(
-      { "AGENTS.md": text },
-      { commitTimes: { head: HEAD, files: [{ path: "AGENTS.md", time: HEAD - STALE_AGE_SECONDS - 1 }] } },
-    );
-    expect(run(src, [modified("src/index.ts")])).toEqual(["SI04 AGENTS.md:1 path src/index.ts"]);
-  });
-
-  it("must not trigger: 90 days exactly, no times, a touched instruction file, or an edit to a file it does not name", () => {
-    const at = (time: number) =>
-      sources({ "AGENTS.md": text }, { commitTimes: { head: HEAD, files: [{ path: "AGENTS.md", time }] } });
-    expect(run(at(HEAD - STALE_AGE_SECONDS), [modified("src/index.ts")])).toEqual([]);
-    expect(run(sources({ "AGENTS.md": text }), [modified("src/index.ts")])).toEqual([]);
-    expect(run(at(0), [modified("src/index.ts"), modified("AGENTS.md")])).toEqual([]);
-    expect(run(at(0), [modified("docs/guide.md")])).toEqual([]);
-  });
-
-  it("staleTimestampPaths names only the untouched instruction files that name an edited file", () => {
-    const instructions = sources({ "AGENTS.md": text, "CLAUDE.md": "Nothing here.\n" }).instructions;
-    const ask = (diff: DiffFile[]) =>
-      staleTimestampPaths({ instructions, diff, repoFiles: REPO_FILES, agentSetup: scanAgentSetup(REPO_FILES) });
-    expect(ask([modified("src/index.ts")])).toEqual(["AGENTS.md"]);
-    expect(ask([modified("src/index.ts"), modified("AGENTS.md")])).toEqual([]);
-    expect(ask([modified("docs/guide.md")])).toEqual([]);
-    expect(
-      staleTimestampPaths({ instructions: { unavailable: "x" }, diff: [], repoFiles: [], agentSetup: { files: [] } }),
-    ).toEqual([]);
-  });
-});
-
 describe("caps and messages", () => {
   it("keeps at most 20 findings per file and id and 100 in all, and the messages count the rest", () => {
     const text = Array.from({ length: 30 }, (_, i) => `\`src/missing-${String(i).padStart(2, "0")}.ts\``).join("\n");
@@ -238,20 +204,16 @@ describe("caps and messages", () => {
     expect(message?.text).toContain(`and ${6 * 30 - 5} more`);
   });
 
-  it("one message per id in id order, SI04 info, naming locations only and never a token", () => {
+  // CORE-144: the SI04 entry (an info message) left this case with SI04; SI01 and SI03 are judged as before.
+  it("one message per id in id order, naming locations only and never a token", () => {
     const messages = staleInstructionMessages(
       [
         { id: "SI01", path: "CLAUDE.md", line: 4, kind: "command", token: "pnpm run format" },
         { id: "SI03", path: "CLAUDE.md", line: 15, kind: "file", token: "docs/install.md" },
-        { id: "SI04", path: "AGENTS.md", line: 1, kind: "path", token: "src/index.ts" },
       ],
       {},
     );
-    expect(messages.map((m) => `${m.level} ${m.code}`)).toEqual([
-      "warn SETUP_STALE_SI01",
-      "warn SETUP_STALE_SI03",
-      "info SETUP_STALE_SI04",
-    ]);
+    expect(messages.map((m) => `${m.level} ${m.code}`)).toEqual(["warn SETUP_STALE_SI01", "warn SETUP_STALE_SI03"]);
     expect(messages[0]?.text).toBe(
       "Agent instruction files name commands that the root package.json or Makefile does not define: `CLAUDE.md:4`. An agent that runs them fails or improvises; fix the command or the instruction.",
     );

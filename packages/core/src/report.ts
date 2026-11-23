@@ -32,7 +32,7 @@ export interface Report {
   testIntegrity: ReportTestIntegrity;
   /** The org policy's findings; present only when a policy was asked for and is in force or unavailable. */
   policy?: ReportPolicy;
-  /** Stale agent instructions (SI01 to SI04); present only when there is at least one finding. */
+  /** Stale agent instructions (SI01 to SI03; SI04 is not emitted); present only when there is at least one finding. */
   setupHealth?: ReportSetupHealth;
   /** The prompt-injection scan's findings; present only when there is at least one. */
   injection?: ReportInjection;
@@ -50,6 +50,7 @@ export interface Report {
  * when every character is a repo-path character (plus `:` and `@` in a script name) and it is at most 200 long.
  */
 export interface ReportStaleInstruction {
+  /** SI04 is kept for older reports; it is not emitted since the release after v0.11.0. */
   id: "SI01" | "SI02" | "SI03" | "SI04";
   path: string;
   line: number;
@@ -246,7 +247,10 @@ export interface ReportDiffCoverage {
 
 export type MessageLevel = "info" | "warn" | "error";
 
-/** Stable message codes. Add new ones here and in the schema description; never rename. */
+/**
+ * Stable message codes. Add new ones here and in the schema description; never rename. TEST_INTEGRITY_TI15 and
+ * SETUP_STALE_SI04 are not emitted since the release after v0.11.0; they stay so an older report still type-checks.
+ */
 export type MessageCode =
   | "DIFF_COVERAGE_BELOW_THRESHOLD"
   | "DIFF_COVERAGE_UNGATED"
@@ -350,7 +354,7 @@ export interface Message {
 
 /**
  * The findings of one file and signal id that a cap left out of `testIntegrity.signals`: the 20-per-file cap of the
- * base-and-head signals, or the 10-per-change cap of TI15 (counted per source path).
+ * base-and-head signals (an older report may also hold the 10-per-change cap of TI15, which is no longer emitted).
  */
 export interface OmittedSignals {
   id: string;
@@ -433,7 +437,7 @@ export interface BuildReportInput {
   /**
    * The test-integrity signals the detectors found, each with its effective severity (sorted by the caller). They fill
    * `testIntegrity.signals` and `testIntegrity.verdict`; each signal id also adds one `TEST_INTEGRITY_<id>` message
-   * (TI01, TI03, TI04, TI08, TI10, TI11, TI13, TI14, TI15, TI16, TI17).
+   * (TI01, TI03, TI04, TI08, TI10, TI11, TI13, TI14, TI16, TI17).
    * Absent or empty adds nothing.
    */
   testIntegritySignals?: readonly TestIntegritySignal[];
@@ -627,13 +631,6 @@ const SIGNAL_MESSAGES: ReadonlyArray<{
       `This change lowers the coverage threshold or adds a coverage exclusion in the check config: ${paths}. Once merged, the looser setting applies to every later pull request; check that it was meant.`,
   },
   {
-    id: "TI15",
-    code: "TEST_INTEGRITY_TI15",
-    allPaths: true,
-    text: (_top, paths, notListed) =>
-      `This change adds conditions in source that compare against values its tests add, so the code may special-case the tests: ${paths}. Check that each is real logic.${notListed}`,
-  },
-  {
     id: "TI16",
     code: "TEST_INTEGRITY_TI16",
     text: (_top, paths) =>
@@ -666,7 +663,7 @@ export function testIntegritySignalMessages(
         ? "warn"
         : "info";
     const level = top === "block" ? "error" : top === "warn" ? "warn" : "info";
-    // An id whose text is kept (TI02, TI05, TI06, TI07, TI09, TI12, TI15) keeps the text a previous message had, with the "not listed" counts the
+    // An id whose text is kept (TI02, TI05, TI06, TI07, TI09, TI12) keeps the text a previous message had, with the "not listed" counts the
     // findings no longer carry; only the level follows the severities.
     const previous = allPaths === true ? options.previous?.find((message) => message.code === code) : undefined;
     if (previous !== undefined) {

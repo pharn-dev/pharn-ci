@@ -2,19 +2,16 @@ import {
   byCodeUnit,
   type DiffFile,
   decodeTestSourceText,
-  isUnsafeTestSourcePath,
-  MAX_TIMESTAMP_FILES,
   type StaleInstructionSources,
   scanAgentSetup,
   staleInstructionPaths,
-  staleTimestampPaths,
 } from "@pharn-ci/core";
 import { readAgentConfigSources } from "./agentConfigSources.js";
 import { batchCheck, batchRead, type GitBatchDeps, OBJECT_ID } from "./gitBlobs.js";
 
-/** The git calls the stale-instruction reader makes: blobs by `cat-file`, and `git log` for SI04's commit times. */
+/** The git calls the stale-instruction reader makes: blobs by `cat-file`, and `merge-base` for the manifests' base side. */
 export interface StaleInstructionGitDeps extends GitBatchDeps {
-  /** Absent: SI04's commit times are not read, so SI04 does not run. */
+  /** Absent: the merge base is not asked for, so the root manifests are read at HEAD only. */
   git?(args: string[]): Promise<string>;
 }
 
@@ -22,8 +19,6 @@ export interface StaleInstructionGitDeps extends GitBatchDeps {
 const MAX_MANIFEST_BYTES = 512 * 1024;
 /** The root manifests SI01 compares commands with. */
 const MANIFESTS = ["package.json", "Makefile"] as const;
-/** A `git log --format=%ct` answer: seconds since the epoch. */
-const SECONDS = /^\d{1,12}$/;
 
 /**
  * The text of each `<rev>:<path>` blob, or null when it is absent, too large, not a blob or binary. One
@@ -49,13 +44,13 @@ async function readBlobs(
 }
 
 /**
- * What the stale-instruction signals (SI01 to SI04) read, or undefined when the repository has no instruction file:
+ * What the stale-instruction signals (SI01 to SI03) read, or undefined when the repository has no instruction file:
  * the instruction files at HEAD (the inventory's instruction kinds, at most 50, through `readAgentConfigSources` and its
- * caps), the root `package.json` and `Makefile` at HEAD and, when the change touches them and `base` is given, at the
- * merge base, and, with a `git` runner, the last commit time of the instruction files `staleTimestampPaths` names (at
- * most 20) and HEAD's. Every read is of committed objects, never the working tree. A failed manifest read leaves the
- * manifests out (no command is checked) and a failed `git log` leaves the times out (SI04 does not run); an unreadable
- * instruction set is returned as `{ unavailable }`, which core reads as nothing. Never throws.
+ * caps), and the root `package.json` and `Makefile` at HEAD and, when the change touches them, `base` is given and a
+ * `git` runner finds the merge base, at the merge base. Every read is of committed objects, never the working tree; no
+ * commit time is read (SI04, which needed `git log`, is not emitted since CORE-144). A failed manifest read leaves the
+ * manifests out (no command is checked); an unreadable instruction set is returned as `{ unavailable }`, which core
+ * reads as nothing. Never throws.
  */
 export async function readStaleInstructionSources(
   deps: StaleInstructionGitDeps,
@@ -97,28 +92,6 @@ export async function readStaleInstructionSources(
     sources.makefile = sides.Makefile;
   } catch {
     // The manifests could not be read: no command is checked.
-  }
-
-  if (deps.git !== undefined) {
-    const timed = staleTimestampPaths({ instructions, diff: options.diff, repoFiles: options.repoFiles, agentSetup })
-      .filter((path) => !isUnsafeTestSourcePath(path))
-      .slice(0, MAX_TIMESTAMP_FILES);
-    if (timed.length > 0) {
-      try {
-        const head = (await deps.git(["log", "-1", "--format=%ct", "HEAD"])).trim();
-        if (SECONDS.test(head)) {
-          const files: { path: string; time: number }[] = [];
-          for (const path of timed) {
-            // `:(top,literal)` names the path from the repository root, with no glob characters.
-            const out = (await deps.git(["log", "-1", "--format=%ct", "HEAD", "--", `:(top,literal)${path}`])).trim();
-            if (SECONDS.test(out)) files.push({ path, time: Number(out) });
-          }
-          sources.commitTimes = { head: Number(head), files };
-        }
-      } catch {
-        // git log failed: SI04 does not run.
-      }
-    }
   }
   return sources;
 }

@@ -803,46 +803,14 @@ TI08 reads the status and the added lines of snapshot files, the added and remov
   given per file. A diff that reaches `check()` already parsed without kept text yields no text-based TI08 finding; the
   mass-change rule still works, as it reads only the status and the added lines.
 
-### What TI15 misses
+### TI15 is not emitted
 
-TI15 reads the added lines of JS/TS and Python test files and of JS/TS and Python source files that are not test files.
-It is an `info` signal: it never blocks or warns, because on the precision corpus 0 of 30 sampled findings were a real
-special case (see [PRECISION.md](./PRECISION.md#official-results-v030-2026-10-26)).
-
-- **Both sides must be added in this diff.** A test that already holds the value, or a condition that was there before,
-  gives nothing.
-- **The `hard-coded-answer` form.** A change that adds no test line has no test literal to match, and the numbers in it
-  are one digit (see the Skylos list below).
-- **Short and common literals.** A string under 6 characters (UTF-16 code units), a number under 4 significant digits
-  and the stop-list (`true`, `false`, `null`, `none`, `undefined`, `test`, `error`, `default`, `get`, `post`, `put`,
-  `patch`, `delete`, `head`, `options`, `utf-8`, `utf8`, and the `typeof` results `string`, `number`, `boolean`,
-  `object`, `function`, `symbol`, `bigint`) are not read. A real special case with a short value (`"vip"`, `42`) is
-  missed.
-- **One package root.** A test literal matches a source condition only within the same package: the root of a path is
-  its nearest directory that holds a `package.json` or `pyproject.toml` (in the tracked files or added by the diff).
-  With no manifest at all, a path under `packages/` or `apps/` takes its first two segments as its root. A shared
-  literal between two packages is not seen, and a monorepo with no manifest outside `packages/` and `apps/` is one
-  root.
-- **Excluded directories.** A test file or a source file with a directory segment named `examples`, `benchmarks`,
-  `bench`, `docs` or `fixtures` is left out (the file name does not count, so `src/examples.ts` is read). A special
-  case in such a directory is missed.
-- **Template literals with `${`** are skipped.
-- **Other comparisons.** Only `===`, `!==`, `==`, `!=`, a `case` label and a Python `in (...)` group are read.
-  `includes`, `startsWith`, `Set.has`, `<` and a regular expression are not.
-- **Literals are compared as written.** Differently escaped forms of one value differ, the match is case-sensitive, and a
-  string never equals a number.
-- **Literals in comments are read,** because the scan does not understand comments or regular expressions. A quote in a
-  comment can open a literal, and an unclosed quote ends the scan of its line.
-- **Numbers need 4 significant digits.** A status code such as `404` or a number such as `200` or `1000` is not read
-  (trailing zeros of a whole number do not count); `1234` and `0.1255` are.
-- **The detail names the literal's kind and length, never its text.** A matched value can be a secret
-  (`if (key === "<token>")`), and the report leaves the job, so a reviewer finds the value at the source line the
-  finding names (`a 12-character string literal`, with the source `path:line` and the test file's path).
-- **Go and other languages** give nothing on either side.
-- **10 per change.** The first 10 findings of a change, ordered by source path, then line, then detail, are signals;
-  the rest are counted per source path, and the message ends with how many more there are in each file.
-- **Kept text is capped** at 5000 lines per file and 400 characters per line (section 8). A diff that reaches `check()`
-  already parsed without kept text yields no TI15.
+TI15 (a source condition that compares with a value the tests add) is not emitted since the release after v0.11.0
+(decision Q6). It was an `info` signal, on the precision corpus 0 of 30 sampled findings were a real special case (see
+[PRECISION.md](./PRECISION.md#official-results-v030-2026-10-26)), and it missed its own Skylos case,
+`hard-coded-answer`. So a source condition that special-cases a test value is not reported at all. The
+`TEST_INTEGRITY_TI15` code stays in the schema, so an older report that holds it still validates, and a policy may
+still set a severity for `TI15`: the key validates and changes nothing.
 
 ### What TI16 misses
 
@@ -949,7 +917,7 @@ file and runs no test. It is a warning in every mode and never fails the check.
 ## What test integrity does not catch
 
 The test-integrity signals that ship today (TI01, TI02, TI03, TI04, TI05, TI06, TI07, TI08, TI09, TI10, TI11, TI12,
-TI13, TI14, TI15, TI16 and TI17) read the added and removed lines of the diff, in files they recognise by name; TI02, TI05,
+TI13, TI14, TI16 and TI17; TI15 is not emitted) read the added and removed lines of the diff, in files they recognise by name; TI02, TI05,
 TI06, TI07 and TI12 also read the text of the JavaScript, TypeScript and Python test files the change modifies, and TI09
 the text of the test-runner config files it touches, at the merge base and at `HEAD`. They do not run tests or read a file that the diff does not touch, and they judge the strength of an
 assertion only from a fixed table of matchers (TI06). The accept label records that a reviewer who is not the author
@@ -983,10 +951,11 @@ Caught:
 - `always-true-matcher` — caught by TI17: a custom matcher whose `pass` is the constant true replaces `toBe(5)`, and
   the change adds an assertion that calls it. TI17 warns and never blocks by default; see "What TI17 misses" below.
 
-Not caught. This one names the signal meant for it, and that signal exists and misses its case:
+Not caught:
 
-- `hard-coded-answer` — missed; planned: TI15. The source returns the expected value for the test's input. TI15 now
-  exists and still misses it, because the change adds no test line to match against and its numbers are one digit.
+- `hard-coded-answer` — missed. The source returns the expected value for the test's input. No signal is planned for
+  it: TI15 was meant for it and missed it (the change adds no test line to match against and its numbers are one
+  digit), and TI15 is not emitted since the release after v0.11.0.
 
 Other ways a change can weaken tests without being seen:
 
@@ -1051,7 +1020,7 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 | TI12 module under test mocked | caught — `vi.mock` and `jest.mock` of the module under test | caught — `patch` and `mock.patch` of it, through the Python index |
 | TI13 coverage exclusion | caught — Istanbul, V8 and C8 hints | caught — `block-pragma-*` and `pass-pragma-*` for `# pragma: no cover` |
 | TI14 pharn-ci config loosened | caught — the config file | not applicable — it reads the pharn-ci config, not test code |
-| TI15 test value hard-coded | caught — JS/TS test and source files | caught — Python test and source files |
+| TI15 test value hard-coded | not emitted since the release after v0.11.0 | not emitted since the release after v0.11.0 |
 | TI16 suppression added | caught — ESLint, TypeScript and Biome comments | caught — `noqa`, `type`, `pylint` and `pyright` comments |
 | TI17 always-true assertion | caught — `warn-matcher-arrow` | caught — `warn-helper-pytest` and `warn-wildcard-python-any` |
 
@@ -1288,9 +1257,11 @@ for ten shapes of secret by prefix and position. It is a heuristic, not a secret
 
 ## Stale agent instructions
 
-SI01 to SI04 (`SETUP_STALE_*`) compare the commands and paths the agent instruction files name with the tracked files,
-the root `package.json` and the root `Makefile`. They are a heuristic at `warn` (SI04 `info`), not a review of the
-instructions, and they never fail the check. What they miss:
+SI01 to SI03 (`SETUP_STALE_*`) compare the commands and paths the agent instruction files name with the tracked files,
+the root `package.json` and the root `Makefile`. They are a heuristic at `warn`, not a review of the instructions, and
+they never fail the check. SI04 is not emitted since the release after v0.11.0 (decision Q6): it needed the git
+history, so it was silent on the default shallow checkout, and it cost a `git log` call per instruction file. An
+instruction file that went old next to the code it describes is not reported. What they miss:
 
 - **Prose without backticks is never read.** "Run the build script" or a path written in a sentence names nothing; only
   inline code spans, shell-fenced (or unmarked) blocks, Markdown link targets and `@path` imports count. HTML links
@@ -1323,18 +1294,14 @@ instructions, and they never fail the check. What they miss:
   change deletes or renames the path or file it names, or removes the script or target from the root manifest. A
   repository whose instructions went stale over many past pull requests shows nothing until one of those files is
   edited. Without a diff nothing is checked.
-- **SI04 needs history and is coarse.** The instruction file's last commit is read with `git log -1 --format=%ct`; on a
-  shallow checkout (the `actions/checkout` default) every file's last commit is HEAD, so SI04 is silent; use
-  `fetch-depth: 0`. A file is old after 90 days, a fixed value. Only exact paths count as named, and at most 20
-  instruction files are timed. An old file that still describes the code is reported all the same (`info`).
 - **Caps.** At most 50 instruction files (in path order), the first 256 KiB of each and 2000 tokens per file are read;
   the root `package.json` and `Makefile` are read up to 512 KiB. At most 20 findings per file and signal and 100 in
   all are listed; the messages count the rest. The tracked files are read from `git ls-files`.
 - **The Action reads only with a local diff.** In PR-number mode, with a compare-API diff or without a batch git
   runner nothing is read and nothing is reported. A failed read of the instruction files writes one log line and
-  reports nothing; a failed manifest read leaves SI01 out, a failed `git log` leaves SI04 out.
+  reports nothing; a failed manifest read leaves SI01 out.
 - **The org policy does not set these levels yet.** `test_integrity.signals` and the policy rules do not name SI01 to
-  SI04, so a policy cannot raise them to `error`.
+  SI03, so a policy cannot raise them to `error`.
 
 ## Prompt-injection scan
 
@@ -1595,7 +1562,7 @@ Every message and finding of the report carries an optional `fix` object ([Repor
 - **D04 asks for a review, not a revert.** A lockfile that drifts from its manifest may be a real change, so D04 is
   `request-review`; the hint also says to regenerate the lockfile with the package manager.
 - **`none` is a kind, not a gap.** The operational messages (a coverage file that is missing, a policy that could not be
-  fetched, a JUnit file that was refused) and the signals no code change fixes (SI01 to SI04 and the policy rules P01,
+  fetched, a JUnit file that was refused) and the signals no code change fixes (SI01 to SI03 and the policy rules P01,
   P07 and P10) have kind `none`; the hint still says what to check.
 - **P12 has no hint.** The schema allows the id, but core produces no P12 finding, so there is no entry for it.
 - **A report that did not go through `check()` has fewer hints.** The accept label and the upload outcome add `fix` to the
@@ -1919,7 +1886,7 @@ run. What it does not do:
   otherwise it is one TI10 finding; a binary workflow file is one TI11 finding; a binary pharn-ci config that the
   change modifies, renames or deletes is one TI14 finding; a binary test-runner config is judged by TI09 from its
   base and head text, as a text one is. A finding on a binary file has a fixed sentence and no line number, because
-  no file text reaches it. The accept label lowers each of them. Still missed: TI13 and TI15 in a binary source file,
+  no file text reaches it. The accept label lowers each of them. Still missed: TI13 in a binary source file,
   TI08 in a binary `package.json` or pytest config, a modified or added binary test file in a language the index does
   not read (only JS/TS and Python are indexed), snapshot files, and a deleted or renamed binary file that is not a test
   file. pharn-ci does not read the base branch's copies of these files and does not detect changes to
