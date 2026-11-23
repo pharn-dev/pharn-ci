@@ -54,7 +54,9 @@ export function check(input: TextCheckInput): Report {
     parsedCoverageFile(entry.text, selection, { repoRoot: input.repoRoot, coverageRoot: root, file: entry.file });
   const files =
     "files" in coverage
-      ? coverage.files.map((entry) => ("text" in entry ? parse(entry, coverage.format ?? "auto") : entry))
+      ? coverage.files.map((entry) =>
+          "text" in entry ? parse(entry, ("format" in coverage ? coverage.format : undefined) ?? "auto") : entry,
+        )
       : [parse(coverage, coverage.format)];
   return checkParsed({ ...input, coverage: { files } });
 }

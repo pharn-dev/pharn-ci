@@ -1,0 +1,9 @@
+{
+  // Typechecks the tests with the source they import (CORE-135). `pnpm lint` runs it through the package's
+  // `typecheck` script; the package's own tsconfig.json still checks src alone.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src", "test"]
+}

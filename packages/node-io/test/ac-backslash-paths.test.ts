@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { posix } from "node:path";
 import { describe, expect, it } from "vitest";
 import { check } from "../../core/test/text-coverage.js";
-import { requiredDeps } from "./required-deps.js";
+import { requiredDeps, type StreamedFake } from "./required-deps.js";
 
 // CORE-101: the CLI and the Action read coverage through readCoverageFiles, which parses each file as it is read. A
 // path with a backslash keeps its literal key there, so check() can give the record to the tracked file it names.
@@ -13,7 +13,7 @@ const REPO_ROOT = "/home/runner/work/demo/demo";
 
 function deps(files: Record<string, string>) {
   const fake = {
-    ...requiredDeps(() => fake),
+    ...requiredDeps((): StreamedFake => fake),
     git: async () => "",
     listDir: async () => null,
     readFile: async (path: string) => files[path] ?? null,

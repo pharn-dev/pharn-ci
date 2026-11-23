@@ -74,7 +74,7 @@ function isPython(id: string, paths: string[]): boolean {
 function casesOf(id: string): { name: string; diff: string; dir: string | null }[] {
   const root = `${FIXTURES}test-integrity/${id}/`;
   return readdirSync(root, { withFileTypes: true })
-    .flatMap((entry) => {
+    .flatMap((entry): { name: string; diff: string; dir: string | null }[] => {
       if (entry.isFile() && entry.name.endsWith(".diff")) {
         return [
           { name: entry.name.slice(0, -".diff".length), diff: readFileSync(`${root}${entry.name}`, "utf8"), dir: null },

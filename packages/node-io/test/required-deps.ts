@@ -25,12 +25,13 @@ export async function noNetwork(): Promise<Response> {
  * also replaces its stream), a batch git runner over `{}` files (`stubGitBatch`), node-io's own `lstat`, and a `fetch`
  * with no network.
  */
-export function requiredDeps(
-  fake: () => {
-    git(args: string[]): Promise<string>;
-    readFile(path: string): Promise<string | null>;
-  },
-) {
+/** The two calls `requiredDeps` streams; a fake that spreads `requiredDeps(() => fake)` annotates its getter with it. */
+export interface StreamedFake {
+  git(args: string[]): Promise<string>;
+  readFile(path: string): Promise<string | null>;
+}
+
+export function requiredDeps(fake: () => StreamedFake) {
   return {
     gitStream: (args: string[]) => oneChunk(() => fake().git(args)),
     readFileStream: async (path: string) => {
