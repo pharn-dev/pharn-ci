@@ -99,14 +99,27 @@ function rows(): Row[] {
   for (const head of THREE) {
     modifiedRow("a modified file dropped at base as over-file-cap", baseDropped("over-file-cap"), head, true);
   }
+  // CORE-351: a side dropped as too-large fails closed against a side with text (here the refused too-deep head) and
+  // against an over-file-cap head, but not against a head dropped as too-large too (both out of reach).
   for (const head of THREE) {
-    modifiedRow("a modified file dropped at base as too-large", baseDropped("too-large"), head, false);
+    modifiedRow(
+      "a modified file dropped at base as too-large",
+      baseDropped("too-large"),
+      head,
+      head !== HEAD_TOO_LARGE,
+    );
   }
+  // CORE-351: over-total-cap is a budget the pull request can spend, so a drop on either side fails closed.
   for (const head of THREE) {
-    modifiedRow("a modified file dropped at base as over-total-cap", baseDropped("over-total-cap"), head, false);
+    modifiedRow("a modified file dropped at base as over-total-cap", baseDropped("over-total-cap"), head, true);
   }
   for (const head of CONTROLS) {
-    modifiedRow("control: a modified file indexed at the merge base", indexed, head, false);
+    modifiedRow(
+      "control: a modified file indexed at the merge base",
+      indexed,
+      head,
+      head.label === "dropped over-total-cap",
+    );
   }
   for (const head of THREE) {
     const p = path();

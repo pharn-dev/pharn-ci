@@ -6,7 +6,13 @@ import { indexTestFileWithImports } from "../testIndex/indexTestFile.js";
 import type { PythonTestIndex } from "../testIndex/pythonSides.js";
 import type { PythonIndexFile } from "../testIndex/pythonTypes.js";
 import type { TestBlock, TestIndexResult, TestModuleMock } from "../testIndex/types.js";
-import { BINARY_DIFF_REASON, changeMadeUnreadable } from "../testIntegrityUnreadable.js";
+import {
+  BINARY_DIFF_REASON,
+  changeMadeUnreadable,
+  PYTHON_FILE_REFUSAL_REASONS,
+  pythonHeadFailsClosed,
+  sourcesDropFailsClosed,
+} from "../testIntegrityUnreadable.js";
 import type { TestSourceSide, TestSources } from "../testSources.js";
 import { byCodeUnit } from "../text.js";
 
@@ -62,6 +68,13 @@ export interface UncomparedTestFile {
    * makes the `TEST_INTEGRITY_INDEX_UNAVAILABLE` message an error. Never set on an added file, and never in the report.
    */
   changeMadeUnreadable?: true;
+  /**
+   * Set on a compared file when `sourcesDropFailsClosed` or (a `.py` file) `pythonHeadFailsClosed` holds, and on an
+   * added `.py` file when `pythonHeadFailsClosed` holds (`testIntegrityUnreadable.ts`). In mode `block` it makes the
+   * `TEST_INTEGRITY_INDEX_UNAVAILABLE` message an error. Unlike `changeMadeUnreadable` it never routes a `binary` entry
+   * into the binary sentence, and it is never in the report.
+   */
+  failsClosed?: true;
 }
 
 export interface TouchedTests {
@@ -86,7 +99,7 @@ export interface TouchedTests {
 
 type SideIndex =
   | { ok: true; tests: TestBlock[]; groups: TestBlock[]; mocks: TestModuleMock[]; imports: string[] | undefined }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; hadText: boolean; fromPythonIndex: boolean };
 
 interface SideLookup {
   texts: Map<string, string>;
@@ -112,7 +125,7 @@ function testsOf(result: TestIndexResult, imports: string[] | undefined): SideIn
         mocks: result.mocks,
         imports,
       }
-    : { ok: false, reason: result.reason };
+    : { ok: false, reason: result.reason, hadText: true, fromPythonIndex: false };
 }
 
 /** The Python index files of each side by path. */
@@ -138,7 +151,8 @@ interface ComparedEntry {
 /**
  * The compared set and the added set of a diff. A compared file is a diff entry that is `modified`, or `renamed` with a
  * test-file path on both sides, whose new path is a test file with a JavaScript, TypeScript or `.py` extension; an
- * added file is an `added` entry that is such a test file.
+ * added file is an `added` entry that is such a test file, or a `renamed` entry whose new path is such a test file and
+ * whose old path is not a test file (the pull request brings a test file into the test paths, read at HEAD only).
  */
 function touchedTestEntries(diff: readonly DiffFile[]): {
   compared: Map<string, ComparedEntry>;
@@ -151,7 +165,7 @@ function touchedTestEntries(diff: readonly DiffFile[]): {
     if (language === null || !isTestFile(file.path)) continue;
     if (file.status === "modified" || (file.status === "renamed" && isTestFile(file.oldPath))) {
       compared.set(`${file.oldPath}\0${file.path}`, { basePath: file.oldPath, headPath: file.path, language });
-    } else if (file.status === "added") {
+    } else if (file.status === "added" || file.status === "renamed") {
       added.set(file.path, language);
     }
   }
@@ -160,8 +174,8 @@ function touchedTestEntries(diff: readonly DiffFile[]): {
 
 /**
  * The touched test files whose diff entry git shows as binary (CORE-50), by the same compared and added sets the index
- * uses: a modified entry (or a renamed one with a test-file path on both sides) or an added entry whose new path is a
- * test file with a JS/TS or `.py` extension. A modified one is a change made unreadable whatever the merge base held
+ * uses: a modified entry (or a renamed one with a test-file path on both sides) or an added entry (or a renamed one
+ * from a non-test path) whose new path is a test file with a JS/TS or `.py` extension. A modified one is a change made unreadable whatever the merge base held
  * (`BINARY_DIFF_REASON`): it carries `changeMadeUnreadable`. Each list is sorted by path. It reads no test source, so it
  * holds with no sources at all.
  */
@@ -176,7 +190,7 @@ export function binaryTouchedTestFiles(diff: readonly DiffFile[]): {
     if (file.binary !== true) continue;
     if (compared.has(`${file.oldPath}\0${file.path}`)) {
       modified.push({ path: file.path, reason: BINARY_DIFF_REASON, changeMadeUnreadable: true });
-    } else if (file.status === "added" && addedPaths.has(file.path)) {
+    } else if (addedPaths.has(file.path)) {
       added.push({ path: file.path, reason: BINARY_DIFF_REASON });
     }
   }
@@ -184,20 +198,29 @@ export function binaryTouchedTestFiles(diff: readonly DiffFile[]): {
   return { modified: modified.sort(byPath), added: added.sort(byPath) };
 }
 
-/** Merges the entries of a list that have the same path and reason into one, OR-ing `changeMadeUnreadable`; sorted by path. */
-function mergeEntries(
-  existing: readonly { path: string; reason: string; changeMadeUnreadable?: boolean }[],
-  extra: readonly { path: string; reason: string; changeMadeUnreadable?: boolean }[],
-): { path: string; reason: string; changeMadeUnreadable?: boolean }[] {
-  const merged = new Map<string, { path: string; reason: string; changeMadeUnreadable?: boolean }>();
+interface MergeableEntry {
+  path: string;
+  reason: string;
+  changeMadeUnreadable?: boolean;
+  failsClosed?: boolean;
+}
+
+/**
+ * Merges the entries of a list that have the same path and reason into one, OR-ing `changeMadeUnreadable` and
+ * `failsClosed`; sorted by path.
+ */
+function mergeEntries(existing: readonly MergeableEntry[], extra: readonly MergeableEntry[]): MergeableEntry[] {
+  const merged = new Map<string, MergeableEntry>();
   for (const entry of [...existing, ...extra]) {
     const key = `${entry.path}\0${entry.reason}`;
     const before = merged.get(key);
-    const flagged = before?.changeMadeUnreadable === true || entry.changeMadeUnreadable === true;
+    const unreadable = before?.changeMadeUnreadable === true || entry.changeMadeUnreadable === true;
+    const closed = before?.failsClosed === true || entry.failsClosed === true;
     merged.set(key, {
       path: entry.path,
       reason: entry.reason,
-      ...(flagged ? { changeMadeUnreadable: true as const } : {}),
+      ...(unreadable ? { changeMadeUnreadable: true as const } : {}),
+      ...(closed ? { failsClosed: true as const } : {}),
     });
   }
   return [...merged.values()].sort((a, b) => byCodeUnit(a.path, b.path) || byCodeUnit(a.reason, b.reason));
@@ -206,8 +229,8 @@ function mergeEntries(
 /**
  * Adds the binary touched test files (`binaryTouchedTestFiles`) to what the index could not read: its `files` and `added`
  * lists. Each list is keyed by path plus reason; when the index and the diff both give an entry with the same path and
- * reason they become one entry whose `changeMadeUnreadable` is the OR of the two, so the flagged entry wins and an
- * unflagged index entry never hides the diff's block error. An index entry for the same path with another reason stays.
+ * reason they become one entry whose `changeMadeUnreadable` and `failsClosed` are the OR of the two, so the flagged
+ * entry wins and an unflagged index entry never hides the diff's block error. An index entry for the same path with another reason stays.
  * The `{ notRun }` form is returned unchanged: it is already the whole-run error and cannot carry files. Undefined when
  * there is nothing to say.
  */
@@ -263,7 +286,10 @@ export function pythonNotFoundStopsComparison(diff: readonly DiffFile[], python:
  * `python-not-found` and a compared `.py` file exists, `notRun` is `python-not-found` (a sources reason wins); when the
  * head side is unavailable and no compared file exists, nothing is indexed or named. A compared file whose head side
  * fails for a reason of `HEAD_UNREADABLE_ERROR_REASONS` while its base side indexed (or was dropped as `over-file-cap`)
- * carries `changeMadeUnreadable` in `unavailable`.
+ * carries `changeMadeUnreadable` in `unavailable`. A `renamed` entry whose new path is a test file and whose old path is
+ * not one is an added file: it is indexed at HEAD only. A file that is not compared carries `failsClosed` when
+ * `sourcesDropFailsClosed` holds (every language) or, for a `.py` file, when `pythonHeadFailsClosed` holds; an added `.py`
+ * file in `unreadAdded` carries it when `pythonHeadFailsClosed` holds (`testIntegrityUnreadable.ts`).
  */
 export function indexTouchedTestFiles(
   diff: readonly DiffFile[],
@@ -294,15 +320,21 @@ export function indexTouchedTestFiles(
   const indexSide = (side: "base" | "head", path: string, language: TestLanguage): SideIndex => {
     const lookup = side === "base" ? baseSide : headSide;
     const text = lookup.texts.get(path);
-    if (text === undefined) return { ok: false, reason: lookup.dropped.get(path) ?? "missing" };
+    if (text === undefined) {
+      return { ok: false, reason: lookup.dropped.get(path) ?? "missing", hadText: false, fromPythonIndex: false };
+    }
     let result: TestIndexResult;
     let imports: string[] | undefined;
+    let fromPython = false;
     if (language === "py") {
-      if (pythonSide.unavailable !== null) return { ok: false, reason: pythonSide.unavailable };
+      if (pythonSide.unavailable !== null) {
+        return { ok: false, reason: pythonSide.unavailable, hadText: true, fromPythonIndex: python !== undefined };
+      }
       const found = pythonSide[side].get(path);
-      if (found === undefined) return { ok: false, reason: "missing" };
+      if (found === undefined) return { ok: false, reason: "missing", hadText: true, fromPythonIndex: false };
       result = found.result;
       imports = found.imports ?? [];
+      fromPython = !result.parsed && PYTHON_FILE_REFUSAL_REASONS.includes(result.reason);
     } else {
       const indexed = indexTestFileWithImports(path, text);
       result = indexed.result;
@@ -310,7 +342,7 @@ export function indexTouchedTestFiles(
     }
     const indexed = testsOf(result, imports);
     if (indexed.ok) languages.add(language);
-    return indexed;
+    return indexed.ok ? indexed : { ...indexed, fromPythonIndex: fromPython };
   };
 
   const pairs: ComparedTestFile[] = [];
@@ -338,7 +370,13 @@ export function indexTouchedTestFiles(
       const reason = base.ok ? (headReason as string) : base.reason;
       // Only a file whose head side failed can be made unreadable; a head that indexed leaves the flag unset.
       const unreadable = headReason !== null && changeMadeUnreadable(base, headReason);
-      unavailable.push({ path: file.headPath, reason, ...(unreadable ? { changeMadeUnreadable: true as const } : {}) });
+      const closed = sourcesDropFailsClosed(base, head) || (file.language === "py" && pythonHeadFailsClosed(head));
+      unavailable.push({
+        path: file.headPath,
+        reason,
+        ...(unreadable ? { changeMadeUnreadable: true as const } : {}),
+        ...(closed ? { failsClosed: true as const } : {}),
+      });
     }
   }
   unavailable.sort((a, b) => byCodeUnit(a.path, b.path));
@@ -356,7 +394,8 @@ export function indexTouchedTestFiles(
         ...(head.imports === undefined ? {} : { headImports: head.imports }),
       });
     } else {
-      unreadAdded.push({ path: headPath, reason: head.reason });
+      const closed = language === "py" && pythonHeadFailsClosed(head);
+      unreadAdded.push({ path: headPath, reason: head.reason, ...(closed ? { failsClosed: true as const } : {}) });
     }
   }
   return {

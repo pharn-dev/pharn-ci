@@ -357,14 +357,17 @@ export interface OmittedSignals {
  * Test files that TI02 and TI05 could not compare, or why they did not run at all. The `{ files }` form also carries the
  * added test files whose tests could not be read (`added`): nothing that reads an added file's tests checked them. A
  * `files` entry with `changeMadeUnreadable` is a modified test file the change made unreadable at HEAD
- * (see `testIntegrityUnreadable.ts`); it makes the message an error in mode `block`. The flag is an input only and
- * never reaches the report. A modified test file whose diff entry git shows as binary is a `files` entry with the reason
- * `binary` and that flag, whatever the merge base held; an added one is an `added` entry with the reason `binary`.
+ * (see `testIntegrityUnreadable.ts`); it makes the message an error in mode `block`. An entry of either list with
+ * `failsClosed` (a dropped side or a Python head the index did not read, see `sourcesDropFailsClosed` and
+ * `pythonHeadFailsClosed`) does the same, without the binary routing of `changeMadeUnreadable`. Both flags are inputs
+ * only and never reach the report. A modified test file whose diff entry git shows as binary is a `files` entry with the
+ * reason `binary` and `changeMadeUnreadable`, whatever the merge base held; an added one is an `added` entry with the
+ * reason `binary`.
  */
 export type TestIndexUnavailable =
   | {
-      files: readonly { path: string; reason: string; changeMadeUnreadable?: boolean }[];
-      added?: readonly { path: string; reason: string }[];
+      files: readonly { path: string; reason: string; changeMadeUnreadable?: boolean; failsClosed?: boolean }[];
+      added?: readonly { path: string; reason: string; failsClosed?: boolean }[];
     }
   | { notRun: string };
 
@@ -453,7 +456,9 @@ export interface BuildReportInput {
   /**
    * Touched test files TI02 and TI05 could not compare, or why they did not run; adds one message: a warn, except an
    * error in mode `block` when they did not run at all (the `{ notRun }` form) or when a `files` entry carries
-   * `changeMadeUnreadable` (a modified test file made unreadable at HEAD, or whose diff entry git shows as binary).
+   * `changeMadeUnreadable` (a modified test file made unreadable at HEAD, or whose diff entry git shows as binary), or
+   * when a `files` or `added` entry carries `failsClosed` (a side the sources dropped, or a Python head the index did
+   * not read).
    */
   testIndexUnavailable?: TestIndexUnavailable | undefined;
   /** The tests-changed summary (see `summarizeTestChanges`); fills `testIntegrity.changes`. Absent adds nothing. */
@@ -918,8 +923,9 @@ export function oneLine(text: string): string {
  * did not run at all (the `{ notRun }` form): block asked for a test-integrity gate, and a gate that could not read the
  * touched test text fails closed (pre-sale review item 4). It is also an error when a `{ files }` entry carries
  * `changeMadeUnreadable` (a modified test file the change made unreadable at HEAD, or whose diff entry git shows as
- * binary). The other per-file entries (its unread added files included: an added file cannot hide a weakened existing
- * test) and every other mode stay a warning.
+ * binary). It is also an error when a `{ files }` entry or an `added` entry carries `failsClosed` (a side the sources
+ * dropped, or a `.py` head the Python index did not read; `testIntegrityUnreadable.ts`). The other per-file entries and
+ * every other mode stay a warning.
  */
 function indexUnavailableLevel(
   mode: string | undefined,
@@ -933,7 +939,8 @@ function indexUnavailableLevel(
   const unreadable =
     unavailable !== undefined &&
     "files" in unavailable &&
-    unavailable.files.some((f) => f.changeMadeUnreadable === true);
+    (unavailable.files.some((f) => f.changeMadeUnreadable === true || f.failsClosed === true) ||
+      (unavailable.added ?? []).some((f) => f.failsClosed === true));
   return notRun || unreadable ? "error" : "warn";
 }
 

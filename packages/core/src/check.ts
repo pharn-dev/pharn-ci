@@ -178,10 +178,14 @@ export interface CheckInput {
    * message names a modified test file that could not be compared and an added test file whose tests could not be
    * read. In mode `block` that message is an error when TI02 and TI05 did not run, and also when a modified test file
    * cannot be indexed at HEAD for the reason `too-deep`, `too-large`, `over-file-cap` or `binary` while it was indexed at
-   * the merge base or dropped there as `over-file-cap`; an added test file, or a file already unreadable at the merge
-   * base, stays a warning. A modified or added JS/TS or Python test file whose diff entry git shows as binary is named
-   * with the reason `binary` even with no sources for it (a modified one is an error in mode `block` whatever the merge
-   * base held, an added one a warning); it is still compared when both its sides index.
+   * the merge base or dropped there as `over-file-cap`; when the sources dropped a side of a compared file as
+   * `over-file-cap` or `over-total-cap` (either side), or as `too-large`, `binary` or `unsafe-path` while the other side's
+   * text was held; and when the Python index did not read the head of a modified or added `.py` test file (see
+   * `pythonTestIndex`). A file already unreadable at the merge base for another reason, a drop that hit both sides, and
+   * an added JS/TS test file stay a warning. A renamed file whose new path is a test file and whose old path is not one
+   * counts as an added test file. A modified or added JS/TS or Python test file whose diff entry git shows as binary is
+   * named with the reason `binary` even with no sources for it (a modified one is an error in mode `block` whatever the
+   * merge base held, an added one a warning); it is still compared when both its sides index.
    */
   testSources?: TestSources | undefined;
   /**
@@ -189,7 +193,11 @@ export interface CheckInput {
    * `pythonTestIndexFromRun`), built by the CLI and the Action. Absent means no `.py` text was read or the caller gave
    * none: the modified `.py` test files are then named per file, as a warning. An index that says `python-not-found`
    * (the CLI and the Action pass it only after trying to start an interpreter) with a modified `.py` test file means
-   * TI02 and TI05 did not run, which is an error in mode `block`.
+   * TI02 and TI05 did not run, which is an error in mode `block`. Any other run that gave no index (`python-too-old`,
+   * `python-failed`, `timeout`, `output-too-large`, `bad-output`), and a per-file refusal of the index (`syntax-error`,
+   * `too-deep`, `too-large`, `parser-threw`) for the head of a modified or added `.py` test file whose text was read,
+   * name the file and are an error in mode `block` too. A head the index read, with a base only it refused, stays a
+   * warning.
    */
   pythonTestIndex?: PythonTestIndex | undefined;
   /**

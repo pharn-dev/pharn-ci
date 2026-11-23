@@ -17,6 +17,23 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   whose match lies past the bound is reported, where the old index (which counted 256 posting entries) could sometimes
   still find it: a TI02 at the mode's level, and a deleted test file holding such a test stays at the mode's level for
   TI01. The accept label clears such a block when the test was in fact renamed or moved. See `docs/LIMITS.md`.
+- A test file that pharn-ci could not read now fails `test-integrity: block` instead of warning (CORE-351). In mode
+  `warn` nothing changes. Each case is a per-file `TEST_INTEGRITY_INDEX_UNAVAILABLE` error that the accept label lowers
+  to a warning; the whole-run error for a modified `.py` test file with no Python interpreter (`python-not-found`)
+  stays and the label never lowers it. The cases:
+  - a runner whose `python3` is older than 3.8, or a Python index run that crashed, timed out, wrote too much output
+    or wrote output it could not read (`python-too-old`, `python-failed`, `timeout`, `output-too-large`,
+    `bad-output`), when the change modifies or adds a `.py` test file;
+  - a `.py` test file whose head `python3` cannot parse (`syntax-error`, Python 2 syntax included, or `too-deep`,
+    `too-large`, `parser-threw`), whatever the merge base held;
+  - added `.py` test files, for every reason above and for `python-not-found`;
+  - a modified test file of any language that the sources reader dropped as `over-file-cap` or `over-total-cap` on
+    either side (this closes the 16 MiB padding evasion), or as `too-large`, `binary` or `unsafe-path` on one side
+    while the other side was read; `too-large` or `binary` on both sides and `missing` stay warnings.
+
+  A file renamed from a non-test path into a test path is now read at HEAD only and counts as an added test file.
+  The log line for an unavailable Python index names the reason and says the run fails in mode `block`. No message
+  code, field or reason changes. See [`docs/LIMITS.md`](./docs/LIMITS.md).
 - A `file:` policy a pull request edits can no longer loosen any setting the file may carry (CORE-348): the Action and
   the CLI read the file at the base commit (the base branch's copy) before applying it and unite the two copies key by
   key, so the stricter value applies for the threshold, the mode, `setup.require`, `setup.expect`, `setup.consistency`,

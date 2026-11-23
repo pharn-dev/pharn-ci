@@ -71,13 +71,6 @@ describe("CORE-69: a modified Python test file keeps the per-file warning unless
         },
       ],
       ["no index, readable on both sides", { testSources: READABLE }],
-      [
-        "python-too-old index",
-        {
-          testSources: READABLE,
-          pythonTestIndex: { available: false, reason: "python-too-old" },
-        },
-      ],
     ];
     for (const [name, input] of cases) {
       const report = await run(input);
@@ -92,5 +85,18 @@ describe("CORE-69: a modified Python test file keeps the per-file warning unless
       ).toEqual([]);
       expect(report.verdict, `${name}: verdict`).toBe("warn");
     }
+
+    // CORE-351: a python-too-old index (a Python run that gave no index, python-not-found aside) fails the file closed
+    // in mode block: the per-file form is an error naming the file, and the verdict is fail.
+    const tooOld = await run({
+      testSources: READABLE,
+      pythonTestIndex: { available: false, reason: "python-too-old" },
+    });
+    const tooOldMessages = tooOld.messages.filter((m) => m.code === CODE);
+    expect(tooOldMessages, "python-too-old: one message").toHaveLength(1);
+    expect(tooOldMessages[0]?.level, "python-too-old: level").toBe("error");
+    expect(tooOldMessages[0]?.text, "python-too-old: names the file").toContain(PATH);
+    expect(tooOldMessages[0]?.text, "python-too-old: the per-file form").not.toContain("did not run");
+    expect(tooOld.verdict, "python-too-old: verdict").toBe("fail");
   });
 });

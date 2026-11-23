@@ -121,7 +121,7 @@ export async function gatherSources(deps: GatherSourcesDeps, options: GatherSour
         options.log(
           "parsed" in options.diff && pythonNotFoundStopsComparison(options.diff.parsed, pythonTestIndex)
             ? "pharn-ci: no Python interpreter was found (python-not-found), so TI02 and TI05 did not run"
-            : `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`,
+            : `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared, which fails the run in mode block`,
         );
       }
     }

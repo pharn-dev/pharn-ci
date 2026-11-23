@@ -67,15 +67,22 @@ packages, re-exports through another source file and per-test coverage are not f
 
 Python test files are parsed with the runner's own `python3` (or `python`), 3.8 or newer, and only when the change
 modifies one. When neither `python3` nor `python` is found on the runner, TI02 and TI05 do not run for that change
-(`TEST_INTEGRITY_INDEX_UNAVAILABLE`), and the diff-only signals still run; an added `.py` test file alone is only
-named (warn). A Python older than 3.8, or a Python run that fails, does not stop them: the modified `.py` test files
-are named in that message (warn) and the signals that compare test text skip them. When TI02 and TI05, or TI09, did
+(`TEST_INTEGRITY_INDEX_UNAVAILABLE`), and the diff-only signals still run; an added `.py` test file alone is named
+(an error in `block`, since no signal read its tests). A Python older than 3.8, a Python run that fails, times out or
+gives output pharn-ci cannot read, and a `.py` test file whose head the parser refuses (a syntax error, nested too
+deeply, too large) do not stop the other files: the modified and added `.py` test files are named in that message and the
+signals that compare test text skip them, and in `block` that message is an error, so the check fails closed (the
+accept label lowers it to a warning). A `.py` test file whose merge-base side alone the parser refuses stays a warning.
+The JS/TS test files of the same change are still compared. When TI02 and TI05, or TI09, did
 not run at all because the test text could not be read (a shallow checkout, or `pr-number` mode), or because no
 Python was found, that message is an error in `test-integrity: block`, so the check fails closed. A test file the
 change modifies that cannot be read at HEAD (nested too deeply, over 512 KiB, pushed past the 200-file cap) is an
 error in `block` too, and so is a JS/TS, Python or Go test file the change modifies that has
-more than 5000 changed lines; the accept label lowers both. An added test file and a file already unreadable at the
-merge base stay a warning. The test files the change modifies are read before the added and deleted ones.
+more than 5000 changed lines; the accept label lowers both. So is a modified test file the sources dropped on one side
+past the 200-file or the 16 MiB total cap, or as too large, non-UTF-8 or an unsafe path while the other side was read.
+An added JS/TS test file and a file already out of reach on both sides (too large or non-UTF-8 at the merge base and at
+HEAD) stay a warning. A file renamed into a test path from a path that is not a test file counts as an added one. The
+test files the change modifies are read before the added and deleted ones.
 The Python parser has its own cap of 200 files, shared by the merge base and HEAD: a modified `.py` test file counts once on each side and an added
 or deleted one once, so about 100 modified `.py` test files (fewer when the change also adds or deletes some) can push
 a modified one past it at HEAD, which is also an error in `block`.

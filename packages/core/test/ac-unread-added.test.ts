@@ -167,12 +167,14 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE names an added test file whose tests 
     expect(messages[0]?.text.startsWith(`${COMPARED("`src/a.test.ts` (`too-large`)")} `)).toBe(true);
   });
 
+  // CORE-351: a Python run that gave no index fails an added .py file closed in mode block (an error); with no index
+  // passed at all it stays a warning.
   it.each([
-    ["no Python index", undefined, "python-not-found"],
-    ["a Python run that timed out", { available: false, reason: "timeout" }, "timeout"],
+    ["no Python index", undefined, "python-not-found", "warn"],
+    ["a Python run that timed out", { available: false, reason: "timeout" }, "timeout", "error"],
   ] as const)(
     "added-python with %s: the added .py file is named with the Python reason (nothing was said before)",
-    (_, index, reason) => {
+    (_, index, reason, level) => {
       const input = {
         diff: diffOf("added-python"),
         base: side("added-python", "base"),
@@ -182,7 +184,7 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE names an added test file whose tests 
       };
       const { messages } = run({ ...input, mode: "block" });
       expect(messages.map((message) => [message.level, message.text])).toEqual([
-        ["warn", ADDED(`\`tests/test_new.py\` (\`${reason}\`)`)],
+        [level, ADDED(`\`tests/test_new.py\` (\`${reason}\`)`)],
       ]);
       expect(run({ ...input, mode: "off" }).messages, "mode off adds no message").toEqual([]);
     },

@@ -26596,6 +26596,20 @@ function changeMadeUnreadable(base, headReason) {
   if (!HEAD_UNREADABLE_ERROR_REASONS.includes(headReason)) return false;
   return base.ok || base.reason === "over-file-cap";
 }
+var DROP_ALWAYS_FAILS_CLOSED_REASONS = ["over-file-cap", "over-total-cap"];
+var DROP_FAILS_CLOSED_AGAINST_TEXT_REASONS = ["too-large", "binary", "unsafe-path"];
+function sourcesDropFailsClosed(base, head) {
+  const dropFails = (side, other) => {
+    if (side.ok || side.hadText) return false;
+    if (DROP_ALWAYS_FAILS_CLOSED_REASONS.includes(side.reason)) return true;
+    return DROP_FAILS_CLOSED_AGAINST_TEXT_REASONS.includes(side.reason) && (other.ok || other.hadText);
+  };
+  return dropFails(base, head) || dropFails(head, base);
+}
+var PYTHON_FILE_REFUSAL_REASONS = ["syntax-error", "too-deep", "too-large", "parser-threw"];
+function pythonHeadFailsClosed(head) {
+  return !head.ok && head.hadText && head.fromPythonIndex;
+}
 var TI0205_NOT_RUN_LEAD = "TI02 and TI05 did not run: the text of the touched test files could not be read (";
 var TI09_NOT_RUN_LEAD = "TI09 did not run: the text of the touched test-config files could not be read (";
 function ti0205NotRunStart(reasonSpan) {
@@ -26904,7 +26918,7 @@ function oneLine(text) {
 function indexUnavailableLevel(mode, unavailable2, configUnavailable) {
   if (mode !== "block") return "warn";
   const notRun = unavailable2 !== void 0 && "notRun" in unavailable2 || configUnavailable !== void 0 && "notRun" in configUnavailable;
-  const unreadable = unavailable2 !== void 0 && "files" in unavailable2 && unavailable2.files.some((f) => f.changeMadeUnreadable === true);
+  const unreadable = unavailable2 !== void 0 && "files" in unavailable2 && (unavailable2.files.some((f) => f.changeMadeUnreadable === true || f.failsClosed === true) || (unavailable2.added ?? []).some((f) => f.failsClosed === true));
   return notRun || unreadable ? "error" : "warn";
 }
 function indexUnavailableText(unavailable2, configUnavailable) {
@@ -37261,7 +37275,7 @@ function testsOf(result, imports) {
     groups: result.tests.filter((block) => block.kind === "describe"),
     mocks: result.mocks,
     imports
-  } : { ok: false, reason: result.reason };
+  } : { ok: false, reason: result.reason, hadText: true, fromPythonIndex: false };
 }
 function pythonLookupOf(index) {
   const mapOf = (files) => new Map(files.map((file) => [file.path, file]));
@@ -37277,7 +37291,7 @@ function touchedTestEntries(diff) {
     if (language === null || !isTestFile(file.path)) continue;
     if (file.status === "modified" || file.status === "renamed" && isTestFile(file.oldPath)) {
       compared2.set(`${file.oldPath}\0${file.path}`, { basePath: file.oldPath, headPath: file.path, language });
-    } else if (file.status === "added") {
+    } else if (file.status === "added" || file.status === "renamed") {
       added.set(file.path, language);
     }
   }
@@ -37291,7 +37305,7 @@ function binaryTouchedTestFiles(diff) {
     if (file.binary !== true) continue;
     if (compared2.has(`${file.oldPath}\0${file.path}`)) {
       modified.push({ path: file.path, reason: BINARY_DIFF_REASON, changeMadeUnreadable: true });
-    } else if (file.status === "added" && addedPaths.has(file.path)) {
+    } else if (addedPaths.has(file.path)) {
       added.push({ path: file.path, reason: BINARY_DIFF_REASON });
     }
   }
@@ -37303,11 +37317,13 @@ function mergeEntries(existing, extra) {
   for (const entry of [...existing, ...extra]) {
     const key = `${entry.path}\0${entry.reason}`;
     const before = merged.get(key);
-    const flagged = before?.changeMadeUnreadable === true || entry.changeMadeUnreadable === true;
+    const unreadable = before?.changeMadeUnreadable === true || entry.changeMadeUnreadable === true;
+    const closed = before?.failsClosed === true || entry.failsClosed === true;
     merged.set(key, {
       path: entry.path,
       reason: entry.reason,
-      ...flagged ? { changeMadeUnreadable: true } : {}
+      ...unreadable ? { changeMadeUnreadable: true } : {},
+      ...closed ? { failsClosed: true } : {}
     });
   }
   return [...merged.values()].sort((a, b) => byCodeUnit(a.path, b.path) || byCodeUnit(a.reason, b.reason));
@@ -37357,15 +37373,21 @@ function indexTouchedTestFiles(diff, sources, python) {
   const indexSide2 = (side, path, language) => {
     const lookup2 = side === "base" ? baseSide : headSide;
     const text = lookup2.texts.get(path);
-    if (text === void 0) return { ok: false, reason: lookup2.dropped.get(path) ?? "missing" };
+    if (text === void 0) {
+      return { ok: false, reason: lookup2.dropped.get(path) ?? "missing", hadText: false, fromPythonIndex: false };
+    }
     let result;
     let imports;
+    let fromPython = false;
     if (language === "py") {
-      if (pythonSide.unavailable !== null) return { ok: false, reason: pythonSide.unavailable };
+      if (pythonSide.unavailable !== null) {
+        return { ok: false, reason: pythonSide.unavailable, hadText: true, fromPythonIndex: python !== void 0 };
+      }
       const found = pythonSide[side].get(path);
-      if (found === void 0) return { ok: false, reason: "missing" };
+      if (found === void 0) return { ok: false, reason: "missing", hadText: true, fromPythonIndex: false };
       result = found.result;
       imports = found.imports ?? [];
+      fromPython = !result.parsed && PYTHON_FILE_REFUSAL_REASONS.includes(result.reason);
     } else {
       const indexed2 = indexTestFileWithImports(path, text);
       result = indexed2.result;
@@ -37373,7 +37395,7 @@ function indexTouchedTestFiles(diff, sources, python) {
     }
     const indexed = testsOf(result, imports);
     if (indexed.ok) languages.add(language);
-    return indexed;
+    return indexed.ok ? indexed : { ...indexed, fromPythonIndex: fromPython };
   };
   const pairs = [];
   const unavailable2 = [];
@@ -37399,7 +37421,13 @@ function indexTouchedTestFiles(diff, sources, python) {
       const headReason = head.ok ? null : head.reason;
       const reason = base.ok ? headReason : base.reason;
       const unreadable = headReason !== null && changeMadeUnreadable(base, headReason);
-      unavailable2.push({ path: file.headPath, reason, ...unreadable ? { changeMadeUnreadable: true } : {} });
+      const closed = sourcesDropFailsClosed(base, head) || file.language === "py" && pythonHeadFailsClosed(head);
+      unavailable2.push({
+        path: file.headPath,
+        reason,
+        ...unreadable ? { changeMadeUnreadable: true } : {},
+        ...closed ? { failsClosed: true } : {}
+      });
     }
   }
   unavailable2.sort((a, b) => byCodeUnit(a.path, b.path));
@@ -37416,7 +37444,8 @@ function indexTouchedTestFiles(diff, sources, python) {
         ...head.imports === void 0 ? {} : { headImports: head.imports }
       });
     } else {
-      unreadAdded.push({ path: headPath, reason: head.reason });
+      const closed = language === "py" && pythonHeadFailsClosed(head);
+      unreadAdded.push({ path: headPath, reason: head.reason, ...closed ? { failsClosed: true } : {} });
     }
   }
   return {
@@ -48165,7 +48194,7 @@ async function gatherSources(deps, options) {
       out.pythonTestIndex = pythonTestIndex;
       if (!pythonTestIndex.available) {
         options.log(
-          "parsed" in options.diff && pythonNotFoundStopsComparison(options.diff.parsed, pythonTestIndex) ? "pharn-ci: no Python interpreter was found (python-not-found), so TI02 and TI05 did not run" : `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared`
+          "parsed" in options.diff && pythonNotFoundStopsComparison(options.diff.parsed, pythonTestIndex) ? "pharn-ci: no Python interpreter was found (python-not-found), so TI02 and TI05 did not run" : `pharn-ci: the Python test index is unavailable (${pythonTestIndex.reason}), so .py test files are not compared, which fails the run in mode block`
         );
       }
     }

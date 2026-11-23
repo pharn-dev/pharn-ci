@@ -392,6 +392,18 @@ Both readings give one finding per line, the stronger one kept.
   name is the one pytest never collects, but tests of one name are paired in line order, so it is reported as a skip of
   the existing test, at the added `def`. Without the Python index, the line reading reads `pytest.importorskip(` and
   `raise unittest.SkipTest(` at the start of a line as a skip inside a body (`warn`), and none of the other forms.
+- **Decided only by the line pass today.** In these inputs only TI03's line pass, with its import-alias reader
+  (`pythonAliases.ts`, which resolves `import pytest as pt` and the like from the file's own column-0 imports), decides
+  the outcome; nothing the Python index returns does. Each was measured by running `check()` with a real index, with
+  the reader and with it stubbed out (CORE-351). Block-level: a `.py` test file whose merge-base text the index refuses
+  while its head indexes (the base-only refusal stays a warning); a modified test file dropped as `missing` on one side
+  while the other side has text; an alias skip decorator above a `def` the index does not collect as a test (custom
+  pytest collection such as `def check_*`, a method of a class not named `Test*`, a helper, a function nested in a
+  test); an alias `@pt.mark.xfail` added to a test the base already skipped; an alias `pytestmark = pt.mark.skip` in a
+  file with no tests. Warning-level: an alias skip call inside a helper or hook body (cannot be placed); an alias
+  conditional skip added to a test that already had one; an alias decorator above a shown `def` that is not a test;
+  and the warning-level versions of the base-only refusal and the one-sided `missing` drop. Reading these from the
+  index and deleting the alias reader is [CORE-356](https://linear.app/pharn-dev/issue/CORE-356).
 - **A skip moved to another file** reads as added without the test index, because the removed line is looked for in
   the same file only. A rename that edits the skip is judged against the old file's lines. With the index, a test the
   match finds again in another file is judged by its pair.
@@ -1034,6 +1046,13 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
 | TI16 suppression added | caught — ESLint, TypeScript and Biome comments | caught — `noqa`, `type`, `pylint` and `pyright` comments |
 | TI17 always-true assertion | caught — `warn-matcher-arrow` | caught — `warn-helper-pytest` and `warn-wildcard-python-any` |
 
+**When the Python index does not read a file.** A Python run that gives no index (no interpreter, Python older than 3.8,
+a failed or timed-out run, output too large or unreadable) or a refusal of a `.py` test file's head (`syntax-error`,
+`too-deep`, `too-large`, `parser-threw`) leaves that file out of every signal that compares test text. Since CORE-351
+that fails closed: in `test-integrity: block`, the modified or added `.py` test file is named in
+`TEST_INTEGRITY_INDEX_UNAVAILABLE` as an error (the accept label lowers it), where it was a warning before; JS/TS test
+files of the same change are still compared. A head the index read, with a base only the index refused, still warns.
+
 **Python misses.** What the Python column does not see:
 
 - `monkeypatch.setattr` object forms are read only when the object is a dotted name and the attribute a string
@@ -1094,15 +1113,27 @@ must-not-trigger case exist; it does not mean every spelling is seen (see the Py
   applied.
   `TEST_INTEGRITY_TEXT_TRUNCATED` is an error in mode `block` when a JavaScript, TypeScript, Python or Go test file the
   change modifies has more than 5000 changed lines. A reviewer who is not the PR author can lower these per-file errors
-  to warnings with the accept label; the did-not-run error stays. These still only warn in block: an added test file
-  that cannot be read, a modified test file that could not be read at the merge base either (for a reason other than
-  `over-file-cap`), the other reasons at HEAD (`syntax-error`, `syntax-error-heavy`, `parser-threw`, `missing`,
-  `unsafe-path`, `over-total-cap`), the Python index reasons other than `python-not-found`, and a cut file
-  that is not a modified test file. The change can cause one of these itself: the test files it modifies are read
-  first, so only they fill the 16 MiB cap ahead of one another, and a change that pads the other test files it modifies
-  (each under 512 KiB, sorting before the target) past 16 MiB has the target dropped at HEAD as `over-total-cap`. That
-  file then only warns and TI02 and TI05 do not compare it. This check does not close that; the padded files are in
-  the diff for a reviewer to see. A7 and P02–P07 need a local diff (`fetch-depth: 0`). Their "did not run" message is
+  to warnings with the accept label; the did-not-run error stays. Two more per-file cases are errors in block (CORE-351).
+  A modified test file the sources dropped on one side fails closed: as `over-file-cap` or `over-total-cap` on either
+  side whatever the other side holds, and as `too-large`, `binary` or `unsafe-path` while the other side's text was
+  read (the pull request moved the file across the boundary); `too-large` or `binary` on both sides and `missing` on
+  either side do not. A `.py` test file, modified or added, whose head text was read but not indexed by the Python index
+  fails closed: a Python run that gave no index (`python-not-found`, `python-too-old`, `python-failed`, `timeout`,
+  `output-too-large`, `bad-output`) or a refusal as `syntax-error`, `too-deep`, `too-large` or `parser-threw`, whatever
+  the base side held. A caller that passes no Python index at all (a library call, not the CLI or the Action) keeps the
+  warning. These still only warn in block: an added JS/TS test file that cannot be read, a modified test file that
+  could not be read at the merge base either (for a reason other than `over-file-cap`), the other reasons at HEAD
+  (`syntax-error`, `syntax-error-heavy`, `missing`, a JS/TS `parser-threw`) when the base indexed, a `.py` file whose
+  head indexed while only its base was refused, the Python index's own `missing`, and a cut file that is not a
+  modified test file. The change can no longer use the cap to hide a modified test file: the test files it modifies
+  are read first, so only they fill the 16 MiB cap ahead of one another, and a change that pads the other test files
+  it modifies (each under 512 KiB, sorting before the target) past 16 MiB has the target dropped at HEAD as
+  `over-total-cap`, which now fails the run in block; the padded files are still in the diff for a reviewer to see. A
+  long-standing oversized or non-UTF-8 test file that a pull request shrinks or fixes also fails in block now, until
+  the accept label is applied. A file renamed from a path that is not a test file into a test path (`tests/helper.py`
+  to `tests/test_helper.py`) is read at HEAD only and counts as an added test file everywhere (its tests count as
+  added in the tests-changed summary, and a test removed elsewhere that it holds reads as moved), while TI03's line
+  pass still reads its diff lines as before. A7 and P02–P07 need a local diff (`fetch-depth: 0`). Their "did not run" message is
   a warning, except that `POLICY_SETTINGS_INVALID` for unread settings is an error under a required
   app policy or a policy that sets one of the lists `forbidden_permissions`, `required_permissions_deny`,
   `allowed_mcp_servers`, `forbidden_mcp_servers` or `required_hooks` with its rule (P02 to P06) at

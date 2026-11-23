@@ -7,9 +7,10 @@
  * The reasons a modified test file can fail to index at HEAD that make the per-file
  * `TEST_INTEGRITY_INDEX_UNAVAILABLE` message an error in mode `block`: the change itself can cause each of them while
  * the test runner still runs the file. The one list: a new reason that a change can cause is added here and nowhere
- * else. `binary` (CORE-50) is the sources' drop of a head text that holds a NUL byte or is not UTF-8. Every other
- * reason (`syntax-error`, `syntax-error-heavy`, `parser-threw`, `missing`, `unsafe-path`, `over-total-cap`, the Python
- * index reasons) stays a warning.
+ * else. `binary` (CORE-50) is the sources' drop of a head text that holds a NUL byte or is not UTF-8. A head that
+ * fails for another reason stays a warning under this rule alone (`syntax-error`, `syntax-error-heavy`, `missing`, a
+ * JS or TS `parser-threw`, `unsafe-path`, `over-total-cap`); the rules below (`sourcesDropFailsClosed` and
+ * `pythonHeadFailsClosed`) make some of them an error too.
  */
 export const HEAD_UNREADABLE_ERROR_REASONS: readonly string[] = ["too-deep", "too-large", "over-file-cap", "binary"];
 
@@ -45,6 +46,58 @@ export function isBinaryUnreadable(entry: { reason: string; changeMadeUnreadable
 export function changeMadeUnreadable(base: { ok: true } | { ok: false; reason: string }, headReason: string): boolean {
   if (!HEAD_UNREADABLE_ERROR_REASONS.includes(headReason)) return false;
   return base.ok || base.reason === "over-file-cap";
+}
+
+/**
+ * How one side (merge base or HEAD) of a touched test file came out: it indexed, or it failed with `reason`.
+ * `hadText` says the sources held the side's text (so the failure is a refusal of the parser or of the Python index,
+ * never a drop of the sources); `fromPythonIndex` says the failure came from a Python index the caller passed (a
+ * run-level reason or a per-file refusal), never set when the caller passed none.
+ */
+export type SideOutcome = { ok: true } | { ok: false; reason: string; hadText: boolean; fromPythonIndex: boolean };
+
+/**
+ * The reasons for which a side the sources dropped makes a compared file fail closed whatever the other side holds: a
+ * file count or total byte cap is a budget the pull request can spend (by adding files or padding other files), so the
+ * drop says nothing about the file itself.
+ */
+export const DROP_ALWAYS_FAILS_CLOSED_REASONS: readonly string[] = ["over-file-cap", "over-total-cap"];
+
+/**
+ * The reasons for which a side the sources dropped makes a compared file fail closed when the other side's text was
+ * held: the file crossed a boundary (size, encoding, path safety) between the merge base and HEAD, or the reverse, and
+ * the pull request moved it across.
+ */
+export const DROP_FAILS_CLOSED_AGAINST_TEXT_REASONS: readonly string[] = ["too-large", "binary", "unsafe-path"];
+
+/**
+ * Whether a compared file fails closed because the sources dropped a side, whatever the language: a side dropped
+ * (`hadText` false) as `over-file-cap` or `over-total-cap` fails closed whatever the other side holds; a side dropped as
+ * `too-large`, `binary` or `unsafe-path` fails closed when the other side's text was held (it indexed, or its text was
+ * refused). Not a case: `too-large` or `binary` on both sides (the file was already out of reach at the merge base),
+ * `missing` on either side (the file is not in the tree), and a side that failed with its text held.
+ */
+export function sourcesDropFailsClosed(base: SideOutcome, head: SideOutcome): boolean {
+  const dropFails = (side: SideOutcome, other: SideOutcome): boolean => {
+    if (side.ok || side.hadText) return false;
+    if (DROP_ALWAYS_FAILS_CLOSED_REASONS.includes(side.reason)) return true;
+    return DROP_FAILS_CLOSED_AGAINST_TEXT_REASONS.includes(side.reason) && (other.ok || other.hadText);
+  };
+  return dropFails(base, head) || dropFails(head, base);
+}
+
+/** The per-file refusals of the Python index that `pythonHeadFailsClosed` counts, beside the run-level reasons. */
+export const PYTHON_FILE_REFUSAL_REASONS: readonly string[] = ["syntax-error", "too-deep", "too-large", "parser-threw"];
+
+/**
+ * Whether a `.py` test file fails closed because its head side, whose text the sources held, was not read by the Python
+ * index: a run-level reason (any of `PYTHON_INDEX_UNAVAILABLE_REASONS`, `python-not-found` included) or a per-file
+ * refusal (`syntax-error`, `too-deep`, `too-large`, `parser-threw`). It reads the head side only, so a base the index
+ * read and a base it refused give the same answer. Not a case: a head that indexed with a base only the index refused,
+ * the index's own `missing` (a path absent from a run that ran), and a caller that passed no Python index.
+ */
+export function pythonHeadFailsClosed(head: SideOutcome): boolean {
+  return !head.ok && head.hadText && head.fromPythonIndex;
 }
 
 /** The start of the sentence that says TI02 and TI05 did not run; `report.ts` builds the sentence from it. */
