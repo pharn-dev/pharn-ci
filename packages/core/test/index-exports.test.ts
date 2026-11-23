@@ -19,14 +19,17 @@ function sourceFiles(dir: string): string[] {
     .map((e) => join(e.parentPath, e.name));
 }
 
-function parse(path: string): ts.SourceFile {
-  return ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest, true);
+function parse(path: string, text = readFileSync(path, "utf8")): ts.SourceFile {
+  return ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
 }
 
 /** The names a file imports (or re-exports) from the package entry by name, statically. */
 function namesFromEntry(path: string): string[] {
+  const text = readFileSync(path, "utf8");
+  // Only a file that names the entry can import from it; parsing the rest would cost seconds under coverage.
+  if (!text.includes(ENTRY)) return [];
   const names: string[] = [];
-  for (const statement of parse(path).statements) {
+  for (const statement of parse(path, text).statements) {
     const isImport = ts.isImportDeclaration(statement);
     if (!isImport && !ts.isExportDeclaration(statement)) continue;
     const specifier = statement.moduleSpecifier;
@@ -49,7 +52,8 @@ const indexExports = parse(join(ROOT, "packages/core/src/index.ts"))
       : ["<a star export>"],
   );
 
-describe("packages/core/src/index.ts exports what the product imports", () => {
+// Reading every source and test file under four trees can take seconds on a loaded host or under coverage.
+describe("packages/core/src/index.ts exports what the product imports", { timeout: 60_000 }, () => {
   it("every export of the index is imported from @pharn-ci/core by the CLI, the Action, node-io or scripts/", () => {
     const imported = new Set(PRODUCT.flatMap((dir) => sourceFiles(dir).flatMap(namesFromEntry)));
     expect(indexExports.length).toBeGreaterThan(0);
