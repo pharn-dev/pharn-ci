@@ -14,6 +14,7 @@ import { dirname, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { listDir, readFile, runGit, runGitBatch } from "../../node-io/src/index.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // CORE-95, the fixture cases, each in a real temporary git repository (the base commit on `main`, the pull request's
 // commit on `feature`) through the Action's run() and the CLI's main() with --base, with real git and the real
@@ -86,8 +87,6 @@ function repository(base: Record<string, Entry>, change: Record<string, Entry>) 
 
 interface ActionOptions {
   inputs?: Record<string, string>;
-  /** Leave out the git batch reader, so no git object can be read. */
-  noBatch?: boolean;
 }
 
 async function actionRun(repo: { dir: string; baseSha: string; headSha: string }, options: ActionOptions = {}) {
@@ -98,6 +97,7 @@ async function actionRun(repo: { dir: string; baseSha: string; headSha: string }
   const failed: string[] = [];
   const fetched: string[] = [];
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? "",
     context: {
       eventName: "pull_request",
@@ -117,7 +117,7 @@ async function actionRun(repo: { dir: string; baseSha: string; headSha: string }
       updateComment: async () => {},
     },
     git: (args: string[]) => runGit(repo.dir, args),
-    ...(options.noBatch ? {} : { gitBatch: (args: string[], input: string) => runGitBatch(repo.dir, args, input) }),
+    gitBatch: (args: string[], input: string) => runGitBatch(repo.dir, args, input),
     indexPython: async () => ({ available: false, reason: "not-needed" }),
     readFile,
     listDir,
@@ -253,15 +253,8 @@ describe("CORE-95 fixtures: a real repository whose pull request edits the confi
       { [CONFIG]: { symlink: "../config/other.yml" }, "config/other.yml": fixture("exclude-all/ci.yml") },
     );
     const symlinked = await actionRun(repo, { inputs: { threshold: "80", "coverage-file": "coverage/lcov.info" } });
-    // Without a git batch reader nothing at the merge base can be read either.
-    const unbatched = await actionRun(
-      repository({ [CONFIG]: fixture("base-ci.yml") }, { [CONFIG]: fixture("exclude-all/ci.yml") }),
-      { inputs: { threshold: "80" }, noBatch: true },
-    );
-    for (const [label, report] of [
-      ["symbolic link at the merge base", symlinked.report],
-      ["no git batch reader", unbatched.report],
-    ] as const) {
+    // CORE-143: the git batch reader is a required dep, so the "no git batch reader" row left with its fallback.
+    for (const [label, report] of [["symbolic link at the merge base", symlinked.report]] as const) {
       const config = configMessages(report);
       expect(
         config.map((m) => m.level),

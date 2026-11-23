@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // run() is loaded inside each test body, like the other AC tests: they are written before the build.
 // The Action runs against in-memory deps for a pull_request_target event. Its git answers `rev-parse HEAD` with the
@@ -38,6 +39,7 @@ async function runOnPullRequestTarget(localHead: string) {
   const gitCalls: string[][] = [];
   const files = new Map([[resolve(WORKSPACE, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request_target",

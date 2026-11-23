@@ -33,7 +33,6 @@ import {
 } from "@pharn-ci/core";
 import {
   gatherSources,
-  gitChunks,
   type HeadCheckout,
   headIsInBase,
   loadConfigInUse,
@@ -154,14 +153,14 @@ export interface ActionDeps {
   git(args: string[]): Promise<string>;
   /**
    * git's stdout as UTF-8 text chunks, without holding it whole. Iteration throws an Error whose message is git's
-   * stderr (or says that git timed out) when git fails. Absent: one chunk of what `git` resolves.
+   * stderr (or says that git timed out) when git fails.
    */
-  gitStream?(args: string[]): AsyncIterable<string>;
+  gitStream(args: string[]): AsyncIterable<string>;
   /**
    * Runs git with `input` on its stdin and resolves its stdout as bytes; rejects with stderr on failure. Reads the text
-   * of the test files from committed git objects (`cat-file`). Absent: that text is not read.
+   * of the test files from committed git objects (`cat-file`).
    */
-  gitBatch?(args: string[], input: string): Promise<Uint8Array>;
+  gitBatch(args: string[], input: string): Promise<Uint8Array>;
   /**
    * Indexes `.py` test files with the Python test index (one run, base files then head files). Absent: node-io's
    * `indexPythonTests`, which runs the interpreter found on PATH. Only called when the test sources hold a `.py` test
@@ -171,9 +170,9 @@ export interface ActionDeps {
   readFile(path: string): Promise<string | null>;
   /**
    * The file as UTF-8 text chunks, or null when it does not exist; any other failure rejects, or throws during
-   * iteration. Absent: one chunk of what `readFile` resolves.
+   * iteration.
    */
-  readFileStream?(path: string): Promise<AsyncIterable<string> | null>;
+  readFileStream(path: string): Promise<AsyncIterable<string> | null>;
   /**
    * The entries of a directory, with symbolic links reported as such and never followed; null when the
    * directory does not exist or is not a directory. Only called to expand a coverage glob or to discover the
@@ -189,15 +188,13 @@ export interface ActionDeps {
   writeSummary(markdown: string): Promise<void>;
   /**
    * `lstat` of a path without following a symbolic link; null when it does not exist. Used to read a `file:` policy.
-   * Absent: node-io's `lstatPath`.
    */
-  lstat?: ((path: string) => Promise<PathStat | null>) | undefined;
+  lstat(path: string): Promise<PathStat | null>;
   /**
-   * The org policy deps (see app-client.ts). All optional: an absent `fetch`, `getIDToken`, `setSecret` or `hasOidcEnv`
-   * means there is no OIDC and no policy is fetched. Absent `now`, `sleep` and `timeoutMs` use the clock, a timer and
-   * the default timeout.
+   * The org policy deps (see app-client.ts). An absent `getIDToken`, `setSecret` or `hasOidcEnv` means there is no OIDC
+   * and no policy is fetched. Absent `now`, `sleep` and `timeoutMs` use the clock, a timer and the default timeout.
    */
-  fetch?: ((input: string, init: RequestInit) => Promise<Response>) | undefined;
+  fetch(input: string, init: RequestInit): Promise<Response>;
   getIDToken?: ((audience?: string) => Promise<string>) | undefined;
   setSecret?: ((secret: string) => void) | undefined;
   hasOidcEnv?: boolean | undefined;
@@ -450,13 +447,13 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
     );
   }
   // A `file:` policy the pull request carries is also read at the merge base, from committed objects: the pull request
-  // cannot remove an agent label, login or protected path by editing the file. Only a local diff and a git batch reader
-  // make that possible; otherwise a file policy is unreadable there and core decides from the diff whether that matters.
+  // cannot remove an agent label, login or protected path by editing the file. Only a local diff makes that possible;
+  // otherwise a file policy is unreadable there and core decides from the diff whether that matters.
   let policyFileBase: PolicyFileBase | undefined;
   if (policy?.source === "file") {
     policyFileBase =
-      localBase !== undefined && deps.gitBatch !== undefined && policy.path !== undefined
-        ? await readPolicyFileAt({ gitBatch: deps.gitBatch }, { rev: localBase, path: policy.path })
+      localBase !== undefined && policy.path !== undefined
+        ? await readPolicyFileAt(deps, { rev: localBase, path: policy.path })
         : { kind: "unreadable" };
   }
 
@@ -757,7 +754,7 @@ async function getDiff(
     try {
       // The config in use decides which file's text the reader keeps, so a custom `config` input works as it does for check().
       const options = { configPath: configInput === "" ? undefined : configInput, repoRoot: deps.workspace };
-      parsed = await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options);
+      parsed = await readDiffChunks(deps.gitStream(gitDiffArgs(localBase)), options);
     } catch (err) {
       // The base is in the checkout, so a failed local diff means a broken or partial checkout. Falling back to the
       // compare API would hand the test-integrity signals a diff without readable test text, so fail the step instead

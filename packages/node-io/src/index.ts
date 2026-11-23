@@ -1,5 +1,5 @@
 export { type AgentConfigGitDeps, readAgentConfigSources, readPolicySettingsSources } from "./agentConfigSources.js";
-export { type FileChunkDeps, fileChunks, type GitChunkDeps, gitChunks, oneChunk } from "./chunks.js";
+export { oneChunk } from "./chunks.js";
 export { type CommandEnd, runCommand } from "./command.js";
 export {
   CONFIG_FILE_MAX_BYTES,

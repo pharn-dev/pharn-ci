@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { harness, WORKSPACE } from "../../action/test/harness.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // run() and main() are loaded inside each test body: the AC tests are written before the accept label exists, so
 // nothing the build adds may run while the file loads. The Action runs on a pull request that carries the label,
@@ -77,6 +78,7 @@ function fakeRepo(config: string) {
     [resolve(REPO_ROOT, ".pharn/ci.yml"), config],
   ]);
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: REPO_ROOT,
     git: async (args: string[]) => {
       if (args.includes("ls-files")) return args.includes("-z") ? `${FILES.join("\0")}\0` : `${FILES.join("\n")}\n`;

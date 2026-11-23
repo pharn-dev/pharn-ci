@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { posix } from "node:path";
 import { describe, expect, it } from "vitest";
 import { check } from "../../core/src/index.js";
+import { requiredDeps } from "./required-deps.js";
 
 // CORE-101: the CLI and the Action read coverage through readCoverageFiles, which parses each file as it is read. A
 // path with a backslash keeps its literal key there, so check() can give the record to the tracked file it names.
@@ -11,11 +12,14 @@ const fixture = (path: string) => readFileSync(new URL(`../../../fixtures/${path
 const REPO_ROOT = "/home/runner/work/demo/demo";
 
 function deps(files: Record<string, string>) {
-  return {
+  const fake = {
+    ...requiredDeps(() => fake),
+    git: async () => "",
     listDir: async () => null,
     readFile: async (path: string) => files[path] ?? null,
     resolvePath: (...segments: string[]) => posix.resolve(...segments),
   };
+  return fake;
 }
 
 describe("CORE-101: readCoverageFiles keeps a backslash that names a tracked file", () => {

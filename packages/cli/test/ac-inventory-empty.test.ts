@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { withoutFix } from "../../core/test/v090-codes.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // F-10, inventory quality: an empty agent setup file. main() is loaded inside each test body: the AC tests are written
 // before the build, so nothing that depends on the new `git ls-tree` wiring may run while the file loads. The CLI runs
@@ -58,6 +59,7 @@ async function runCli(lsTree: "sizes" | "fails") {
   const err: string[] = [];
   const contents = new Map([[resolve(REPO_ROOT, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: REPO_ROOT,
     git: fakeGit(lsTree),
     readFile: async (path: string) => contents.get(path) ?? null,

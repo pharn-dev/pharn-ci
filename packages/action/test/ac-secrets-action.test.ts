@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runGitBatch } from "../../node-io/src/io.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import { harness } from "./harness.js";
 
 // run() is loaded inside each run: the test is written before the Action gathers agent config sources, so nothing that
@@ -123,6 +124,7 @@ async function prNumberRun() {
   const files = new Map([[resolve(WORKSPACE, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const batch = recordingBatch();
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "workflow_run",

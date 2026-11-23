@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // run() is imported inside each test body, like the other AC tests written before the build.
 // A pull_request run on fixtures/golden/ with comments on, a context naming workflow "CI" and job "pharn", and an
@@ -73,6 +74,7 @@ async function runOnce(store: Store, opts: RunOptions): Promise<Calls> {
   };
   const files: Record<string, string> = { [`${WORKSPACE}/coverage/lcov.info`]: fixture("golden/coverage.info") };
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? "",
     context: {
       eventName: "pull_request",

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // main() and the fixtures are loaded inside each test body: the AC tests are written before --expect-agent-setup and
 // fixtures/setup-expect/ exist, so nothing that depends on them may run while the file loads. The CLI runs against
@@ -46,6 +47,7 @@ async function runCli(flags: string[], config?: string) {
   let out = "";
   let err = "";
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: "/repo/sub",
     async git(args: string[]) {
       gitCalls.push(args);

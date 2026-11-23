@@ -38,10 +38,10 @@ export const APP_TOKEN_TIMEOUT_MS = 30_000;
 /** The most bytes of a response body read; a longer body is refused. */
 export const APP_MAX_BODY_BYTES = 1_048_576;
 
-/** What the client reads from the Action's deps. All optional: an absent one means there is no OIDC. */
+/** What the client reads from the Action's deps. An absent `getIDToken`, `setSecret` or `hasOidcEnv` means there is no OIDC. */
 export interface AppClientDeps {
   info(message: string): void;
-  fetch?: ((input: string, init: RequestInit) => Promise<Response>) | undefined;
+  fetch(input: string, init: RequestInit): Promise<Response>;
   getIDToken?: ((audience?: string) => Promise<string>) | undefined;
   setSecret?: ((secret: string) => void) | undefined;
   /** True when the runner offers an OIDC token (both request variables are set). */
@@ -214,8 +214,6 @@ export async function appRequest(deps: AppClientDeps, request: AppRequest): Prom
 }
 
 async function attempt(deps: AppClientDeps, request: AppRequest): Promise<AppResult> {
-  const doFetch = deps.fetch;
-  if (doFetch === undefined) return { kind: "network" };
   let timeoutMs = deps.timeoutMs ?? request.timeoutMs ?? APP_TIMEOUT_MS;
   if (request.remainingMs !== undefined) {
     const left = request.remainingMs();
@@ -226,7 +224,7 @@ async function attempt(deps: AppClientDeps, request: AppRequest): Promise<AppRes
   const post = request.method === "POST";
   let response: Response;
   try {
-    response = await doFetch(request.url.href, {
+    response = await deps.fetch(request.url.href, {
       method: post ? "POST" : "GET",
       headers: {
         Accept: "application/json",

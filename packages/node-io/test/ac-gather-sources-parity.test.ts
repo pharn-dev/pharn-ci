@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { CheckInput, PythonIndexRun } from "../../core/src/index.js";
+import { noNetwork } from "./required-deps.js";
 
 // CORE-136: the CLI and the Action gather the optional `CheckInput` fields with one function (`gatherSources` in
 // node-io). This table runs both entry points, with real git, on the same temporary repository and the same settings,
@@ -192,6 +193,8 @@ async function actionRun(settings: Settings) {
     readFile: (path) => io.readFile(path),
     readFileStream: (path) => io.readFileStream(path),
     listDir: (path) => io.listDir(path),
+    lstat: (path) => io.lstatPath(path),
+    fetch: noNetwork,
     writeFile: async () => {},
     resolvePath: (...segments) => resolve(...segments),
     info: (message) => infos.push(message),

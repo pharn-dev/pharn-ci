@@ -30,7 +30,7 @@ export const REGISTRY_CONCURRENCY = 4;
 export const REGISTRY_USER_AGENT = "pharn-ci";
 
 export interface RegistryDeps {
-  fetch?: ((input: string, init: RequestInit) => Promise<Response>) | undefined;
+  fetch(input: string, init: RequestInit): Promise<Response>;
   now?: (() => Date) | undefined;
   /** The timeout of one request, in milliseconds; `REGISTRY_TIMEOUT_MS` when absent. */
   registryTimeoutMs?: number | undefined;
@@ -57,12 +57,11 @@ function allowedLookupUrl(url: string): boolean {
 
 /** One GET of a registry URL. A URL off the lookup hosts is never fetched (a network error). */
 export async function registryGet(deps: RegistryDeps, url: string): Promise<RegistryAnswer> {
-  const doFetch = deps.fetch;
-  if (doFetch === undefined || !allowedLookupUrl(url)) return { kind: "network" };
+  if (!allowedLookupUrl(url)) return { kind: "network" };
   const signal = AbortSignal.timeout(deps.registryTimeoutMs ?? REGISTRY_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await doFetch(url, {
+    response = await deps.fetch(url, {
       method: "GET",
       headers: { Accept: "application/json", "User-Agent": REGISTRY_USER_AGENT },
       redirect: "error",

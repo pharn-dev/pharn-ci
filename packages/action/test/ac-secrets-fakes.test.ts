@@ -11,8 +11,9 @@ import { harness } from "./harness.js";
 // main() and run() are loaded inside the test body: the test is written before the CLI and the Action gather agent
 // config sources, so nothing that depends on that may run while the file loads. The default fakes
 // (packages/cli/test/fake-deps.ts and packages/action/test/harness.ts) track fixtures/golden/files.txt, which lists
-// .claude/settings.json and .mcp.json, and supply no batch git runner. They are used as they are, and once with a
-// gitBatch added that reads a real temporary repository whose HEAD commits .mcp.json with a secret (D5).
+// .claude/settings.json and .mcp.json. Since CORE-143 the batch git runner is a required dep, and theirs serves `{}`
+// for every committed file (packages/node-io/test/required-deps.ts). They are used as they are, and once with a
+// gitBatch that reads a real temporary repository whose HEAD commits .mcp.json with a secret (D5).
 //
 // No complete secret is written in this file (gitleaks, GitHub push protection, and AC-22 runs findSecretSpans over
 // this file as committed): the secret is assembled at test time from a prefix and a run cut from ALPHABET.
@@ -81,21 +82,21 @@ async function actionRun(withBatch: boolean) {
   return { h, report: JSON.parse(text as string) as Report };
 }
 
-describe("D5: the default fakes gather nothing; a batch git runner fake is scanned", () => {
-  it("AC-23: without a batch git runner no cat-file call, no A7 message and the golden verdict and report; with one, AGENT_CONFIG_SECRET_S01 at error", async () => {
+describe("D5: the default fakes' agent config files hold no secret; a batch git runner fake with one is scanned", () => {
+  it("AC-23: with the default fakes no cat-file call through git, no A7 message and the golden verdict and report; with a secret, AGENT_CONFIG_SECRET_S01 at error", async () => {
     // The CLI golden run: the default fake as it is.
     const cliGolden = await cliRun(false);
-    expect(catFile(cliGolden.fake.gitCalls), "CLI without gitBatch: no cat-file call").toEqual([]);
-    expect(a7(cliGolden.report), "CLI without gitBatch: no A7 message").toEqual([]);
+    expect(catFile(cliGolden.fake.gitCalls), "CLI default fake: no cat-file call").toEqual([]);
+    expect(a7(cliGolden.report), "CLI default fake: no A7 message").toEqual([]);
     expect(cliGolden.code, "CLI golden exit code (fails on its diff coverage)").toBe(1);
     expect(cliGolden.report.verdict, "CLI golden verdict").toBe(goldenReport().verdict);
-    expect(cliGolden.report, "CLI without gitBatch: the golden report").toEqual(goldenReport());
+    expect(cliGolden.report, "CLI default fake: the golden report").toEqual(goldenReport());
 
     // The Action golden run: the default harness as it is, whose report is the golden report.
     const actionGolden = await actionRun(false);
-    expect(catFile(actionGolden.h.gitCalls), "Action without gitBatch: no cat-file call").toEqual([]);
-    expect(a7(actionGolden.report), "Action without gitBatch: no A7 message").toEqual([]);
-    expect(actionGolden.report, "Action without gitBatch: the golden report").toEqual(goldenReport());
+    expect(catFile(actionGolden.h.gitCalls), "Action default harness: no cat-file call").toEqual([]);
+    expect(a7(actionGolden.report), "Action default harness: no A7 message").toEqual([]);
+    expect(actionGolden.report, "Action default harness: the golden report").toEqual(goldenReport());
 
     // The same runs with a batch git runner fake serving .mcp.json with a secret.
     const cliBatch = await cliRun(true);

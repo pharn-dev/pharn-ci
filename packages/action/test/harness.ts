@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import { type ActionContext, type ActionDeps, commentScopeLine, type IssueComment } from "../src/run.js";
 
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);
@@ -140,6 +141,7 @@ export function harness(opts: HarnessOptions = {}): Harness {
       throw new Error(`unexpected git ${args.join(" ")}`);
     },
     readFile: async (p) => files[p] ?? null,
+    ...requiredDeps(() => h.deps),
     async writeFile(p, text) {
       h.written[p] = text;
     },

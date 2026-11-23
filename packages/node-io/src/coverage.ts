@@ -9,13 +9,11 @@ import {
   parseCoverageEntries,
   readCoverageChunks,
 } from "@pharn-ci/core";
-import { fileChunks } from "./chunks.js";
 
 /** What reading coverage files needs from the deps of the CLI or the Action. */
 export interface CoverageReadDeps {
   listDir(path: string): Promise<DirEntry[] | null>;
-  readFile(path: string): Promise<string | null>;
-  readFileStream?(path: string): Promise<AsyncIterable<string> | null>;
+  readFileStream(path: string): Promise<AsyncIterable<string> | null>;
   resolvePath(...segments: string[]): string;
 }
 
@@ -73,7 +71,7 @@ export async function readCoverageFiles(
     const coveragePath = deps.resolvePath(baseDir, entry);
     if (seen.has(coveragePath)) continue;
     seen.add(coveragePath);
-    const chunks = await fileChunks(deps, coveragePath);
+    const chunks = await deps.readFileStream(coveragePath);
     if (chunks === null) {
       coverageFiles.push({ missingFile: name(entry) });
       continue;

@@ -1,8 +1,16 @@
 import { readFileSync } from "node:fs";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import type { CliDeps } from "../src/main.js";
 
 const FIXTURES = new URL("../../../fixtures/", import.meta.url);
 export const fixture = (p: string) => readFileSync(new URL(p, FIXTURES), "utf8");
+
+/**
+ * The log line of a run whose fake git resolves no base commit (it prints no commit id for `rev-parse`): the test files
+ * are not read from git. Since CORE-143 the batch runner is a required dep, so a fake no longer skips that read.
+ */
+export const TEST_SOURCES_NOT_READ =
+  "pharn-ci: could not read the test and test-config files from git, so they are not compared: git rev-parse could not resolve the base: no commit id was printed\n";
 
 export interface Fake extends CliDeps {
   out: string;
@@ -38,6 +46,7 @@ export function fakeDeps(files: Record<string, string>, gitOverrides: Record<str
     stderr: (t) => {
       fake.err += t;
     },
+    ...requiredDeps(() => fake),
   };
   return fake;
 }

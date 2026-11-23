@@ -38,8 +38,8 @@ import { readTestSources } from "./testSources.js";
 export interface GatherSourcesDeps {
   /** Runs git with args; resolves stdout, rejects with stderr on failure. */
   git(args: string[]): Promise<string>;
-  /** Runs git with `input` on its stdin and resolves its stdout as bytes. Absent: no committed file is read. */
-  gitBatch?: ((args: string[], input: string) => Promise<Uint8Array>) | undefined;
+  /** Runs git with `input` on its stdin and resolves its stdout as bytes. */
+  gitBatch(args: string[], input: string): Promise<Uint8Array>;
   /** Indexes `.py` test files. Absent: `indexPythonTests`, which runs the interpreter found on PATH. */
   indexPython?: ((files: readonly PythonSourceFile[]) => Promise<PythonIndexRun>) | undefined;
 }
@@ -98,8 +98,6 @@ export interface GatheredSources {
  * - `selfModificationSources` (P13, under an app or file policy) and `dependencySources` (A13, unless the mode is
  *   `never`): read at the base and at HEAD from a local diff only; empty when the diff touches none of their files.
  * - `staleInstructionSources` (SI01 to SI03): only with a local diff.
- *
- * Without a batch git runner nothing but `testSources` (an unavailable marker) and `repoFileBytes` is gathered.
  */
 export async function gatherSources(deps: GatherSourcesDeps, options: GatherSourcesOptions): Promise<GatheredSources> {
   const out: GatheredSources = {};
@@ -166,11 +164,11 @@ async function readHeadTree(
 }
 
 /** Why the files of the change cannot be read at the base and at HEAD, or null when they can. */
-function baseAndHeadUnread(options: GatherSourcesOptions, gitBatch: GatherSourcesDeps["gitBatch"]): string | null {
+function baseAndHeadUnread(options: GatherSourcesOptions): string | null {
   if (options.checkout === "pr-number") return "pr-number mode: the diff came from the GitHub API";
   if ("text" in options.diff) return "the diff came from the GitHub compare API";
   if ("unavailable" in options.diff) return "the diff is unavailable";
-  if (gitBatch === undefined || options.revisions === undefined) return "reading git objects is not available";
+  if (options.revisions === undefined) return "reading git objects is not available";
   return null;
 }
 
@@ -202,12 +200,11 @@ async function gatherTestSources(
 ): Promise<TestSources | undefined> {
   if (resolveTestIntegrityMode(options.testIntegrityMode).mode === "off") return undefined;
   const { diff, revisions } = options;
-  const { gitBatch } = deps;
-  const unread = baseAndHeadUnread(options, gitBatch);
-  if (unread !== null || gitBatch === undefined || revisions === undefined || !("parsed" in diff)) {
+  const unread = baseAndHeadUnread(options);
+  if (unread !== null || revisions === undefined || !("parsed" in diff)) {
     return unavailableTestSources(unread ?? "reading git objects is not available");
   }
-  const sources = await readTestSources({ gitBatch }, { revisions, diff: diff.parsed });
+  const sources = await readTestSources(deps, { revisions, diff: diff.parsed });
   if ("unavailable" in sources.base) {
     options.log(
       `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`,
@@ -217,20 +214,18 @@ async function gatherTestSources(
 }
 
 /**
- * The committed text of the agent config files, for the secret scan (check A7); undefined when there is no batch git
- * runner or no tracked path is a scannable agent config file (nothing is read, nothing is said).
+ * The committed text of the agent config files, for the secret scan (check A7); undefined when no tracked path is a
+ * scannable agent config file (nothing is read, nothing is said).
  */
 async function gatherAgentConfigSources(
   deps: GatherSourcesDeps,
   options: GatherSourcesOptions,
 ): Promise<AgentConfigSources | undefined> {
-  const { gitBatch } = deps;
-  if (gitBatch === undefined) return undefined;
   const paths = agentConfigSecretPaths(scanAgentSetup(options.repoFiles));
   if (paths.length === 0) return undefined;
   const unread = headUnread(options, "agent config files");
   if (unread !== null) return { unavailable: unread };
-  const sources = await readAgentConfigSources({ gitBatch }, paths);
+  const sources = await readAgentConfigSources(deps, paths);
   if ("unavailable" in sources) {
     options.log(
       `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`,
@@ -241,21 +236,18 @@ async function gatherAgentConfigSources(
 
 /**
  * The committed text of the agent instruction files, for org-policy rule P07, in batch calls of their own so check A7
- * never sees Markdown; undefined without a batch git runner, a policy with P07 in effect, or a directory with two
- * instruction files.
+ * never sees Markdown; undefined without a policy with P07 in effect, or a directory with two instruction files.
  */
 async function gatherAgentInstructionSources(
   deps: GatherSourcesDeps,
   options: GatherSourcesOptions,
 ): Promise<AgentConfigSources | undefined> {
-  const { gitBatch } = deps;
-  if (gitBatch === undefined) return undefined;
   if (options.policy === undefined || consistencySeverity(options.policy).severity === null) return undefined;
   const paths = agentInstructionPaths(scanAgentSetup(options.repoFiles));
   if (paths.length === 0) return undefined;
   const unread = headUnread(options, "agent instruction files");
   if (unread !== null) return { unavailable: unread };
-  const sources = await readAgentConfigSources({ gitBatch }, paths);
+  const sources = await readAgentConfigSources(deps, paths);
   if ("unavailable" in sources) {
     options.log(
       `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${sources.unavailable}`,
@@ -265,27 +257,22 @@ async function gatherAgentInstructionSources(
 }
 
 /**
- * The committed agent settings and MCP files for the org-policy rules P02 to P06 (E3 item 23); undefined without a batch
- * git runner or an app or file policy with a document.
+ * The committed agent settings and MCP files for the org-policy rules P02 to P06 (E3 item 23); undefined without an app
+ * or file policy with a document.
  */
 async function gatherPolicySettingsSources(
   deps: GatherSourcesDeps,
   options: GatherSourcesOptions,
   lsTree: string | null,
 ): Promise<PolicySettingsSources | undefined> {
-  const { gitBatch } = deps;
   const { policy } = options;
-  if (gitBatch === undefined || policy === undefined || policy.document === null) return undefined;
+  if (policy === undefined || policy.document === null) return undefined;
   if (!policyDocumentInForce(policy)) return undefined;
   const unread = headUnread(options, "agent settings files");
   if (unread !== null) return { unavailable: unread };
   const paths = policySettingsPaths(options.repoFiles, policy.document);
   if (paths.length === 0) return { files: [], dropped: [] };
-  const sources = await readPolicySettingsSources(
-    { gitBatch },
-    paths,
-    lsTree === null ? null : parseLsTreeSymlinks(lsTree),
-  );
+  const sources = await readPolicySettingsSources(deps, paths, lsTree === null ? null : parseLsTreeSymlinks(lsTree));
   if ("unavailable" in sources) {
     options.log(
       `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${sources.unavailable}`,
@@ -296,15 +283,14 @@ async function gatherPolicySettingsSources(
 
 /**
  * The base and head text of the agent settings, MCP, workflow and CODEOWNERS files the change touches, for org-policy
- * rule P13; undefined without a batch git runner or an app or file policy with a document. Without a local diff the
+ * rule P13; undefined without an app or file policy with a document. Without a local diff the
  * sources are unavailable (P13 then fails closed). P13 also needs a pull request, so in the CLI core reads none of it.
  */
 async function gatherSelfModificationSources(
   deps: GatherSourcesDeps,
   options: GatherSourcesOptions,
 ): Promise<TestSources | undefined> {
-  const { gitBatch } = deps;
-  if (gitBatch === undefined || !policyDocumentInForce(options.policy)) return undefined;
+  if (!policyDocumentInForce(options.policy)) return undefined;
   return readChangedSources(deps, options, {
     select: selectSelfModificationPaths,
     what: "the agent settings, MCP, workflow and CODEOWNERS files",
@@ -314,14 +300,13 @@ async function gatherSelfModificationSources(
 
 /**
  * The base and head text of the manifests and lockfiles the change touches, for dependency safety (A13), with the
- * dependency caps; undefined when the effective mode is `never` or there is no batch git runner.
+ * dependency caps; undefined when the effective mode is `never`.
  */
 async function gatherDependencySources(
   deps: GatherSourcesDeps,
   options: GatherSourcesOptions,
 ): Promise<TestSources | undefined> {
   if (resolveDependencySettings(options.dependencySettings).mode === "never") return undefined;
-  if (deps.gitBatch === undefined) return undefined;
   return readChangedSources(deps, options, {
     select: (files) => selectDependencyPaths(files, options.repoFiles),
     what: "the manifests and lockfiles",
@@ -342,17 +327,18 @@ async function readChangedSources(
   },
 ): Promise<TestSources> {
   const { diff, revisions } = options;
-  const { gitBatch } = deps;
-  const unread = baseAndHeadUnread(options, gitBatch);
-  if (unread !== null || gitBatch === undefined || revisions === undefined || !("parsed" in diff)) {
+  const unread = baseAndHeadUnread(options);
+  if (unread !== null || revisions === undefined || !("parsed" in diff)) {
     return unavailableTestSources(unread ?? "reading git objects is not available");
   }
   const selected = read.select(diff.parsed);
   if (selected.base.length === 0 && selected.head.length === 0) return emptySources();
-  const sources = await readTestSources(
-    { gitBatch },
-    { revisions, diff: diff.parsed, select: read.select, limits: read.limits },
-  );
+  const sources = await readTestSources(deps, {
+    revisions,
+    diff: diff.parsed,
+    select: read.select,
+    limits: read.limits,
+  });
   if ("unavailable" in sources.base) {
     options.log(`pharn-ci: could not read ${read.what} from git, so ${read.effect}: ${sources.base.unavailable}`);
   }
@@ -360,20 +346,20 @@ async function readChangedSources(
 }
 
 /**
- * What the stale-instruction signals (SI01 to SI03) read; undefined without a batch git runner or a local diff. The
- * reads are of committed objects in calls of their own.
+ * What the stale-instruction signals (SI01 to SI03) read; undefined without a local diff. The reads are of committed
+ * objects in calls of their own.
  */
 async function gatherStaleInstructionSources(
   deps: GatherSourcesDeps,
   options: GatherSourcesOptions,
 ): Promise<StaleInstructionSources | undefined> {
-  const { gitBatch } = deps;
   const { diff, revisions } = options;
-  if (gitBatch === undefined || options.checkout === "pr-number" || !("parsed" in diff)) return undefined;
-  const sources = await readStaleInstructionSources(
-    { gitBatch },
-    { repoFiles: options.repoFiles, diff: diff.parsed, revisions },
-  );
+  if (options.checkout === "pr-number" || !("parsed" in diff)) return undefined;
+  const sources = await readStaleInstructionSources(deps, {
+    repoFiles: options.repoFiles,
+    diff: diff.parsed,
+    revisions,
+  });
   if (sources !== undefined && "unavailable" in sources.instructions) {
     options.log(
       `pharn-ci: could not read the agent instruction files from git, so stale instructions are not checked: ${sources.instructions.unavailable}`,

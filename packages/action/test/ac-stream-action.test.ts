@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // run() is loaded inside each test body: the AC tests are written before the Action streams its local diff and
 // coverage files, so nothing that depends on that may run while the file loads. The Action runs against in-memory
@@ -65,6 +66,7 @@ async function runAction(setup: Setup) {
   const tracked = fixture("golden/files.txt").trim().split("\n");
 
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => setup.inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",
@@ -94,6 +96,8 @@ async function runAction(setup: Setup) {
       updateComment: async () => {},
     },
     git: async (args: string[]) => {
+      // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.
+      if (args.includes("HEAD^{commit}")) throw new Error("fatal: no history in this fake");
       if (args[0] === "ls-files") return `${tracked.join("\0")}\0`;
       if (args[0] === "ls-tree") return "";
       if (args[0] === "diff") throw new Error("the whole-text git call was used for the diff");

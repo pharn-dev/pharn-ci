@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // run() and the fixtures are loaded inside each test body: the AC tests are written before the coverage root and
 // fixtures/coverage-paths/ exist, so nothing that depends on them may run while the file loads. The Action runs
@@ -45,6 +46,7 @@ async function runAction(coverageRoot: string, config: string | null) {
     "coverage-root": coverageRoot,
   };
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",
@@ -70,6 +72,8 @@ async function runAction(coverageRoot: string, config: string | null) {
       updateComment: async () => {},
     },
     git: async (args: string[]) => {
+      // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.
+      if (args.includes("HEAD^{commit}")) throw new Error("fatal: no history in this fake");
       if (args.includes("ls-files")) return args.includes("-z") ? `${tracked.join("\0")}\0` : `${tracked.join("\n")}\n`;
       if (args.includes("--show-toplevel")) return `${WORKSPACE}\n`;
       if (args.includes("diff")) return diff;

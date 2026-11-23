@@ -17,14 +17,11 @@ import type { CliDeps } from "./main.js";
 export { GIT_TIMEOUT_MS };
 
 /** Real I/O for the CLI. */
-export function nodeDeps(
-  cwd: string = process.cwd(),
-  opts: { gitTimeoutMs?: number } = {},
-): CliDeps & Required<Pick<CliDeps, "gitStream" | "gitBatch" | "readFileStream">> {
+export function nodeDeps(cwd: string = process.cwd(), opts: { gitTimeoutMs?: number } = {}): CliDeps {
   const timeout = opts.gitTimeoutMs ?? GIT_TIMEOUT_MS;
   const realGit: CliDeps["git"] = (args) => runGit(cwd, args, timeout);
   const realReadFile: CliDeps["readFile"] = (path) => readFile(path);
-  const deps: CliDeps & Required<Pick<CliDeps, "gitStream" | "gitBatch" | "readFileStream">> = {
+  const deps: CliDeps = {
     cwd,
     gitBatch: (args, input) => runGitBatch(cwd, args, input, timeout),
     // A caller that replaced `git` or `readFile` on these deps (a test double, a wrapper) keeps getting its own

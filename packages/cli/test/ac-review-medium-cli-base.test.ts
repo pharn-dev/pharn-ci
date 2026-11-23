@@ -195,11 +195,13 @@ describe("cli: only a merge base equal to HEAD means nothing to measure", () => 
     }
   });
 
-  it("AC-13: a non-empty diff never asks for the merge base", async () => {
+  it("AC-13: a non-empty diff never runs the base-is-HEAD check", async () => {
     const deps = emptyDiffDeps(HEAD_OID, HEAD_OID, fixture("golden/pr.diff"));
 
     await main(args, deps);
-    expect(deps.gitCalls.some((a) => a[0] === "merge-base")).toBe(false);
+    // CORE-143: the batch runner is required, so the readers of the merge base (the test sources) resolve the run's
+    // revisions once; the base-is-HEAD check adds no call of its own and, on a non-empty diff, decides nothing.
+    expect(deps.gitCalls.filter((a) => a[0] === "merge-base")).toHaveLength(1);
     expect(codes(JSON.parse(deps.out) as Report)).not.toContain("DIFF_UNAVAILABLE");
   });
 });

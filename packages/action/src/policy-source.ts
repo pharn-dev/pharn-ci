@@ -1,5 +1,5 @@
 import type { ResolvedPolicy } from "@pharn-ci/core";
-import { lstatPath, readPolicyFile } from "@pharn-ci/node-io";
+import { readPolicyFile } from "@pharn-ci/node-io";
 import { fetchAppPolicy } from "./policy-fetch.js";
 import type { PolicyChoice } from "./policy-input.js";
 import type { ActionDeps } from "./run.js";
@@ -26,7 +26,7 @@ export async function obtainPolicy(deps: ActionDeps, choice: PolicyChoice, origi
   if (choice.kind === "file") {
     return {
       policy: await readPolicyFile(
-        { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat ?? lstatPath },
+        { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat },
         { root: deps.workspace, path: choice.path, label: "the policy input" },
       ),
     };

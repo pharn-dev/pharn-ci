@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // main() is loaded inside each test body: these tests are written before the `--test-integrity` flag exists, so
 // nothing that depends on it may run while the file loads.
@@ -18,6 +19,7 @@ function fakeRepo(files: Record<string, string>) {
   const err: string[] = [];
   const contents = new Map(Object.entries(files).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: REPO_ROOT,
     git: async (args: string[]) => {
       if (args.includes("ls-files")) {

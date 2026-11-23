@@ -114,11 +114,11 @@ export type ConfigCopy =
  * and the Action. No diff (`null`): the working tree. A change that does not touch the config: the working tree. One
  * that adds it (or renames a file to it): `absent`, so the defaults and the inputs apply. One that modifies or deletes
  * it (or renames it away): its copy at the merge base of the run's base and HEAD, read from git objects by
- * `readConfigFileAt`; with no `revisions`, no `gitBatch`, or a copy that cannot be read or is not there, `unreadable`. The text is not parsed
+ * `readConfigFileAt`; with no `revisions`, or a copy that cannot be read or is not there, `unreadable`. The text is not parsed
  * here: a copy that does not parse fails the run where the caller parses it.
  */
 export async function configCopyInUse(
-  deps: { gitBatch?: GitBatchDeps["gitBatch"] | undefined },
+  deps: ConfigFileGitDeps,
   options: {
     diff: readonly DiffFile[] | null;
     revisions: RunRevisions | undefined;
@@ -131,9 +131,8 @@ export async function configCopyInUse(
   if (state === "untouched") return { source: "working-tree" };
   if (state === "added") return { source: "absent" };
   const path = configRepoPath(options.configPath, options.repoRoot);
-  const { gitBatch } = deps;
-  if (path === null || options.revisions === undefined || gitBatch === undefined) return { source: "unreadable" };
-  const copy = await readConfigFileAt({ gitBatch }, { revisions: options.revisions, path });
+  if (path === null || options.revisions === undefined) return { source: "unreadable" };
+  const copy = await readConfigFileAt(deps, { revisions: options.revisions, path });
   return copy.kind === "text" ? { source: "merge-base", path, text: copy.text } : { source: "unreadable" };
 }
 
@@ -183,10 +182,7 @@ export async function loadConfig(
  * a copy that does not parse gives none.
  */
 export async function loadConfigInUse(
-  deps: {
-    gitBatch?: GitBatchDeps["gitBatch"] | undefined;
-    readFile(path: string): Promise<string | null>;
-  },
+  deps: ConfigFileGitDeps & { readFile(path: string): Promise<string | null> },
   location: ConfigFileLocation & {
     /** The config path as check() is given it (`CheckInput.configPath`); undefined for the default file. */
     configPath: string | undefined;

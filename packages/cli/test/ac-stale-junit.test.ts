@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { DirEntry } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import type { FileStamp } from "../../node-io/src/index.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import type { CliDeps } from "../src/main.js";
 import { nodeDeps } from "../src/nodeDeps.js";
 import { recordJunitFiles, runTestCommand, staleJunitFiles } from "../src/testCommand.js";
@@ -50,6 +51,7 @@ function fakeFs(files: Record<string, string>, writes: Write[], exit: number): F
     return clock;
   };
   const fs: Fs = {
+    ...requiredDeps(() => fs),
     files: new Map(Object.entries(files).map(([path, text]) => [path, { text, mtimeNs: tick() }])),
     err: "",
     ran: 0,

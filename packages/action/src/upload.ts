@@ -377,7 +377,6 @@ async function putBundle(
   bytes: Uint8Array,
   remainingMs: () => number,
 ): Promise<string | null> {
-  if (deps.fetch === undefined) return "put:network";
   const signal = AbortSignal.timeout(Math.min(deps.timeoutMs ?? PUT_TIMEOUT_MS, remainingMs()));
   let response: Response;
   try {

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // main() and the fixtures are loaded inside each test body: the AC tests are written before coverage globs and
 // fixtures/golden-multi/ and fixtures/coverage-multi/ exist, so nothing that depends on them may run while the file
@@ -49,6 +50,7 @@ function fakeRepo(options: RepoOptions) {
   }
 
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: options.cwd ?? REPO_ROOT,
     git: async (args: string[]) => {
       if (args.includes("ls-files")) {

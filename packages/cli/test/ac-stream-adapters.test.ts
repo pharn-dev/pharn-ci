@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
 import { expectValidReport } from "../../core/test/schema.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // main() and run() are loaded inside each test body: the AC tests are written before the CLI and the Action stream
 // their diff and coverage files, so nothing that depends on that may run while the file loads. Both run against
@@ -80,7 +81,7 @@ interface Fakes {
   streams?: Record<string, ChunkSource | Error | (() => AsyncIterable<string>)>;
   /** Whole-text diff, or an error to reject with. */
   diff: string | Error;
-  /** Streamed diff, or absent for no gitStream dep. */
+  /** Streamed diff; absent, the diff streams as one chunk of the whole-text call. */
   diffStream?: ChunkSource;
 }
 
@@ -92,7 +93,10 @@ function commonDeps(fakes: Fakes) {
   const streamCalls: string[][] = [];
 
   const deps: Record<string, unknown> = {
+    ...requiredDeps(() => deps as never),
     git: async (args: string[]) => {
+      // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.
+      if (args.includes("HEAD^{commit}")) throw new Error("fatal: no history in this fake");
       if (args[0] === "ls-files") return `${tracked.join("\0")}\0`;
       if (args[0] === "ls-tree") return "";
       if (args[0] === "diff") {

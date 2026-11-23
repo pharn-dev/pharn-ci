@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // run() and the fixtures are loaded inside each test body: the AC tests are written before coverage globs and
 // fixtures/coverage-multi/ exist, so nothing that depends on them may run while the file loads. The Action runs
@@ -47,6 +48,7 @@ function fakeAction(inputs: Record<string, string>, files: Record<string, string
   }
 
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

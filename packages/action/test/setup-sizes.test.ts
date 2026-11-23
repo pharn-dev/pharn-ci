@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { withoutFix } from "../../core/test/v090-codes.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // run() is loaded inside each test body, like the other action tests. The action runs against in-memory deps for a
 // pull_request event whose diff comes from the compare API; `git ls-tree` answers with sizes or fails.
@@ -32,6 +33,7 @@ async function runAction(lsTree: "sizes" | "fails") {
   const files = new Map([[resolve(WORKSPACE, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const inputs: Record<string, string> = { "coverage-file": "coverage/lcov.info" };
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",
@@ -53,6 +55,8 @@ async function runAction(lsTree: "sizes" | "fails") {
       updateComment: async () => {},
     },
     git: async (args: string[]) => {
+      // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.
+      if (args.includes("HEAD^{commit}")) throw new Error("fatal: no history in this fake");
       if (args[0] === "ls-tree") {
         if (lsTree === "fails") throw new Error("fatal: not a valid object name HEAD");
         return lsTreeOutput();
@@ -101,7 +105,12 @@ describe("action: empty agent setup files", () => {
     const { report, warnings, failed } = await runAction("fails");
     expect(report.messages.some((m) => m.code === "AGENT_SETUP_FILE_EMPTY")).toBe(false);
     expect(warnings.filter((w) => w.includes("git ls-tree"))).toHaveLength(1);
-    expect(report.verdict).toBe("pass");
+    // CORE-143: the batch runner is required, so a compare-API run marks the agent config files unscanned (the checkout
+    // may not be the head); that warning is the only one, so the failing ls-tree changed nothing.
+    expect(report.messages.filter((m) => m.level !== "info").map((m) => m.code)).toEqual([
+      "AGENT_CONFIG_SECRET_UNSCANNED",
+    ]);
+    expect(report.verdict).toBe("warn");
     expect(failed).toEqual([]);
   });
 });

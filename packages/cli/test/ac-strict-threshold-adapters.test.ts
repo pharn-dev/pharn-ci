@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // main(), run() and the fixtures are loaded inside each test body: these AC tests are written before the strict
 // threshold rule and fixtures/threshold-parsing/ exist, so nothing that depends on them may run while the file loads.
@@ -39,6 +40,7 @@ async function runCli(extraArgs: string[], config?: string) {
   const err: string[] = [];
   const contents = repoFiles(config);
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: REPO_ROOT,
     git: fakeGit(),
     readFile: async (path: string) => contents.get(path) ?? null,
@@ -67,6 +69,7 @@ async function runAction(threshold: string) {
   const contents = repoFiles();
   const inputs: Record<string, string> = { "coverage-file": "coverage/lcov.info", threshold };
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

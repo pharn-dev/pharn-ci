@@ -46596,19 +46596,6 @@ async function readPolicySettingsSources(deps, paths, symlinks) {
   return { files: read.files, dropped };
 }
 
-// ../node-io/src/chunks.ts
-async function* oneChunk(read) {
-  yield await read();
-}
-function gitChunks(deps, args) {
-  return deps.gitStream ? deps.gitStream(args) : oneChunk(() => deps.git(args));
-}
-async function fileChunks(deps, path) {
-  if (deps.readFileStream) return deps.readFileStream(path);
-  const text = await deps.readFile(path);
-  return text === null ? null : oneChunk(async () => text);
-}
-
 // ../node-io/src/policyFile.ts
 import { lstat as lstat2 } from "node:fs/promises";
 var POLICY_FILE_MAX_BYTES = 1048576;
@@ -46758,9 +46745,8 @@ async function configCopyInUse(deps, options) {
   if (state === "untouched") return { source: "working-tree" };
   if (state === "added") return { source: "absent" };
   const path = configRepoPath(options.configPath, options.repoRoot);
-  const { gitBatch } = deps;
-  if (path === null || options.revisions === void 0 || gitBatch === void 0) return { source: "unreadable" };
-  const copy = await readConfigFileAt({ gitBatch }, { revisions: options.revisions, path });
+  if (path === null || options.revisions === void 0) return { source: "unreadable" };
+  const copy = await readConfigFileAt(deps, { revisions: options.revisions, path });
   return copy.kind === "text" ? { source: "merge-base", path, text: copy.text } : { source: "unreadable" };
 }
 async function loadConfig(deps, location) {
@@ -46827,7 +46813,7 @@ async function readCoverageFiles(deps, options) {
     const coveragePath = deps.resolvePath(baseDir, entry);
     if (seen.has(coveragePath)) continue;
     seen.add(coveragePath);
-    const chunks = await fileChunks(deps, coveragePath);
+    const chunks = await deps.readFileStream(coveragePath);
     if (chunks === null) {
       coverageFiles.push({ missingFile: name(entry) });
       continue;
@@ -47938,11 +47924,11 @@ async function readHeadTree(deps, warn) {
     return null;
   }
 }
-function baseAndHeadUnread(options, gitBatch) {
+function baseAndHeadUnread(options) {
   if (options.checkout === "pr-number") return "pr-number mode: the diff came from the GitHub API";
   if ("text" in options.diff) return "the diff came from the GitHub compare API";
   if ("unavailable" in options.diff) return "the diff is unavailable";
-  if (gitBatch === void 0 || options.revisions === void 0) return "reading git objects is not available";
+  if (options.revisions === void 0) return "reading git objects is not available";
   return null;
 }
 function headUnread(options, what) {
@@ -47959,12 +47945,11 @@ var emptySources = () => ({ base: { files: [], dropped: [] }, head: { files: [],
 async function gatherTestSources(deps, options) {
   if (resolveTestIntegrityMode(options.testIntegrityMode).mode === "off") return void 0;
   const { diff, revisions } = options;
-  const { gitBatch } = deps;
-  const unread = baseAndHeadUnread(options, gitBatch);
-  if (unread !== null || gitBatch === void 0 || revisions === void 0 || !("parsed" in diff)) {
+  const unread = baseAndHeadUnread(options);
+  if (unread !== null || revisions === void 0 || !("parsed" in diff)) {
     return unavailableTestSources(unread ?? "reading git objects is not available");
   }
-  const sources = await readTestSources({ gitBatch }, { revisions, diff: diff.parsed });
+  const sources = await readTestSources(deps, { revisions, diff: diff.parsed });
   if ("unavailable" in sources.base) {
     options.log(
       `pharn-ci: could not read the test and test-config files from git, so they are not compared: ${sources.base.unavailable}`
@@ -47973,13 +47958,11 @@ async function gatherTestSources(deps, options) {
   return sources;
 }
 async function gatherAgentConfigSources(deps, options) {
-  const { gitBatch } = deps;
-  if (gitBatch === void 0) return void 0;
   const paths = agentConfigSecretPaths(scanAgentSetup(options.repoFiles));
   if (paths.length === 0) return void 0;
   const unread = headUnread(options, "agent config files");
   if (unread !== null) return { unavailable: unread };
-  const sources = await readAgentConfigSources({ gitBatch }, paths);
+  const sources = await readAgentConfigSources(deps, paths);
   if ("unavailable" in sources) {
     options.log(
       `pharn-ci: could not read the agent config files from git, so they are not scanned for secrets: ${sources.unavailable}`
@@ -47988,14 +47971,12 @@ async function gatherAgentConfigSources(deps, options) {
   return sources;
 }
 async function gatherAgentInstructionSources(deps, options) {
-  const { gitBatch } = deps;
-  if (gitBatch === void 0) return void 0;
   if (options.policy === void 0 || consistencySeverity(options.policy).severity === null) return void 0;
   const paths = agentInstructionPaths(scanAgentSetup(options.repoFiles));
   if (paths.length === 0) return void 0;
   const unread = headUnread(options, "agent instruction files");
   if (unread !== null) return { unavailable: unread };
-  const sources = await readAgentConfigSources({ gitBatch }, paths);
+  const sources = await readAgentConfigSources(deps, paths);
   if ("unavailable" in sources) {
     options.log(
       `pharn-ci: could not read the agent instruction files from git, so P07 did not compare them: ${sources.unavailable}`
@@ -48004,19 +47985,14 @@ async function gatherAgentInstructionSources(deps, options) {
   return sources;
 }
 async function gatherPolicySettingsSources(deps, options, lsTree) {
-  const { gitBatch } = deps;
   const { policy } = options;
-  if (gitBatch === void 0 || policy === void 0 || policy.document === null) return void 0;
+  if (policy === void 0 || policy.document === null) return void 0;
   if (!policyDocumentInForce(policy)) return void 0;
   const unread = headUnread(options, "agent settings files");
   if (unread !== null) return { unavailable: unread };
   const paths = policySettingsPaths(options.repoFiles, policy.document);
   if (paths.length === 0) return { files: [], dropped: [] };
-  const sources = await readPolicySettingsSources(
-    { gitBatch },
-    paths,
-    lsTree === null ? null : parseLsTreeSymlinks(lsTree)
-  );
+  const sources = await readPolicySettingsSources(deps, paths, lsTree === null ? null : parseLsTreeSymlinks(lsTree));
   if ("unavailable" in sources) {
     options.log(
       `pharn-ci: could not read the agent settings files from git, so they are not checked against the org policy: ${sources.unavailable}`
@@ -48025,8 +48001,7 @@ async function gatherPolicySettingsSources(deps, options, lsTree) {
   return sources;
 }
 async function gatherSelfModificationSources(deps, options) {
-  const { gitBatch } = deps;
-  if (gitBatch === void 0 || !policyDocumentInForce(options.policy)) return void 0;
+  if (!policyDocumentInForce(options.policy)) return void 0;
   return readChangedSources(deps, options, {
     select: selectSelfModificationPaths,
     what: "the agent settings, MCP, workflow and CODEOWNERS files",
@@ -48035,7 +48010,6 @@ async function gatherSelfModificationSources(deps, options) {
 }
 async function gatherDependencySources(deps, options) {
   if (resolveDependencySettings(options.dependencySettings).mode === "never") return void 0;
-  if (deps.gitBatch === void 0) return void 0;
   return readChangedSources(deps, options, {
     select: (files) => selectDependencyPaths(files, options.repoFiles),
     what: "the manifests and lockfiles",
@@ -48045,30 +48019,31 @@ async function gatherDependencySources(deps, options) {
 }
 async function readChangedSources(deps, options, read) {
   const { diff, revisions } = options;
-  const { gitBatch } = deps;
-  const unread = baseAndHeadUnread(options, gitBatch);
-  if (unread !== null || gitBatch === void 0 || revisions === void 0 || !("parsed" in diff)) {
+  const unread = baseAndHeadUnread(options);
+  if (unread !== null || revisions === void 0 || !("parsed" in diff)) {
     return unavailableTestSources(unread ?? "reading git objects is not available");
   }
   const selected = read.select(diff.parsed);
   if (selected.base.length === 0 && selected.head.length === 0) return emptySources();
-  const sources = await readTestSources(
-    { gitBatch },
-    { revisions, diff: diff.parsed, select: read.select, limits: read.limits }
-  );
+  const sources = await readTestSources(deps, {
+    revisions,
+    diff: diff.parsed,
+    select: read.select,
+    limits: read.limits
+  });
   if ("unavailable" in sources.base) {
     options.log(`pharn-ci: could not read ${read.what} from git, so ${read.effect}: ${sources.base.unavailable}`);
   }
   return sources;
 }
 async function gatherStaleInstructionSources(deps, options) {
-  const { gitBatch } = deps;
   const { diff, revisions } = options;
-  if (gitBatch === void 0 || options.checkout === "pr-number" || !("parsed" in diff)) return void 0;
-  const sources = await readStaleInstructionSources(
-    { gitBatch },
-    { repoFiles: options.repoFiles, diff: diff.parsed, revisions }
-  );
+  if (options.checkout === "pr-number" || !("parsed" in diff)) return void 0;
+  const sources = await readStaleInstructionSources(deps, {
+    repoFiles: options.repoFiles,
+    diff: diff.parsed,
+    revisions
+  });
   if (sources !== void 0 && "unavailable" in sources.instructions) {
     options.log(
       `pharn-ci: could not read the agent instruction files from git, so stale instructions are not checked: ${sources.instructions.unavailable}`
@@ -48269,7 +48244,7 @@ async function readJunitFiles(deps, options) {
       files.push({ path, dropped: "byte-cap" });
       continue;
     }
-    const chunks = await fileChunks(deps, deps.resolvePath(options.baseDir, path));
+    const chunks = await deps.readFileStream(deps.resolvePath(options.baseDir, path));
     if (chunks === null) continue;
     const parts = [];
     for await (const chunk of chunks) {
@@ -48658,8 +48633,6 @@ async function appRequest(deps, request2) {
   return attempt(deps, request2);
 }
 async function attempt(deps, request2) {
-  const doFetch = deps.fetch;
-  if (doFetch === void 0) return { kind: "network" };
   let timeoutMs = deps.timeoutMs ?? request2.timeoutMs ?? APP_TIMEOUT_MS;
   if (request2.remainingMs !== void 0) {
     const left = request2.remainingMs();
@@ -48670,7 +48643,7 @@ async function attempt(deps, request2) {
   const post = request2.method === "POST";
   let response;
   try {
-    response = await doFetch(request2.url.href, {
+    response = await deps.fetch(request2.url.href, {
       method: post ? "POST" : "GET",
       headers: {
         Accept: "application/json",
@@ -48803,7 +48776,7 @@ async function obtainPolicy(deps, choice, origin) {
   if (choice.kind === "file") {
     return {
       policy: await readPolicyFile(
-        { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat ?? lstatPath },
+        { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat },
         { root: deps.workspace, path: choice.path, label: "the policy input" }
       )
     };
@@ -48883,12 +48856,11 @@ function allowedLookupUrl(url) {
   return parsed.protocol === "https:" && parsed.port === "" && parsed.username === "" && parsed.password === "" && parsed.search === "" && parsed.hash === "" && REGISTRY_LOOKUP_HOSTS.includes(parsed.hostname);
 }
 async function registryGet(deps, url) {
-  const doFetch = deps.fetch;
-  if (doFetch === void 0 || !allowedLookupUrl(url)) return { kind: "network" };
+  if (!allowedLookupUrl(url)) return { kind: "network" };
   const signal2 = AbortSignal.timeout(deps.registryTimeoutMs ?? REGISTRY_TIMEOUT_MS);
   let response;
   try {
-    response = await doFetch(url, {
+    response = await deps.fetch(url, {
       method: "GET",
       headers: { Accept: "application/json", "User-Agent": REGISTRY_USER_AGENT },
       redirect: "error",
@@ -49221,7 +49193,6 @@ function readRunsAnswer(result, origin) {
   };
 }
 async function putBundle(deps, url, bytes, remainingMs) {
-  if (deps.fetch === void 0) return "put:network";
   const signal2 = AbortSignal.timeout(Math.min(deps.timeoutMs ?? PUT_TIMEOUT_MS, remainingMs()));
   let response;
   try {
@@ -49432,7 +49403,7 @@ async function runUnsafe(deps) {
   }
   let policyFileBase;
   if (policy?.source === "file") {
-    policyFileBase = localBase !== void 0 && deps.gitBatch !== void 0 && policy.path !== void 0 ? await readPolicyFileAt({ gitBatch: deps.gitBatch }, { rev: localBase, path: policy.path }) : { kind: "unreadable" };
+    policyFileBase = localBase !== void 0 && policy.path !== void 0 ? await readPolicyFileAt(deps, { rev: localBase, path: policy.path }) : { kind: "unreadable" };
   }
   const junit = junitPatterns.length === 0 ? void 0 : await gatherJunit(deps, junitPatterns);
   const checkInput = {
@@ -49640,7 +49611,7 @@ async function getDiff(baseRefInput, deps, target, configInput = "") {
     let parsed;
     try {
       const options = { configPath: configInput === "" ? void 0 : configInput, repoRoot: deps.workspace };
-      parsed = await readDiffChunks(gitChunks(deps, gitDiffArgs(localBase)), options);
+      parsed = await readDiffChunks(deps.gitStream(gitDiffArgs(localBase)), options);
     } catch (err) {
       throw new Error(
         `the local git diff against "${base}" failed (${String(err)}); check out full history with actions/checkout and fetch-depth: 0`

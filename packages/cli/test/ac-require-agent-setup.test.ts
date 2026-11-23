@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // main(), run() and the fixtures are loaded inside each test body: the AC tests are written before the agent setup
 // requirement and fixtures/require-agent-setup/ exist, so nothing that depends on them may run while the file loads.
@@ -26,6 +27,8 @@ function repoFiles(config: Config): Record<string, string> {
 function fakeGit() {
   const paths = fixture("require-agent-setup/files.txt").trim().split("\n");
   return async (args: string[]) => {
+    // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.
+    if (args.includes("HEAD^{commit}")) throw new Error("fatal: no history in this fake");
     if (args.includes("ls-files")) return args.includes("-z") ? `${paths.join("\0")}\0` : `${paths.join("\n")}\n`;
     if (args.includes("--show-toplevel")) return `${REPO_ROOT}\n`;
     if (args.includes("diff")) return fixture("golden/pr.diff");
@@ -44,6 +47,7 @@ async function runCli(config: Config, flag: boolean) {
   const err: string[] = [];
   const contents = new Map(Object.entries(repoFiles(config)).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: REPO_ROOT,
     git: fakeGit(),
     readFile: async (path: string) => contents.get(path) ?? null,
@@ -74,6 +78,7 @@ async function runAction(input: string, config: Config) {
   const inputs: Record<string, string> = { "coverage-file": "coverage/lcov.info", "require-agent-setup": input };
   const contents = new Map(Object.entries(repoFiles(config)).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

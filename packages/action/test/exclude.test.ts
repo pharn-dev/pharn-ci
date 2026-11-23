@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import type { ActionContext, ActionDeps } from "../src/run.js";
 
 // run() is imported inside each test body, like the other AC tests written before the build.
@@ -36,6 +37,7 @@ function harness(inputs: Record<string, string>, files: Record<string, string> =
     ...inputs,
   };
   h.deps = {
+    ...requiredDeps(() => h.deps),
     getInput: (name) => allInputs[name] ?? "",
     context: PR_CONTEXT,
     workspace: WORKSPACE,

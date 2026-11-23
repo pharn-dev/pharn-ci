@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import { harness, PR_CONTEXT } from "./harness.js";
 
 // check() is observed, not replaced: the mock calls the real check() and records the input the Action built, which
@@ -206,6 +207,7 @@ async function prNumberRun(run: Run, extraInputs: Record<string, string>) {
   const written = new Map<string, string>();
   const files = new Map([[resolve(WORKSPACE, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "workflow_run",

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // run() is loaded inside the test body: the AC tests are written before coverage discovery exists. The Action runs
 // against in-memory deps for a pull_request event with comments on, in a workspace whose git returns the golden
@@ -44,6 +45,7 @@ function fakeAction(inputs: Record<string, string>, files: Record<string, string
   }
 
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

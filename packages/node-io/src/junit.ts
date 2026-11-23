@@ -9,7 +9,6 @@ import {
   WalkLimitError,
   walkGlob,
 } from "@pharn-ci/core";
-import { fileChunks } from "./chunks.js";
 
 /** The most files the JUnit glob walk may match, all patterns together, before the 50-file cap picks the first ones. */
 const MAX_JUNIT_GLOB_FILES = 1000;
@@ -19,8 +18,7 @@ const MAX_JUNIT_WALK_ENTRIES = 100_000;
 /** What reading JUnit files needs from the deps of the CLI or the Action. */
 export interface JunitReadDeps {
   listDir(path: string): Promise<DirEntry[] | null>;
-  readFile(path: string): Promise<string | null>;
-  readFileStream?(path: string): Promise<AsyncIterable<string> | null>;
+  readFileStream(path: string): Promise<AsyncIterable<string> | null>;
   resolvePath(...segments: string[]): string;
 }
 
@@ -56,7 +54,7 @@ export async function readJunitFiles(deps: JunitReadDeps, options: ReadJunitFile
       files.push({ path, dropped: "byte-cap" });
       continue;
     }
-    const chunks = await fileChunks(deps, deps.resolvePath(options.baseDir, path));
+    const chunks = await deps.readFileStream(deps.resolvePath(options.baseDir, path));
     // Listed a moment ago: a file that is gone now was not written by the test step, so it is not a JUnit file.
     if (chunks === null) continue;
     const parts: string[] = [];

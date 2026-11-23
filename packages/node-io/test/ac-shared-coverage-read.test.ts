@@ -26,7 +26,7 @@ const FILES: Record<string, string> = {
 };
 
 /** A fake file system over `FILES` that counts every read per absolute path. */
-function fakeDeps(options: { stream: boolean }) {
+function fakeDeps() {
   const reads = new Map<string, number>();
   const listed: string[] = [];
   const count = (path: string) => reads.set(path, (reads.get(path) ?? 0) + 1);
@@ -45,11 +45,6 @@ function fakeDeps(options: { stream: boolean }) {
     return [...entries].map(([name, kind]) => ({ name, kind }));
   };
 
-  const readFile = async (path: string): Promise<string | null> => {
-    count(path);
-    return FILES[path] ?? null;
-  };
-
   const readFileStream = async (path: string): Promise<AsyncIterable<string> | null> => {
     count(path);
     const text = FILES[path];
@@ -62,7 +57,7 @@ function fakeDeps(options: { stream: boolean }) {
 
   const resolvePath = (...segments: string[]) => posix.resolve(...segments);
 
-  const deps = options.stream ? { listDir, readFile, readFileStream, resolvePath } : { listDir, readFile, resolvePath };
+  const deps = { listDir, readFileStream, resolvePath };
   return { deps, reads, listed };
 }
 
@@ -88,59 +83,58 @@ const ENTRIES = [
 const name = (entry: string) => `named:${entry}`;
 
 describe("@pharn-ci/node-io readCoverageFiles", () => {
-  for (const stream of [true, false]) {
-    it(`AC-1: reads literal, matched, unmatched, missing and duplicate entries${stream ? "" : " without a file stream"}`, async () => {
-      const { readCoverageFiles } = await import("../src/index.js");
-      const { deps, reads, listed } = fakeDeps({ stream });
-      const logged: string[] = [];
+  // CORE-143: the file stream is a required dep, so the case "without a file stream" (the whole-text fallback) left.
+  it("AC-1: reads literal, matched, unmatched, missing and duplicate entries", async () => {
+    const { readCoverageFiles } = await import("../src/index.js");
+    const { deps, reads, listed } = fakeDeps();
+    const logged: string[] = [];
 
-      const files = await readCoverageFiles(deps, {
-        entries: ENTRIES,
-        label: "coverage-file",
-        baseDir: BASE,
-        format: "auto",
-        repoRoot: REPO_ROOT,
-        name,
-        log: (line: string) => logged.push(line),
-      });
-
-      const lcov = expectedParsed(LCOV, name("coverage/lcov.info"), "coverage/lcov.info");
-      const a = expectedParsed(COBERTURA_A, name("reports/a/coverage.xml"), "reports/a/coverage.xml");
-      const b = expectedParsed(COBERTURA_B, name("reports/b/coverage.xml"), "reports/b/coverage.xml");
-      expect(lcov.entry.format).toBe("lcov");
-      expect(a.entry.format).toBe("cobertura");
-      expect(b.entry.format).toBe("cobertura");
-      expect(lcov.entry.parsed.size).toBeGreaterThan(0);
-      expect(a.entry.parsed.size).toBeGreaterThan(0);
-
-      // One parsed entry per file found, in entry order; a missingFile for the no-match glob and the missing
-      // literal; nothing for the duplicate. Every name comes from the injected naming function.
-      expect(files).toEqual([
-        lcov.entry,
-        a.entry,
-        b.entry,
-        { missingFile: name("missing/**/*.info") },
-        { missingFile: name("nope/lcov.info") },
-      ]);
-
-      // The duplicate file was read once, and every file found was read exactly once.
-      expect(reads.get("/ws/coverage/lcov.info")).toBe(1);
-      expect(reads.get("/ws/reports/a/coverage.xml")).toBe(1);
-      expect(reads.get("/ws/reports/b/coverage.xml")).toBe(1);
-
-      // The globs were walked through the injected listDir, on paths resolved against the base directory.
-      expect(listed).toContain("/ws/reports");
-      expect(listed.every((path) => path.startsWith(BASE))).toBe(true);
-
-      // The logger was called once per file read, with coverageChoiceLine's text for that file, naming it
-      // because more than one file is read.
-      expect(logged).toEqual([lcov.line, a.line, b.line]);
+    const files = await readCoverageFiles(deps, {
+      entries: ENTRIES,
+      label: "coverage-file",
+      baseDir: BASE,
+      format: "auto",
+      repoRoot: REPO_ROOT,
+      name,
+      log: (line: string) => logged.push(line),
     });
-  }
+
+    const lcov = expectedParsed(LCOV, name("coverage/lcov.info"), "coverage/lcov.info");
+    const a = expectedParsed(COBERTURA_A, name("reports/a/coverage.xml"), "reports/a/coverage.xml");
+    const b = expectedParsed(COBERTURA_B, name("reports/b/coverage.xml"), "reports/b/coverage.xml");
+    expect(lcov.entry.format).toBe("lcov");
+    expect(a.entry.format).toBe("cobertura");
+    expect(b.entry.format).toBe("cobertura");
+    expect(lcov.entry.parsed.size).toBeGreaterThan(0);
+    expect(a.entry.parsed.size).toBeGreaterThan(0);
+
+    // One parsed entry per file found, in entry order; a missingFile for the no-match glob and the missing
+    // literal; nothing for the duplicate. Every name comes from the injected naming function.
+    expect(files).toEqual([
+      lcov.entry,
+      a.entry,
+      b.entry,
+      { missingFile: name("missing/**/*.info") },
+      { missingFile: name("nope/lcov.info") },
+    ]);
+
+    // The duplicate file was read once, and every file found was read exactly once.
+    expect(reads.get("/ws/coverage/lcov.info")).toBe(1);
+    expect(reads.get("/ws/reports/a/coverage.xml")).toBe(1);
+    expect(reads.get("/ws/reports/b/coverage.xml")).toBe(1);
+
+    // The globs were walked through the injected listDir, on paths resolved against the base directory.
+    expect(listed).toContain("/ws/reports");
+    expect(listed.every((path) => path.startsWith(BASE))).toBe(true);
+
+    // The logger was called once per file read, with coverageChoiceLine's text for that file, naming it
+    // because more than one file is read.
+    expect(logged).toEqual([lcov.line, a.line, b.line]);
+  });
 
   it("AC-1: a configured format is taken as given and logged as configured, with a single-string entry", async () => {
     const { readCoverageFiles } = await import("../src/index.js");
-    const { deps, reads } = fakeDeps({ stream: true });
+    const { deps, reads } = fakeDeps();
     const logged: string[] = [];
 
     const files = await readCoverageFiles(deps, {

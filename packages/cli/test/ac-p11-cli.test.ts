@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // E3 item 24a part B (P11), AC-18. main() and check() are loaded inside the test body: the AC test is written before
 // the build adds rule P11, so nothing the build adds may run while this file loads. The CLI reads a real temporary
@@ -80,6 +81,7 @@ describe("the CLI never sets the agent flag", { timeout: 60_000 }, () => {
       const err: string[] = [];
       const tracked = ["AGENTS.md", POLICY_PATH, "src/a.ts"];
       const deps = {
+        ...requiredDeps(() => deps),
         cwd: dir,
         git: async (args: string[]) => {
           if (args.includes("ls-files"))

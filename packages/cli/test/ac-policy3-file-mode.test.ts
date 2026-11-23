@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { harness, PR_CONTEXT } from "../../action/test/harness.js";
 import { expectValidReport } from "../../core/test/schema.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // run(), main(), readPolicyFile() and the fixtures under fixtures/policy-api/ and fixtures/policy-precedence/ are
 // loaded inside each test body: the AC tests are written before the file: policy mode exists, so nothing the build
@@ -84,6 +85,7 @@ async function cliRun(dir: string, extra: string[]) {
   const err: string[] = [];
   const tracked = read("fixtures/golden/files.txt").trim().split("\n");
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: dir,
     git: async (args: string[]) => {
       if (args.includes("ls-files")) return args.includes("-z") ? `${tracked.join("\0")}\0` : `${tracked.join("\n")}\n`;

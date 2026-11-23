@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // run() and the fixtures are loaded inside each test body: the AC tests are written before format selection,
 // clover.xml and fixtures/golden-cobertura/ exist, so nothing that depends on them may run while the file loads.
@@ -27,6 +28,7 @@ function fakeAction(inputs: Record<string, string>, files: Record<string, string
   const written = new Map<string, string>();
   const contents = new Map(Object.entries(files).map(([path, text]) => [resolve(WORKSPACE, path), text]));
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

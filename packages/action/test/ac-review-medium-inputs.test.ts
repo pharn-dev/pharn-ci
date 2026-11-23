@@ -190,7 +190,7 @@ describe("action: a base that resolves to HEAD is DIFF_UNAVAILABLE (review findi
     expect(codes(report)).not.toContain("DIFF_UNAVAILABLE");
   });
 
-  it("AC-13: a non-empty diff never asks for the merge base", async () => {
+  it("AC-13: a non-empty diff never runs the base-is-HEAD check", async () => {
     const { run } = await import("../src/run.js");
     const { fixture } = await import("./harness.js");
     const h = await baseCheckHarness({
@@ -201,7 +201,9 @@ describe("action: a base that resolves to HEAD is DIFF_UNAVAILABLE (review findi
 
     const report = (await run(h.deps)) as Report | undefined;
 
-    expect(h.gitCalls.some((a) => a[0] === "merge-base")).toBe(false);
+    // CORE-143: the batch runner is required, so the readers of the merge base (the test sources) resolve the run's
+    // revisions once; the base-is-HEAD check adds no call of its own and, on a non-empty diff, decides nothing.
+    expect(h.gitCalls.filter((a) => a[0] === "merge-base")).toHaveLength(1);
     expect(codes(report)).not.toContain("DIFF_UNAVAILABLE");
     expect((report?.diffCoverage as { percent: number } | null)?.percent).toBe(71.43);
   });

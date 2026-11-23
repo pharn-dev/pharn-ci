@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // main() is loaded inside each test body: the AC tests are written before the CLI streams its diff and coverage
 // files, so nothing that depends on that may run while the file loads. The CLI runs against in-memory deps: a fake
@@ -52,11 +53,11 @@ interface Repo {
   /** Whole-file reads: path relative to REPO_ROOT -> text. A path listed in `rejectRead` rejects instead. */
   files?: Record<string, string>;
   rejectRead?: string[];
-  /** Streamed reads: path relative to REPO_ROOT -> chunks. Absent: no readFileStream dep. */
+  /** Streamed reads: path relative to REPO_ROOT -> chunks. Absent: each file streams as one chunk of its whole text. */
   streams?: Record<string, readonly string[]>;
   /** Whole-text diff, or null to reject any whole-text `git diff`. */
   diff: string | null;
-  /** Streamed diff chunks. Absent: no gitStream dep. */
+  /** Streamed diff chunks. Absent: the diff streams as one chunk of the whole-text git call. */
   diffStream?: readonly string[];
 }
 
@@ -71,6 +72,7 @@ async function runCli(argv: string[], repo: Repo) {
   const streamCalls: string[][] = [];
 
   const deps: Record<string, unknown> = {
+    ...requiredDeps(() => deps as never),
     cwd: REPO_ROOT,
     git: wholeTextGit(repo.diff),
     readFile: async (path: string) => {

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { AgentPrFacts } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import { commentScopeLine, type IssueComment, ownComments, prWriterLogins, run } from "../src/run.js";
 
 // CORE-120: with an unknown viewer (the default GITHUB_TOKEN or an App token), pharn-ci does not adopt a marker comment
@@ -137,6 +138,7 @@ async function runOnce(store: IssueComment[], opts: RunOptions): Promise<Calls> 
   const inputs: Record<string, string> = { "coverage-file": "coverage/lcov.info", comment: "true", config: "" };
   const files: Record<string, string> = { [`${WORKSPACE}/coverage/lcov.info`]: fixture("golden/coverage.info") };
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? "",
     context: {
       eventName: "pull_request",

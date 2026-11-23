@@ -24,10 +24,8 @@ import {
 import {
   type FileStamp,
   gatherSources,
-  gitChunks,
   headIsInBase,
   loadConfigInUse,
-  lstatPath,
   type PathStat,
   readCoverageFiles,
   readDiscoveredCoverage,
@@ -43,16 +41,14 @@ export interface CliDeps {
   git(args: string[]): Promise<string>;
   /**
    * Run git with args in `cwd` and yield its stdout as UTF-8 text chunks, without holding it whole. Iteration throws
-   * an Error whose message is git's stderr (or says that git timed out) when git fails. Absent: the CLI makes one
-   * chunk of what `git` resolves.
+   * an Error whose message is git's stderr (or says that git timed out) when git fails.
    */
-  gitStream?(args: string[]): AsyncIterable<string>;
+  gitStream(args: string[]): AsyncIterable<string>;
   /**
    * Run git with args in `cwd`, write `input` to its stdin and resolve its stdout as bytes; rejects with stderr on
-   * failure. Used to read the text of the test files from committed git objects (`cat-file`). Absent: that text is
-   * not read, and the test sources are marked unavailable.
+   * failure. Used to read the text of the test files from committed git objects (`cat-file`).
    */
-  gitBatch?(args: string[], input: string): Promise<Uint8Array>;
+  gitBatch(args: string[], input: string): Promise<Uint8Array>;
   /**
    * Indexes `.py` test files with the Python test index (one run, base files then head files). Absent: node-io's
    * `indexPythonTests`, which runs the interpreter found on PATH. Only called when the test sources hold a `.py` test
@@ -63,9 +59,9 @@ export interface CliDeps {
   readFile(path: string): Promise<string | null>;
   /**
    * The file as UTF-8 text chunks, or null when it does not exist; any other failure rejects, or throws during
-   * iteration. Absent: the CLI makes one chunk of what `readFile` resolves.
+   * iteration.
    */
-  readFileStream?(path: string): Promise<AsyncIterable<string> | null>;
+  readFileStream(path: string): Promise<AsyncIterable<string> | null>;
   /**
    * The entries of a directory, with symbolic links reported as such and never followed; null when the
    * directory does not exist or is not a directory. Only called to expand a coverage glob or to discover the
@@ -75,9 +71,9 @@ export interface CliDeps {
   resolvePath(...segments: string[]): string;
   /**
    * `lstat` of a path without following a symbolic link; null when it does not exist. Only called to read a
-   * `--policy-file`. Absent: node-io's `lstatPath`.
+   * `--policy-file`.
    */
-  lstat?(path: string): Promise<PathStat | null>;
+  lstat(path: string): Promise<PathStat | null>;
   /**
    * Runs a command in `cwd` without a shell, with the CLI's own stdin, stdout and stderr, and resolves how it ended: its
    * exit code, or the name of the signal that stopped it. Rejects when it cannot be started. Only `pharn-ci test` calls
@@ -297,7 +293,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   const configPath = values.config === undefined ? undefined : deps.resolvePath(deps.cwd, values.config);
   let diffFiles: DiffFile[];
   try {
-    diffFiles = await readDiffChunks(gitChunks(deps, diffArgs), { configPath, repoRoot });
+    diffFiles = await readDiffChunks(deps.gitStream(diffArgs), { configPath, repoRoot });
   } catch (err) {
     throw gitFailure(diffArgs, `could not diff against "${base}" (fetch it, or pass --base <ref>)`, err);
   }
@@ -336,7 +332,7 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
     policyFile === undefined
       ? undefined
       : await readPolicyFile(
-          { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat ?? lstatPath },
+          { readFile: deps.readFile, resolvePath: deps.resolvePath, lstat: deps.lstat },
           { root: repoRoot, path: policyFile, label: "--policy-file" },
         );
   const application =

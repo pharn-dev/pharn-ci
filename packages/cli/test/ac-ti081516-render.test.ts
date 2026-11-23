@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // check(), renderMarkdown() and main() are loaded inside the test body: the AC tests are written before TI08, TI15
 // and TI16 exist, so nothing the build adds may run while the file loads.
@@ -69,6 +70,7 @@ function fakeRepo(diff: string) {
   const err: string[] = [];
   const contents = new Map([[resolve(REPO_ROOT, "coverage/lcov.info"), fixture("test-files-deleted/coverage.info")]]);
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: REPO_ROOT,
     git: async (args: string[]) => {
       if (args.includes("ls-files")) {

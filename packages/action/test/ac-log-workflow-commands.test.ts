@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { getOctokit } from "@actions/github";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import { createGitHubApi } from "../src/api.js";
 import { withRequestPolicy } from "../src/request-policy.js";
 import { run } from "../src/run.js";
@@ -40,6 +41,7 @@ function fakeAction(files: Record<string, string>) {
   }
   const tracked = [...Object.keys(files), ...fixture("golden/files.txt").trim().split("\n")];
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => ({ comment: "false" })[name] ?? "",
     context: {
       eventName: "pull_request",

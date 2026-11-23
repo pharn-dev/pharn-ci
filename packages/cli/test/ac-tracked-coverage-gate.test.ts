@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { fixture } from "../../core/test/helpers.js";
 import { expectValidReport } from "../../core/test/schema.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // CORE-92 (R3.1), through the CLI and the Action: a coverage report the pull request commits at the path the gate
 // reads fails a run with a threshold. main() and run() are loaded inside each test body: the tests are written before
@@ -37,6 +38,7 @@ async function runCli(threshold: number | null, diff: string): Promise<{ code: n
   const out: string[] = [];
   const files = contents();
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: REPO_ROOT,
     git: fakeGit(diff),
     readFile: async (path: string) => files.get(path) ?? null,
@@ -75,6 +77,7 @@ async function runAction(threshold: number | null, diff: string): Promise<{ fail
     ...(threshold === null ? {} : { threshold: String(threshold) }),
   };
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

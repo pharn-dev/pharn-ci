@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import type { CliDeps } from "../src/main.js";
+import { TEST_SOURCES_NOT_READ } from "./fake-deps.js";
 
 // main() is imported inside each test body, like the other AC tests written before the build.
 
@@ -15,6 +17,7 @@ interface Fake extends CliDeps {
 /** A repo at /repo, run from /repo/sub, whose diff and tracked files are fixtures/golden/. */
 function fakeDeps(files: Record<string, string>): Fake {
   const fake: Fake = {
+    ...requiredDeps(() => fake),
     cwd: "/repo/sub",
     out: "",
     err: "",
@@ -66,7 +69,7 @@ describe("pharn-ci check --exclude", () => {
     // Unexcluded, the golden change is 5/7 = 71.43%; without src/new.ts and src/utils/new-name.ts it is 3/4 = 75%.
     const passing = fakeDeps(files);
     const passCode = await main(args("74"), passing);
-    expect(passing.err).toBe("coverage: lcov (auto-detected)\n");
+    expect(passing.err).toBe(`coverage: lcov (auto-detected)\n${TEST_SOURCES_NOT_READ}`);
     const report = JSON.parse(passing.out);
     expect(report.diffCoverage.excludedFiles).toEqual(["src/new.ts", "src/utils/new-name.ts"]);
     expect(report.diffCoverage).toMatchObject({ percent: 75, coveredLines: 3, coverableLines: 4 });
@@ -76,7 +79,7 @@ describe("pharn-ci check --exclude", () => {
 
     const failing = fakeDeps(files);
     const failCode = await main(args("76"), failing);
-    expect(failing.err).toBe("coverage: lcov (auto-detected)\n");
+    expect(failing.err).toBe(`coverage: lcov (auto-detected)\n${TEST_SOURCES_NOT_READ}`);
     expect(JSON.parse(failing.out).verdict).toBe("fail");
     expect(failCode).toBe(EXIT_FAIL);
   });
@@ -121,7 +124,7 @@ describe("pharn-ci check --exclude", () => {
     const accepted = fakeDeps(COVERAGE);
     const args = ["check", "--coverage", "lcov.info", "--format", "json", "--exclude", atLimit];
     expect(await main(args, accepted)).toBe(EXIT_OK);
-    expect(accepted.err).toBe("coverage: lcov (auto-detected)\n");
+    expect(accepted.err).toBe(`coverage: lcov (auto-detected)\n${TEST_SOURCES_NOT_READ}`);
     // The pattern matches no changed file, so nothing is excluded and the report lists no exclusions.
     expect(JSON.parse(accepted.out).diffCoverage).not.toHaveProperty("excludedFiles");
   });

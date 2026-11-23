@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import { fakeConfigGit } from "./config-git-fake.js";
 
 // check(), main(), run() and the fixtures are loaded inside each test body: the AC tests are written before the
@@ -51,6 +52,7 @@ async function runCli(argv: string[], files: Record<string, string>, diff: strin
   const err: string[] = [];
   const contents = new Map(Object.entries(files).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: REPO_ROOT,
     git: fakeGit(diff),
     readFile: async (path: string) => contents.get(path) ?? null,
@@ -89,6 +91,7 @@ async function runAction(
   const written = new Map<string, string>();
   const contents = new Map(Object.entries(files).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "pull_request",

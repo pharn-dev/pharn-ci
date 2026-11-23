@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import { run } from "../src/run.js";
 
 // Run-level behaviour of PR-number mode beyond the acceptance criteria. The harness shape is copied from the AC tests.
@@ -32,6 +33,7 @@ async function runWith(opts: Options) {
   const calls = { compare: [] as string[], tree: [] as string[], created: [] as unknown[][], git: [] as string[][] };
   const files = new Map([[resolve(WORKSPACE, "coverage/lcov.info"), fixture("golden/coverage.info")]]);
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: opts.eventName ?? "workflow_run",

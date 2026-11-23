@@ -19,8 +19,19 @@ export { GIT_TIMEOUT_MS };
 export function createNodeIo(
   workspace: string,
   opts: { gitTimeoutMs?: number } = {},
-): Pick<ActionDeps, "git" | "readFile" | "listDir" | "lstat" | "writeFile" | "resolvePath" | "writeSummary"> &
-  Required<Pick<ActionDeps, "gitStream" | "gitBatch" | "readFileStream">> {
+): Pick<
+  ActionDeps,
+  | "git"
+  | "gitStream"
+  | "gitBatch"
+  | "readFile"
+  | "readFileStream"
+  | "listDir"
+  | "lstat"
+  | "writeFile"
+  | "resolvePath"
+  | "writeSummary"
+> {
   const timeout = opts.gitTimeoutMs ?? GIT_TIMEOUT_MS;
   return {
     gitBatch: (args, input) => runGitBatch(workspace, args, input, timeout),

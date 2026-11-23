@@ -11,7 +11,7 @@ import { harness, PR_CONTEXT } from "./harness.js";
 // Stale instructions (Horizon 2 item H3) in the Action. The in-memory harness gives the golden diff (fixtures/golden/
 // pr.diff), which deletes src/legacy.ts and renames src/old-name.ts to src/utils/new-name.ts; a real temporary
 // repository commits AGENTS.md, which names both old paths and is not touched by the change. The removal alone makes
-// them findings (SI02 and SI03). PR-number mode, a compare-API diff and a run without a batch git runner read nothing.
+// them findings (SI02 and SI03). PR-number mode and a compare-API diff read nothing.
 
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, ROOT), "utf8");
@@ -46,7 +46,7 @@ afterAll(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-async function actionRun(options: { localGit?: boolean; batch?: boolean; failInstructions?: boolean } = {}) {
+async function actionRun(options: { localGit?: boolean; failInstructions?: boolean } = {}) {
   const { run } = await import("../src/run.js");
   const h = harness({
     context: PR_CONTEXT as never,
@@ -56,15 +56,13 @@ async function actionRun(options: { localGit?: boolean; batch?: boolean; failIns
     localGit: options.localGit ?? true,
   });
   const batchCalls: string[] = [];
-  if (options.batch !== false) {
-    Object.assign(h.deps, {
-      gitBatch: async (args: string[], input: string) => {
-        batchCalls.push(input);
-        if (options.failInstructions && input.includes("HEAD:AGENTS.md")) throw new Error("fatal: simulated failure");
-        return runGitBatch(dir, args, input);
-      },
-    });
-  }
+  Object.assign(h.deps, {
+    gitBatch: async (args: string[], input: string) => {
+      batchCalls.push(input);
+      if (options.failInstructions && input.includes("HEAD:AGENTS.md")) throw new Error("fatal: simulated failure");
+      return runGitBatch(dir, args, input);
+    },
+  });
   await run(h.deps);
   const text = h.written[h.outputs["report-path"] ?? ""];
   if (text === undefined) throw new Error(`no report was written; failed: ${JSON.stringify(h.failed)}`);
@@ -92,12 +90,12 @@ describe("action: stale instructions", { timeout: 120_000 }, () => {
     for (const m of report.messages) expect(m.text).not.toContain("old helpers");
   });
 
-  it("a compare-API diff and a run without a batch git runner read nothing and report nothing", async () => {
+  // CORE-143: the batch git runner is a required dep, so the "run without a batch git runner" half left with its
+  // fallback.
+  it("a compare-API diff reads nothing and reports nothing", async () => {
     const compare = await actionRun({ localGit: false });
     expect(compare.batchCalls).toEqual([]);
     expect(compare.report.setupHealth).toBeUndefined();
-    const noBatch = await actionRun({ batch: false });
-    expect(noBatch.report.setupHealth).toBeUndefined();
   });
 
   it("a failing instruction read logs one line and reports nothing", async () => {

@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 import { withoutFix } from "../../core/test/v090-codes.js";
 import { runGitBatch } from "../../node-io/src/io.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import { harness } from "./harness.js";
 
 // E3 item 23 (policy settings), AC-28. run() is loaded inside each run: the AC test is written before the Action
@@ -91,7 +92,7 @@ function reportOf(written: Record<string, string> | Map<string, string>, returne
   return report as Report;
 }
 
-async function harnessRun(opts: { policy: string; batch?: boolean; localGit?: boolean; compareError?: Error }) {
+async function harnessRun(opts: { policy: string; localGit?: boolean; compareError?: Error }) {
   const run = await loadRun();
   const h = harness({
     inputs: { policy: opts.policy },
@@ -103,7 +104,7 @@ async function harnessRun(opts: { policy: string; batch?: boolean; localGit?: bo
   const deps = h.deps as unknown as Record<string, unknown>;
   deps.workspace = dir;
   deps.readFile = realReadFile;
-  if (opts.batch !== false) deps.gitBatch = batch.gitBatch;
+  deps.gitBatch = batch.gitBatch;
   const returned = await run(h.deps as never);
   return { h, calls: batch.calls, report: reportOf(h.written, returned) };
 }
@@ -128,6 +129,7 @@ async function prNumberRun() {
   const written = new Map<string, string>();
   const batch = recordingBatch();
   const deps = {
+    ...requiredDeps(() => deps),
     getInput: (name: string) => inputs[name] ?? INPUT_DEFAULTS[name] ?? "",
     context: {
       eventName: "workflow_run",
@@ -256,11 +258,7 @@ describe("action: policy mode reads the committed agent settings files", () => {
       }
     }
 
-    // No batch git runner: nothing is gathered, nothing is said.
-    const noBatch = await harnessRun({ policy: POLICY_INPUT, batch: false });
-    expect(noBatch.report.policy, "control: the file policy is in force").toBeDefined();
-    expect(newCodes(noBatch.report)).toEqual([]);
-    expect(noBatch.calls).toEqual([]);
+    // CORE-143: the batch git runner is a required dep, so the "no batch git runner" case left with its fallback.
 
     // No policy: nothing is gathered, nothing is said.
     const never = await harnessRun({ policy: "never" });

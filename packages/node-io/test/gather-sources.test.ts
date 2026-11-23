@@ -10,6 +10,7 @@ import {
   readCapped,
   runRevisions,
 } from "../src/index.js";
+import { stubGitBatch } from "./required-deps.js";
 
 // CORE-136: the helpers the CLI and the Action share. The git runners here are fakes: a batch call fails the test, so a
 // guard that should read nothing is seen to read nothing. ac-gather-sources-parity.test.ts runs both entry points.
@@ -122,14 +123,7 @@ describe("gatherSources: when the files at HEAD are read", () => {
     });
   });
 
-  it("without a batch git runner only an unavailable test source marker and the file sizes are gathered", async () => {
-    const out = await gatherSources(
-      { git: async () => "" },
-      options({ diff: { parsed: [] }, testIntegrityMode: undefined }),
-    );
-    expect(Object.keys(out).sort()).toEqual(["repoFileBytes", "testSources"]);
-    expect(out.testSources).toHaveProperty("base.unavailable", "reading git objects is not available");
-  });
+  // CORE-143: the batch git runner is a required dep, so the case "without a batch git runner" left with its fallback.
 
   it("a failed git ls-tree is one warning with git's first line", async () => {
     const o = options();
@@ -138,6 +132,7 @@ describe("gatherSources: when the files at HEAD are read", () => {
         git: async () => {
           throw new Error("fatal: not a tree\nmore");
         },
+        gitBatch: stubGitBatch,
       },
       o,
     );

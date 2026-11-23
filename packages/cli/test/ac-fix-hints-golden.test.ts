@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../../core/src/version.js";
 import { expectValidReport } from "../../core/test/schema.js";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 
 // fix-hints (H6), AC-9. main(), the renderer and the core's fix table are loaded inside the test body: the AC test is
 // written before the build adds the `fix` objects and regenerates the golden report.json files. The CLI runs against
@@ -23,8 +24,11 @@ async function runCli(dir: string, argv: string[], files: Record<string, string>
   const at = new Map(Object.entries(files).map(([path, text]) => [resolve(REPO_ROOT, path), text]));
   const tracked = fixture(`${dir}/files.txt`).trim().split("\n");
   const deps = {
+    ...requiredDeps(() => deps),
     cwd: REPO_ROOT,
     git: async (args: string[]) => {
+      // No history (CORE-143): the run's revisions stay unresolved, so no test file is read from git.
+      if (args.includes("HEAD^{commit}")) throw new Error("fatal: no history in this fake");
       if (args[0] === "ls-files") return `${tracked.join("\0")}\0`;
       if (args[0] === "ls-tree") return "";
       if (args[0] === "diff") return fixture(`${dir}/pr.diff`);

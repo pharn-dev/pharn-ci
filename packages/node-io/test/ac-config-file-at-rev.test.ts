@@ -27,10 +27,10 @@ const deps = () => ({
 // The readers take the run's revisions (CORE-143); each call here resolves its base with the same git runner.
 type GitDeps = {
   git(args: string[]): Promise<string>;
-  gitBatch?: (args: string[], input: string) => Promise<Uint8Array>;
+  gitBatch(args: string[], input: string): Promise<Uint8Array>;
 };
 const revisionsOf = (d: GitDeps, base: string | undefined) => (base === undefined ? undefined : runRevisions(d, base));
-const readConfigFileAt = (d: Required<GitDeps>, options: { base: string; path: string }) =>
+const readConfigFileAt = (d: GitDeps, options: { base: string; path: string }) =>
   readAt(d, { revisions: runRevisions(d, options.base), path: options.path });
 const configCopyInUse = (
   d: GitDeps,
@@ -136,12 +136,10 @@ describe("configCopyInUse", () => {
     expect(await configCopyInUse(deps(), { ...options, diff: [file("old.yml", "renamed", ".pharn/ci.yml")] })).toEqual(
       base,
     );
-    // No base, no batch reader, or no copy at the merge base: unreadable.
+    // No base or no copy at the merge base: unreadable. (CORE-143: the batch reader is required, so the "no batch
+    // reader" case left with its fallback.)
     const modified = [file(".pharn/ci.yml", "modified")];
     expect(await configCopyInUse(deps(), { ...options, base: undefined, diff: modified })).toEqual({
-      source: "unreadable",
-    });
-    expect(await configCopyInUse({ git: deps().git }, { ...options, diff: modified })).toEqual({
       source: "unreadable",
     });
     expect(

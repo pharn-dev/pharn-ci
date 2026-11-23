@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { getOctokit } from "@actions/github";
 import { describe, expect, it, vi } from "vitest";
+import { requiredDeps } from "../../node-io/test/required-deps.js";
 import { createGitHubApi, diffText } from "../src/api.js";
 import { type ActionDeps, run } from "../src/run.js";
 
@@ -68,6 +69,7 @@ describe("run() with a compare API that answers JSON (F-14)", () => {
     const warnings: string[] = [];
     const summary: string[] = [];
     const deps: ActionDeps = {
+      ...requiredDeps(() => deps),
       getInput: (name) => ({ "coverage-file": "coverage/lcov.info", comment: "false" })[name] ?? "",
       context: {
         eventName: "pull_request",
