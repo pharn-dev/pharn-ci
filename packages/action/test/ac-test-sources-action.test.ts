@@ -91,8 +91,13 @@ const recorder = (calls: string[][]) => ({
   },
 });
 
+/**
+ * The git calls that read sources: every `cat-file`, and any `merge-base` after the first. The run resolves the base,
+ * HEAD and their merge base once before the diff, which names those commit ids (CORE-14 follow-up), so the first
+ * merge-base call is the diff's own.
+ */
 const gathersNothing = (calls: string[][]) =>
-  calls.filter((args) => args[0] === "merge-base" || args[0] === "cat-file");
+  calls.filter((args) => args[0] === "cat-file").concat(calls.filter((args) => args[0] === "merge-base").slice(1));
 
 describe("action: test sources", () => {
   it("the check() mock is a spy on the real check(), not a stub", async () => {

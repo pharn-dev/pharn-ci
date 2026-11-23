@@ -111,7 +111,10 @@ describe("pharn-ci check: test sources", () => {
     expect(gathered.report).toEqual(actual.check(gathered.input));
 
     const off = await runCli(["--test-integrity", "off"]);
-    expect(off.calls.filter((args) => args[0] === "merge-base" || args[0] === "cat-file")).toEqual([]);
+    // The run resolves the base, HEAD and their merge base once before the diff, which names those commit ids (CORE-14
+    // follow-up), so one merge-base call is the diff's own; no git object is read.
+    expect(off.calls.filter((args) => args[0] === "cat-file")).toEqual([]);
+    expect(off.calls.filter((args) => args[0] === "merge-base")).toHaveLength(1);
     expect(Object.hasOwn(off.input, "testSources")).toBe(false);
     expect(off.report).toEqual(actual.check(withoutSources(off.input)));
   }, 30_000);

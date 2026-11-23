@@ -50,6 +50,10 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
   the workflow setting (`fetch-depth: 0`, `permissions: id-token: write`, `if: always()`), the cap (512 KiB, 200 test
   files, 250 commits, the JUnit caps) or the concrete cause (Python 3.8 or newer, a `binary` attribute, a truncated
   coverage file). The `Hint:` line and `fix.hint` change together; every code and kind is unchanged.
+- The local `git diff` of the CLI and the Action names the base and `HEAD` commit ids the run resolved once (CORE-14
+  follow-up), not the base ref, so a ref that moves during the run can no longer make the diff and the check for a
+  base that is `HEAD` or after it judge different commits. A base that does not resolve is diffed by name as before,
+  and git's own error is still the one reported.
 - The CLI and the Action gather what the checks read with one shared function (CORE-136), so they no longer differ on
   the same repository. The Action now scans the agent config files for secrets (A7), and reads the agent instruction
   (P07) and settings files (P02 to P06), at `HEAD` also when there is no diff to measure because the checkout is still

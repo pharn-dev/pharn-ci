@@ -22,6 +22,7 @@ import {
   VERSION,
 } from "@pharn-ci/core";
 import {
+  diffEnds,
   type FileStamp,
   gatherSources,
   headIsInBase,
@@ -286,9 +287,12 @@ async function runCheck(values: Values, deps: CliDeps): Promise<number> {
   // The diff is read before the config (CORE-95): with --base, the paths it changes decide which copy of the config
   // applies, as in the action.
   const base = values.base ?? "origin/main";
-  const diffArgs = gitDiffArgs(base);
-  // The base, HEAD and their merge base are resolved once, on first use, for every reader of this run.
+  // The base, HEAD and their merge base are resolved once, before the diff, for every reader of this run. The diff names
+  // the commit ids of that resolution, never the base ref again, so a ref that moves during the run cannot make the diff
+  // and the base-is-HEAD check below judge different commits (`diffEnds`).
   const revisions = runRevisions(deps, base);
+  const ends = await diffEnds(revisions);
+  const diffArgs = gitDiffArgs(ends.base, ends.head);
   // Absolute: core makes it repo-relative against repoRoot, or finds it outside the repo.
   const configPath = values.config === undefined ? undefined : deps.resolvePath(deps.cwd, values.config);
   let diffFiles: DiffFile[];

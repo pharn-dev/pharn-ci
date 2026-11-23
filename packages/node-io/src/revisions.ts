@@ -72,3 +72,17 @@ export function runRevisions(
     },
   };
 }
+
+/**
+ * The base and head a run names to git for the change under review (the `git diff` range, the `file:` policy at the
+ * base, the fork point): the commit ids of the run's one resolution, so a base ref that moves during the run cannot make
+ * the diff, the base-is-HEAD check and the reads at the base judge different commits. When the resolution failed, the
+ * base as the caller named it and `HEAD`: git then refuses the range for the same reason (no such commit, no merge
+ * base), and its own error is the one the run reports.
+ */
+export async function diffEnds(revisions: RunRevisions): Promise<{ base: string; head: string }> {
+  const resolved = await revisions.resolve();
+  return "unresolved" in resolved
+    ? { base: revisions.base, head: "HEAD" }
+    : { base: resolved.base, head: resolved.head };
+}

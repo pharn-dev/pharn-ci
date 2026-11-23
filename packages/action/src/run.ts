@@ -32,6 +32,7 @@ import {
   withUploadOutcome,
 } from "@pharn-ci/core";
 import {
+  diffEnds,
   gatherSources,
   type HeadCheckout,
   headIsInBase,
@@ -411,7 +412,8 @@ async function runUnsafe(deps: ActionDeps): Promise<Report> {
 
   const repoFiles = await trackedFiles(target, deps);
   const { diff, revisions, checkout } = earlyDiff ?? (await getDiff(baseRefInput, deps, target, configInput));
-  const localBase = revisions?.base;
+  // The base commit the local diff named (the run's one resolution), for the fork point below.
+  const localBase = revisions === undefined ? undefined : (await diffEnds(revisions)).base;
   // The sources the checks read from committed git objects, decided as in the CLI (CORE-136). In PR-number mode the
   // checkout is not the PR, so nothing at its HEAD is read (not even the file sizes); nothing read is logged.
   const gathered = await gatherSources(deps, {
@@ -694,9 +696,9 @@ async function gatherDependencyLookups(
 }
 
 /**
- * Diff of the change under test: base...HEAD from local git; the GitHub compare API is used only for a base that does
- * not resolve locally (a shallow checkout) or in PR-number mode. A base that resolves but whose local diff fails fails
- * the step. `revisions` are the revision the local git diff was taken against and HEAD, resolved once for the run; set
+ * Diff of the change under test: base...HEAD from local git, named by the commit ids the run resolved once (`diffEnds`);
+ * the GitHub compare API is used only for a base that does not resolve locally (a shallow checkout) or in PR-number
+ * mode. A base that resolves but whose local diff fails fails the step. `revisions` are the revision the local git diff was taken against and HEAD, resolved once for the run; set
  * only when the diff was parsed from local git. `checkout` says whether the checkout's HEAD is the head under review (see `HeadCheckout`): it is whenever
  * the base resolved in the checkout or there is no base; it may not be with a compare-API diff (or a failed compare) or a
  * `pull_request_target` checkout of the base; it is not in PR-number mode.
@@ -749,12 +751,14 @@ async function getDiff(
 
   const revisions = await resolveLocal(base, deps);
   if (revisions !== null) {
-    const localBase = revisions.base;
+    // The commit ids of the run's one resolution, never the base ref again: a ref that moves during the run cannot make
+    // the diff and the base-is-HEAD check below judge different commits.
+    const ends = await diffEnds(revisions);
     let parsed: DiffFile[];
     try {
       // The config in use decides which file's text the reader keeps, so a custom `config` input works as it does for check().
       const options = { configPath: configInput === "" ? undefined : configInput, repoRoot: deps.workspace };
-      parsed = await readDiffChunks(deps.gitStream(gitDiffArgs(localBase)), options);
+      parsed = await readDiffChunks(deps.gitStream(gitDiffArgs(ends.base, ends.head)), options);
     } catch (err) {
       // The base is in the checkout, so a failed local diff means a broken or partial checkout. Falling back to the
       // compare API would hand the test-integrity signals a diff without readable test text, so fail the step instead

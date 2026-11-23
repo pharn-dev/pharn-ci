@@ -39,6 +39,9 @@ describe("cli main", () => {
     await main(["check", "--coverage", "lcov.info", "--base", "topic/-x"], deps);
     expect(deps.gitCalls).toEqual([
       ["rev-parse", "--show-toplevel"],
+      // CORE-143: the run's revisions, resolved once, before the diff (CORE-14 follow-up). This fake prints no commit id,
+      // so the diff names the base as given; with a commit id it names the ids (`ac-diff-by-commit.test.ts`).
+      ["rev-parse", "--verify", "--quiet", "--end-of-options", "topic/-x^{commit}"],
       [
         "diff",
         "--unified=0",
@@ -54,8 +57,6 @@ describe("cli main", () => {
       ["ls-files", "-z", "--full-name", "--", ":/"],
       // F-10: file sizes in HEAD, to report empty agent setup files.
       ["ls-tree", "-r", "-l", "-z", "--full-tree", "HEAD"],
-      // CORE-143: the run's revisions, resolved once for the test sources.
-      ["rev-parse", "--verify", "--quiet", "--end-of-options", "topic/-x^{commit}"],
     ]);
   });
 
