@@ -29,7 +29,7 @@ const REQUIRED = [
 
 describe("validatePolicy on fixtures/policy/invalid/", () => {
   it("AC-3: every invalid fixture is rejected with exactly its recorded error paths, in order, and the same list twice", async () => {
-    const { validatePolicy } = await import("@pharn-ci/core");
+    const { validatePolicy } = await import("../src/policy/validate.js");
 
     const files = readdirSync(INVALID).filter((name) => name.endsWith(".json"));
     for (const name of REQUIRED) expect(files, `fixture ${name}.json`).toContain(`${name}.json`);

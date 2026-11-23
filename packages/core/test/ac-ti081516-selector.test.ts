@@ -20,7 +20,10 @@ function addLines(path: string, lines: string[]): string {
 
 describe("the diff reader keeps the text of pytest config files", () => {
   it("AC-6: the exported selector keeps pytest.ini, pkg/pyproject.toml, setup.cfg and tox.ini but not docs/setup.cfg.md, and a cut pyproject.toml is named in TEST_INTEGRITY_TEXT_TRUNCATED", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Record<string, unknown>;
+    const core = {
+      ...(await import("../src/diff/unified.js")),
+      ...(await import("../src/signals/signalFiles.js")),
+    } as unknown as Record<string, unknown>;
     const factory = core.keepSignalFileText as SelectorFactory;
     expect(typeof factory).toBe("function");
     const keepText = factory();

@@ -140,7 +140,7 @@ describe("the app's settings.messageMaxBytes lowers the upload's message cap", (
     timeout: 120_000,
   }, async () => {
     const { run } = await import("../src/run.js");
-    const { truncateUtf8 } = (await import("@pharn-ci/core")) as unknown as {
+    const { truncateUtf8 } = (await import("../../core/src/secrets/redact.js")) as unknown as {
       truncateUtf8(text: string, maxBytes: number): string;
     };
     const h = harness({

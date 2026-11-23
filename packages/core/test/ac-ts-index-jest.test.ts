@@ -31,7 +31,9 @@ const HOOK_WORDS = ["beforeEach", "afterEach", "beforeAll", "afterAll", "before"
 const MOCK_CALLEES = ["vi.mock", "vi.doMock", "jest.mock", "jest.doMock"];
 
 async function indexTestFile(path: string, text: string): Promise<Result> {
-  const core = (await import("@pharn-ci/core")) as unknown as { indexTestFile: (p: unknown, t: unknown) => unknown };
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
+    indexTestFile: (p: unknown, t: unknown) => unknown;
+  };
   return core.indexTestFile(path, text) as Result;
 }
 

@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 type Result = { parsed: true; tests: { kind: string; name: string }[] } | { parsed: false; reason: string };
 
 async function indexTestFile(path: string, text: string): Promise<Result> {
-  const core = (await import("@pharn-ci/core")) as unknown as { indexTestFile: (p: unknown, t: unknown) => unknown };
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
+    indexTestFile: (p: unknown, t: unknown) => unknown;
+  };
   return core.indexTestFile(path, text) as Result;
 }
 

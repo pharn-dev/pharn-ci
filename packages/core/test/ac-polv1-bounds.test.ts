@@ -5,7 +5,11 @@ import { describe, expect, it } from "vitest";
 
 describe("validatePolicy and parsePolicyJson bound their work", () => {
   it("AC-6: a huge list, an over-long string, an over-long text and 100,000-level nesting each give a bounded result", async () => {
-    const { validatePolicy, parsePolicyJson, POLICY_MAX_CHARS, POLICY_MAX_ERRORS } = await import("@pharn-ci/core");
+    const { validatePolicy, parsePolicyJson, POLICY_MAX_CHARS, POLICY_MAX_ERRORS } = {
+      ...(await import("../src/policy/limits.js")),
+      ...(await import("../src/policy/parse.js")),
+      ...(await import("../src/policy/validate.js")),
+    };
     expect(typeof POLICY_MAX_CHARS).toBe("number");
     expect(typeof POLICY_MAX_ERRORS).toBe("number");
 

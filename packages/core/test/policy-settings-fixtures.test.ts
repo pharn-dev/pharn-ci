@@ -2,7 +2,8 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { check, type PolicyDocument } from "../src/index.js";
+import { check } from "../src/index.js";
+import type { PolicyDocument } from "../src/policy/types.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 

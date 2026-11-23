@@ -75,7 +75,7 @@ const textAt = (files: SourceFile[], path: string) => {
 
 /** The head (or base) line of a JS/TS test by its full name, through the existing JS/TS test index. */
 async function jsLine(files: SourceFile[], path: string, fullName: string): Promise<number> {
-  const core = (await import("@pharn-ci/core")) as unknown as {
+  const core = (await import("../../core/src/testIndex/indexTestFile.js")) as unknown as {
     indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
   };
   const result = core.indexTestFile(path, textAt(files, path));

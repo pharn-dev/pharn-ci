@@ -10,7 +10,7 @@ describe("golden: fixture diff + lcov + exclusions -> Report v2", () => {
     const { check } = await import("../src/check.js");
     const { parseConfig } = await import("../src/config.js");
     const { renderMarkdown } = await import("../src/render/markdown.js");
-    const { matchGlob } = (await import("../src/index.js")) as unknown as {
+    const { matchGlob } = (await import("../src/glob.js")) as unknown as {
       matchGlob: (pattern: string, path: string) => boolean;
     };
 

@@ -16,18 +16,15 @@ describe("the new core modules are pure and exported", { timeout: 60_000 }, () =
       expect(purityViolations(text), module).toEqual([]);
     }
 
-    const core = (await import("../src/index.js")) as unknown as Record<string, unknown>;
+    const core = (await import("../src/policy/agents.js")) as unknown as Record<string, unknown>;
     expect(typeof core.agentPolicyOf).toBe("function");
 
-    // Types leave no trace at run time; the index's export statement for the agent-policy module names them.
-    const index = readFileSync(new URL("index.ts", SRC), "utf8");
-    const exported = [...index.matchAll(/export\s*(?:type\s*)?\{([^}]*)\}\s*from\s*["']\.\/policy\/agents\.js["']/g)]
-      .map((m) => m[1] as string)
-      .join(",");
-    const names = exported
-      .split(",")
-      .map((s) => s.trim().replace(/^type\s+/, ""))
-      .filter((s) => s.length > 0);
+    // Types leave no trace at run time; the agent-policy module's export declarations name them. (CORE-141: core's
+    // index exports only the names the product imports, so the defining module is checked, not the index.)
+    const agents = readFileSync(new URL("policy/agents.ts", SRC), "utf8");
+    const names = [...agents.matchAll(/^export\s+(?:type|interface|function|const)\s+(\w+)/gm)].map(
+      (m) => m[1] as string,
+    );
     for (const name of ["agentPolicyOf", "AgentPolicy", "PolicyFileBase"]) expect(names, name).toContain(name);
   });
 });

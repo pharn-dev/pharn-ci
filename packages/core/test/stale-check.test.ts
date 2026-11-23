@@ -7,11 +7,11 @@ import type { DiffFile } from "../src/diff/unified.js";
 import {
   type CheckInput,
   check,
-  detectStaleInstructions,
   type StaleInstructionSources,
   scanAgentSetup,
   staleInstructionPaths,
 } from "../src/index.js";
+import { detectStaleInstructions } from "../src/setup/stale.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 

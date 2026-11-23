@@ -91,7 +91,12 @@ describe("CORE-144: TI15 and SI04 are not emitted", () => {
   });
 
   it("a policy that sets a severity for TI15 still validates and is applied to the other signals", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = {
+      ...(await import("../src/check.js")),
+      ...(await import("../src/inputs.js")),
+      ...(await import("../src/policy/apply.js")),
+      ...(await import("../src/policy/validate.js")),
+    } as unknown as {
       validatePolicy: (value: unknown) => { ok: boolean };
       resolveInputs: (config: unknown, raw: unknown, text: unknown) => { ok: boolean; inputs: Record<string, unknown> };
       applyPolicy: (

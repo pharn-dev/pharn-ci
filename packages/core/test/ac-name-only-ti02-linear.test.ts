@@ -99,7 +99,7 @@ describe("TI02 phase 2: the body-checked leaf pick stays linear", () => {
       expect(run.sizes.hollow, "more hollow `works` tests than removed ones").toBeGreaterThan(run.sizes.removed);
     }
     // The generated files are valid TypeScript: the existing test index parses them with no syntax error.
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
       indexTestFile(path: string, text: string): { parsed: boolean; syntaxErrors?: number };
     };
     for (const run of [full, quarter]) {

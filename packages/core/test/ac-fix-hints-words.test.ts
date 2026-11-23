@@ -23,7 +23,7 @@ const BANNED_WORD = new RegExp(`\\b(?:${BANNED.join("|")})\\b`, "i");
 const PLACEHOLDER = /[{}<>$]|%[sd]/;
 
 async function hints(): Promise<Array<[string, string]>> {
-  const { MESSAGE_FIXES, SIGNAL_FIXES } = (await import("../src/index.js")) as unknown as Tables;
+  const { MESSAGE_FIXES, SIGNAL_FIXES } = (await import("../src/fix/table.js")) as unknown as Tables;
   expect(MESSAGE_FIXES, "MESSAGE_FIXES is exported").toBeDefined();
   expect(SIGNAL_FIXES, "SIGNAL_FIXES is exported").toBeDefined();
   const all: Array<[string, string]> = [

@@ -36,7 +36,7 @@ const META = {
 
 describe("check() with agent facts: the same meta as withAgentPrMeta", { timeout: 60_000 }, () => {
   it("AC-14: for every part A agent-pr fixture, check() with agentPrFacts and no policy serializes byte for byte like withAgentPrMeta over the report without facts, with no policy section and no new message", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = { ...(await import("../src/agents.js")), ...(await import("../src/check.js")) } as unknown as Core;
     const names = readdirSync(AGENT_PR_DIR)
       .filter((n) => n.endsWith(".txt"))
       .sort();

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildJunitResultsXml, parseJunitSources, parseJunitXml } from "../src/index.js";
+import { buildJunitResultsXml, parseJunitSources } from "../src/index.js";
+import { parseJunitXml } from "../src/junit/parse.js";
 import { measureGrowth, threadCpuMs } from "./growth.js";
 
 // Flaky tests (A6): the JUnit reader and the normalised results take time linear in their input on shapes that would

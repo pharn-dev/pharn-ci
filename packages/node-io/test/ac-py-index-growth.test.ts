@@ -48,7 +48,7 @@ describe("indexPythonTests: growth from quarter to full size", () => {
       const io = (await import("../src/index.js")) as unknown as {
         indexPythonTests: (files: { path: string; text: string }[]) => Promise<Run>;
       };
-      const core = (await import("@pharn-ci/core")) as unknown as { MAX_TEST_SOURCE_FILE_BYTES: number };
+      const core = (await import("../../core/src/testSources.js")) as unknown as { MAX_TEST_SOURCE_FILE_BYTES: number };
       const cap = core.MAX_TEST_SOURCE_FILE_BYTES;
       expect(cap).toBe(524_288);
       const full = size === "cap" ? cap : size;

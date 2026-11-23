@@ -119,7 +119,7 @@ describe("TI02 precision: the new rules stay linear", () => {
       expect(run.sizes.added, "and adds thousands of .each tests").toBeGreaterThan(bytes === FULL ? 3000 : 700);
     }
     // The generated files are valid TypeScript: the existing test index parses them with no syntax error.
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
       indexTestFile(path: string, text: string): { parsed: boolean; syntaxErrors?: number };
     };
     for (const run of [full, quarter]) {

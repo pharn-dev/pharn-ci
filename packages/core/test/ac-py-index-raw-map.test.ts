@@ -8,7 +8,7 @@ type Mapped = { available: true; results: unknown[] } | { available: false; reas
 type FromRaw = (stdout: string, count: number) => Mapped;
 
 async function load(): Promise<FromRaw> {
-  const core = (await import("@pharn-ci/core")) as unknown as { pythonIndexFromRaw: FromRaw };
+  const core = (await import("../src/testIndex/pythonRaw.js")) as unknown as { pythonIndexFromRaw: FromRaw };
   return core.pythonIndexFromRaw;
 }
 

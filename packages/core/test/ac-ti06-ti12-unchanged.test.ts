@@ -146,7 +146,10 @@ function expectNoNewSignal(report: Report, label: string): void {
 
 describe("TI06 and TI12 change the earlier outputs and tests only where they mean to", () => {
   it("AC-19: the goldens stay byte-identical, the earlier diff-only fixtures and the TI02 and TI05 cases with their sources give what they gave before, and none of them gives a TI06 or TI12", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Record<string, unknown>;
+    const core = {
+      ...(await import("../src/signals/ti06.js")),
+      ...(await import("../src/signals/ti12.js")),
+    } as unknown as Record<string, unknown>;
     expect(typeof core.detectTI06, "TI06 exists, so its absence below is the inputs' doing").toBe("function");
     expect(typeof core.detectTI12, "TI12 exists, so its absence below is the inputs' doing").toBe("function");
     const { check } = await import("../src/check.js");

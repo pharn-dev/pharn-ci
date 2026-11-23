@@ -86,7 +86,7 @@ async function runCase(c: Case): Promise<Report> {
 /** Every block (describe, test and hook) of one fixture file, through the existing JS/TS test index. */
 async function blocksOf(file: SourceFile | undefined): Promise<Block[]> {
   if (file === undefined) throw new Error("the fixture file is missing");
-  const core = (await import("@pharn-ci/core")) as unknown as {
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
     indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
   };
   const result = core.indexTestFile(file.path, file.text);

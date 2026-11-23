@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DiffFile } from "../src/diff/unified.js";
-import { evaluatePolicyRules } from "../src/index.js";
+import { evaluatePolicyRules } from "../src/policy/rules/evaluate.js";
 import { P13_DIFF_UNAVAILABLE_DETAIL, P13_UNCOMPARED_DETAIL } from "../src/policy/rules/p13.js";
 import type { PolicyRuleInput } from "../src/policy/rules/types.js";
 import { codeownersWidenings } from "../src/policy/selfmod/codeowners.js";

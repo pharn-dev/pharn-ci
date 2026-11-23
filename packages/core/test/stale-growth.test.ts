@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseMakeTargets, scanInstructionTokens } from "../src/index.js";
+import { parseMakeTargets } from "../src/setup/staleManifests.js";
+import { scanInstructionTokens } from "../src/setup/staleScan.js";
 import { measureGrowth, threadCpuMs } from "./growth.js";
 
 // Stale instructions (Horizon 2 item H3): the instruction scanner and the Makefile reader take time linear in their

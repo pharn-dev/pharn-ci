@@ -37,7 +37,7 @@ describe("CORE-69: a modified test file padded past the size cap at HEAD", () =>
   it("AC-2: a modified src/big.test.ts whose head adds a comment of about 530 KB gives one TEST_INTEGRITY_INDEX_UNAVAILABLE error naming it with too-large, and the verdict is fail", async () => {
     const head = `${BASE}/* ${"x".repeat(530_000)} */\n`;
     expect(head.length, "the head text is over the test index's 524288-character cap").toBeGreaterThan(524_288);
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
       indexTestFile(path: string, text: string): { parsed: boolean; reason?: string };
     };
     expect(core.indexTestFile(PATH, BASE).parsed, "the base text indexes").toBe(true);

@@ -83,7 +83,7 @@ async function runBlock(c: Case): Promise<Report> {
 
 async function mocksOf(file: SourceFile | undefined): Promise<Mock[]> {
   if (file === undefined) return [];
-  const core = (await import("@pharn-ci/core")) as unknown as {
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
     indexTestFile(path: string, text: string): { parsed: boolean; mocks?: Mock[] };
   };
   const result = core.indexTestFile(file.path, file.text);

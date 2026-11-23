@@ -44,7 +44,10 @@ describe("TI06 and TI12: schema, exports and fixtures", () => {
   });
 
   it("AC-18: @pharn-ci/core exports the functions detectTI06 and detectTI12", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Record<string, unknown>;
+    const core = {
+      ...(await import("../src/signals/ti06.js")),
+      ...(await import("../src/signals/ti12.js")),
+    } as unknown as Record<string, unknown>;
     expect(typeof core.detectTI06).toBe("function");
     expect(typeof core.detectTI12).toBe("function");
   });

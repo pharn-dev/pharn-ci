@@ -183,7 +183,7 @@ describe("TI12 on Python test files, through the Python test index", () => {
       `AC-10: ${call} added to tests/test_cart.py with app/cart.py modified gives no TI12`,
       async () => {
         requirePython();
-        const core = (await import("@pharn-ci/core")) as unknown as Record<string, unknown>;
+        const core = (await import("../../core/src/signals/ti12.js")) as unknown as Record<string, unknown>;
         expect(typeof core.detectTI12, "TI12 exists, so its absence here is the case's doing").toBe("function");
         const c = loadCase(name);
         expectCase(c, "tests/test_cart.py", "app/cart.py", call);

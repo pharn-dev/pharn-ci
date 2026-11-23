@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { posix } from "node:path";
 import { describe, expect, it } from "vitest";
-import { chooseCoverageFormat, coverageChoiceLine, type DirEntry, parseCoverage } from "../../core/src/index.js";
+import { chooseCoverageFormat } from "../../core/src/coverage/detect.js";
+import { parseCoverage } from "../../core/src/coverage/index.js";
+import { coverageChoiceLine, type DirEntry } from "../../core/src/index.js";
 
 // The shared coverage-reading function is imported inside each test body: these tests are written before
 // `@pharn-ci/node-io` exists, so nothing that depends on it may run while the file loads. The file deps are an

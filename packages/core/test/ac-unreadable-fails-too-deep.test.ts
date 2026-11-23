@@ -37,7 +37,7 @@ describe("CORE-69: a modified test file nested too deeply at HEAD", () => {
   it("AC-1: a modified src/deep.test.ts whose head adds an array literal nested deeper than the test index walks gives one TEST_INTEGRITY_INDEX_UNAVAILABLE error naming it with too-deep, and the verdict is fail", async () => {
     const deepLine = `const deep = ${"[".repeat(2000)}${"]".repeat(2000)};`;
     const head = `${BASE}${deepLine}\n`;
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
       indexTestFile(path: string, text: string): { parsed: boolean; reason?: string };
     };
     expect(core.indexTestFile(PATH, BASE).parsed, "the base text indexes").toBe(true);

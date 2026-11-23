@@ -92,7 +92,7 @@ async function runBlock(c: Case): Promise<Report> {
 
 async function testsOf(file: SourceFile | undefined): Promise<Block[]> {
   if (file === undefined) throw new Error("the fixture file is missing");
-  const core = (await import("@pharn-ci/core")) as unknown as {
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
     indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
   };
   const result = core.indexTestFile(file.path, file.text);
@@ -259,7 +259,7 @@ const CASES: ReadonlyArray<{ name: string; title: string; holds(c: Case): Promis
 describe("TI06: changes that are not a weakening give no finding", () => {
   for (const { name, title, holds } of CASES) {
     it(`AC-7: ${title} gives no TI06`, async () => {
-      const core = (await import("@pharn-ci/core")) as unknown as Record<string, unknown>;
+      const core = (await import("../src/signals/ti06.js")) as unknown as Record<string, unknown>;
       expect(typeof core.detectTI06, "TI06 exists, so its absence here is the case's doing").toBe("function");
       const c = loadCase(name);
       await holds(c);

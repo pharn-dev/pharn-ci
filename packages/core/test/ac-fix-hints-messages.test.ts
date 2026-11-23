@@ -133,7 +133,7 @@ const CASES: Array<[string, () => unknown]> = [
 ];
 
 async function reports(): Promise<{ all: Array<[string, Report]>; table: Record<string, Entry> }> {
-  const core = (await import("../src/index.js")) as unknown as {
+  const core = { ...(await import("../src/check.js")), ...(await import("../src/fix/table.js")) } as unknown as {
     check(input: unknown): Report;
     MESSAGE_FIXES?: Record<string, Entry>;
   };

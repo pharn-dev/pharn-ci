@@ -44661,177 +44661,6 @@ function gitDiffArgs(base, head = "HEAD") {
   ];
 }
 
-// ../core/src/junit/testId.ts
-var TEST_ID_MAX_UNITS = 500;
-var HASH_SUFFIX_UNITS = 9;
-function isCollapsed(code2) {
-  return code2 <= 32 || code2 >= 127 && code2 <= 159 || code2 === 8232 || code2 === 8233;
-}
-function collapseWhitespace2(text) {
-  let out = "";
-  let pendingSpace = false;
-  let from = 0;
-  for (let i = 0; i < text.length; i++) {
-    if (!isCollapsed(text.charCodeAt(i))) continue;
-    if (i > from) {
-      out += (pendingSpace && out !== "" ? " " : "") + text.slice(from, i);
-      pendingSpace = false;
-    }
-    pendingSpace = true;
-    from = i + 1;
-  }
-  if (text.length > from) out += (pendingSpace && out !== "" ? " " : "") + text.slice(from);
-  return out;
-}
-function junitTestId(parts) {
-  const name = collapseWhitespace2(parts.name);
-  let owner = collapseWhitespace2(parts.classname);
-  if (owner === "") owner = collapseWhitespace2(parts.file);
-  if (owner === "") owner = collapseWhitespace2(parts.suite);
-  const id = owner === "" ? name : `${owner}::${name}`;
-  if (id.length <= TEST_ID_MAX_UNITS) return id;
-  return `${cutCodeUnits(id, TEST_ID_MAX_UNITS - HASH_SUFFIX_UNITS, { marker: false })}~${fnv1a32Hex(id)}`;
-}
-
-// ../core/src/junit/parse.ts
-var JUNIT_MAX_DEPTH = 256;
-var JUNIT_MESSAGE_READ_UNITS = 8192;
-var STATUS_RANK = { passed: 0, skipped: 1, failed: 2, error: 3 };
-function readTime(value) {
-  if (value === void 0) return null;
-  const trimmed = value.trim();
-  if (trimmed === "" || trimmed.length > 32) return null;
-  const n = Number(trimmed);
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
-function parseJunitXml(text, maxCases) {
-  const stack = [];
-  const suites = [];
-  const cases = [];
-  let dropped = 0;
-  let declaration = false;
-  let failure = null;
-  let rootSeen = false;
-  let rootClosed = false;
-  let open3 = null;
-  const closeCase = (current) => {
-    if (cases.length >= maxCases) {
-      dropped++;
-      return;
-    }
-    const message = current.status === "failed" || current.status === "error" ? current.message ?? (current.text === "" ? void 0 : current.text) : void 0;
-    cases.push({
-      id: junitTestId(current),
-      suite: current.suite,
-      classname: current.classname !== "" ? current.classname : current.file,
-      name: current.name,
-      time: current.time,
-      status: current.status,
-      ...message === void 0 ? {} : { message }
-    });
-  };
-  const onStart = (event) => {
-    if (!rootSeen) {
-      if (event.name !== "testsuites" && event.name !== "testsuite") {
-        failure = "not-junit";
-        return;
-      }
-      rootSeen = true;
-    } else if (rootClosed) {
-      failure = "malformed";
-      return;
-    }
-    const { name, attrs } = event;
-    if (name === "testsuite" && open3 === null) suites.push(attrs.get("name") ?? "");
-    if (name === "testcase" && open3 === null) {
-      open3 = {
-        suite: suites.length === 0 ? "" : suites[suites.length - 1],
-        classname: attrs.get("classname") ?? "",
-        file: attrs.get("file") ?? "",
-        name: attrs.get("name") ?? "",
-        time: readTime(attrs.get("time")),
-        status: "passed",
-        message: void 0,
-        collectDepth: -1,
-        text: ""
-      };
-      if (event.selfClosing) {
-        closeCase(open3);
-        open3 = null;
-        if (stack.length === 0) rootClosed = true;
-        return;
-      }
-      if (stack.length >= JUNIT_MAX_DEPTH) {
-        failure = "too-deep";
-        return;
-      }
-      stack.push(name);
-      return;
-    }
-    if (open3 !== null && open3.collectDepth === -1) {
-      const status = name === "failure" ? "failed" : name === "error" ? "error" : name === "skipped" ? "skipped" : null;
-      if (status !== null && stack[stack.length - 1] === "testcase") {
-        if (STATUS_RANK[status] > STATUS_RANK[open3.status]) {
-          open3.status = status;
-          if (status !== "skipped") {
-            const message = attrs.get("message");
-            open3.message = message === void 0 ? void 0 : message.slice(0, JUNIT_MESSAGE_READ_UNITS);
-            open3.text = "";
-            if (!event.selfClosing) open3.collectDepth = stack.length + 1;
-          }
-        }
-      }
-    }
-    if (event.selfClosing) {
-      if (name === "testsuite" && open3 === null) suites.pop();
-      if (stack.length === 0) rootClosed = true;
-      return;
-    }
-    if (stack.length >= JUNIT_MAX_DEPTH) {
-      failure = "too-deep";
-      return;
-    }
-    stack.push(name);
-  };
-  const onEnd = (name) => {
-    if (stack.length === 0 || stack[stack.length - 1] !== name) {
-      failure = "malformed";
-      return;
-    }
-    if (open3 !== null && open3.collectDepth === stack.length) open3.collectDepth = -1;
-    stack.pop();
-    if (name === "testcase" && open3 !== null && !stack.includes("testcase")) {
-      closeCase(open3);
-      open3 = null;
-    } else if (name === "testsuite" && open3 === null) {
-      suites.pop();
-    }
-    if (stack.length === 0) rootClosed = true;
-  };
-  scanXml(
-    text,
-    (event) => {
-      if (failure !== null || declaration) return;
-      if (event.type === "start") onStart(event);
-      else if (event.type === "end") onEnd(event.name);
-      else if (open3 !== null && open3.collectDepth !== -1 && open3.text.length < JUNIT_MESSAGE_READ_UNITS) {
-        open3.text = (open3.text + event.text).slice(0, JUNIT_MESSAGE_READ_UNITS);
-      }
-    },
-    {
-      cdataText: true,
-      onDeclaration: () => {
-        declaration = true;
-      }
-    }
-  );
-  if (declaration) return { ok: false, reason: "doctype" };
-  if (failure !== null) return { ok: false, reason: failure };
-  if (!rootSeen) return { ok: false, reason: "not-junit" };
-  if (stack.length > 0) return { ok: false, reason: "malformed" };
-  return { ok: true, cases, dropped };
-}
-
 // ../core/src/policy/validate.ts
 function known(entries) {
   return new Map(entries);
@@ -45161,6 +44990,177 @@ function validatePolicyResponse(value) {
     return { ok: false, errors: errors.finish() };
   }
   return { ok: true, response: { version: version2, policy, quarantine, settings: settings2 }, unknown: errors.unknown() };
+}
+
+// ../core/src/junit/testId.ts
+var TEST_ID_MAX_UNITS = 500;
+var HASH_SUFFIX_UNITS = 9;
+function isCollapsed(code2) {
+  return code2 <= 32 || code2 >= 127 && code2 <= 159 || code2 === 8232 || code2 === 8233;
+}
+function collapseWhitespace2(text) {
+  let out = "";
+  let pendingSpace = false;
+  let from = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (!isCollapsed(text.charCodeAt(i))) continue;
+    if (i > from) {
+      out += (pendingSpace && out !== "" ? " " : "") + text.slice(from, i);
+      pendingSpace = false;
+    }
+    pendingSpace = true;
+    from = i + 1;
+  }
+  if (text.length > from) out += (pendingSpace && out !== "" ? " " : "") + text.slice(from);
+  return out;
+}
+function junitTestId(parts) {
+  const name = collapseWhitespace2(parts.name);
+  let owner = collapseWhitespace2(parts.classname);
+  if (owner === "") owner = collapseWhitespace2(parts.file);
+  if (owner === "") owner = collapseWhitespace2(parts.suite);
+  const id = owner === "" ? name : `${owner}::${name}`;
+  if (id.length <= TEST_ID_MAX_UNITS) return id;
+  return `${cutCodeUnits(id, TEST_ID_MAX_UNITS - HASH_SUFFIX_UNITS, { marker: false })}~${fnv1a32Hex(id)}`;
+}
+
+// ../core/src/junit/parse.ts
+var JUNIT_MAX_DEPTH = 256;
+var JUNIT_MESSAGE_READ_UNITS = 8192;
+var STATUS_RANK = { passed: 0, skipped: 1, failed: 2, error: 3 };
+function readTime(value) {
+  if (value === void 0) return null;
+  const trimmed = value.trim();
+  if (trimmed === "" || trimmed.length > 32) return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+function parseJunitXml(text, maxCases) {
+  const stack = [];
+  const suites = [];
+  const cases = [];
+  let dropped = 0;
+  let declaration = false;
+  let failure = null;
+  let rootSeen = false;
+  let rootClosed = false;
+  let open3 = null;
+  const closeCase = (current) => {
+    if (cases.length >= maxCases) {
+      dropped++;
+      return;
+    }
+    const message = current.status === "failed" || current.status === "error" ? current.message ?? (current.text === "" ? void 0 : current.text) : void 0;
+    cases.push({
+      id: junitTestId(current),
+      suite: current.suite,
+      classname: current.classname !== "" ? current.classname : current.file,
+      name: current.name,
+      time: current.time,
+      status: current.status,
+      ...message === void 0 ? {} : { message }
+    });
+  };
+  const onStart = (event) => {
+    if (!rootSeen) {
+      if (event.name !== "testsuites" && event.name !== "testsuite") {
+        failure = "not-junit";
+        return;
+      }
+      rootSeen = true;
+    } else if (rootClosed) {
+      failure = "malformed";
+      return;
+    }
+    const { name, attrs } = event;
+    if (name === "testsuite" && open3 === null) suites.push(attrs.get("name") ?? "");
+    if (name === "testcase" && open3 === null) {
+      open3 = {
+        suite: suites.length === 0 ? "" : suites[suites.length - 1],
+        classname: attrs.get("classname") ?? "",
+        file: attrs.get("file") ?? "",
+        name: attrs.get("name") ?? "",
+        time: readTime(attrs.get("time")),
+        status: "passed",
+        message: void 0,
+        collectDepth: -1,
+        text: ""
+      };
+      if (event.selfClosing) {
+        closeCase(open3);
+        open3 = null;
+        if (stack.length === 0) rootClosed = true;
+        return;
+      }
+      if (stack.length >= JUNIT_MAX_DEPTH) {
+        failure = "too-deep";
+        return;
+      }
+      stack.push(name);
+      return;
+    }
+    if (open3 !== null && open3.collectDepth === -1) {
+      const status = name === "failure" ? "failed" : name === "error" ? "error" : name === "skipped" ? "skipped" : null;
+      if (status !== null && stack[stack.length - 1] === "testcase") {
+        if (STATUS_RANK[status] > STATUS_RANK[open3.status]) {
+          open3.status = status;
+          if (status !== "skipped") {
+            const message = attrs.get("message");
+            open3.message = message === void 0 ? void 0 : message.slice(0, JUNIT_MESSAGE_READ_UNITS);
+            open3.text = "";
+            if (!event.selfClosing) open3.collectDepth = stack.length + 1;
+          }
+        }
+      }
+    }
+    if (event.selfClosing) {
+      if (name === "testsuite" && open3 === null) suites.pop();
+      if (stack.length === 0) rootClosed = true;
+      return;
+    }
+    if (stack.length >= JUNIT_MAX_DEPTH) {
+      failure = "too-deep";
+      return;
+    }
+    stack.push(name);
+  };
+  const onEnd = (name) => {
+    if (stack.length === 0 || stack[stack.length - 1] !== name) {
+      failure = "malformed";
+      return;
+    }
+    if (open3 !== null && open3.collectDepth === stack.length) open3.collectDepth = -1;
+    stack.pop();
+    if (name === "testcase" && open3 !== null && !stack.includes("testcase")) {
+      closeCase(open3);
+      open3 = null;
+    } else if (name === "testsuite" && open3 === null) {
+      suites.pop();
+    }
+    if (stack.length === 0) rootClosed = true;
+  };
+  scanXml(
+    text,
+    (event) => {
+      if (failure !== null || declaration) return;
+      if (event.type === "start") onStart(event);
+      else if (event.type === "end") onEnd(event.name);
+      else if (open3 !== null && open3.collectDepth !== -1 && open3.text.length < JUNIT_MESSAGE_READ_UNITS) {
+        open3.text = (open3.text + event.text).slice(0, JUNIT_MESSAGE_READ_UNITS);
+      }
+    },
+    {
+      cdataText: true,
+      onDeclaration: () => {
+        declaration = true;
+      }
+    }
+  );
+  if (declaration) return { ok: false, reason: "doctype" };
+  if (failure !== null) return { ok: false, reason: failure };
+  if (!rootSeen) return { ok: false, reason: "not-junit" };
+  if (stack.length > 0) return { ok: false, reason: "malformed" };
+  return { ok: true, cases, dropped };
 }
 
 // ../core/src/junit/results.ts
@@ -46196,42 +46196,6 @@ function inlineText(text) {
   return replaceUnsafeChars(text, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(MARKDOWN_ACTIVE, "\\$&").replace(/@/g, "@\u200B").replace(ISSUE_REFERENCE, "$1\u200B").replace(/:\/\//g, ":\\/\\/").replace(/(www)\./gi, "$1\\.");
 }
 
-// ../core/src/secrets/redact.ts
-var MESSAGE_MAX_BYTES = 2048;
-var MIN_BUDGET_BYTES = 32;
-var SUFFIX_FIXED_BYTES = 12;
-function redactSecrets(text) {
-  const spans = findSecretSpans(text).sort((a, b) => b.start - a.start);
-  let out = text;
-  for (const span2 of spans) {
-    const marker = span2.id === "S10" ? "[redacted]" : `[redacted:${span2.id}]`;
-    out = out.slice(0, span2.start) + marker + out.slice(span2.end);
-  }
-  return out;
-}
-var digitsOf = (n) => String(n).length;
-function truncateUtf8(text, maxBytes) {
-  if (!Number.isSafeInteger(maxBytes) || maxBytes < MIN_BUDGET_BYTES) {
-    throw new RangeError(`maxBytes must be a safe integer of at least ${MIN_BUDGET_BYTES}`);
-  }
-  const total = utf8ByteLength(text);
-  if (total <= maxBytes) return text;
-  let keepUnits = 0;
-  let keepBytes = 0;
-  for (let i = 0; i < text.length; ) {
-    const units = text.codePointAt(i) > 65535 ? 2 : 1;
-    const bytes = keepBytes + utf8ByteLength(text.slice(i, i + units));
-    if (bytes + SUFFIX_FIXED_BYTES + digitsOf(total - bytes) > maxBytes) break;
-    keepBytes = bytes;
-    i += units;
-    keepUnits = i;
-  }
-  return `${text.slice(0, keepUnits)}\u2026[+${total - keepBytes} bytes]`;
-}
-function redactMessage(text, maxBytes = MESSAGE_MAX_BYTES) {
-  return truncateUtf8(redactSecrets(text), maxBytes);
-}
-
 // ../core/src/setup/sizes.ts
 function parseLsTreeSymlinks(text) {
   const links = /* @__PURE__ */ new Set();
@@ -46591,6 +46555,42 @@ function decodeTestSourceText(bytes) {
   }
   parts.push(String.fromCharCode(...units));
   return parts.join("");
+}
+
+// ../core/src/secrets/redact.ts
+var MESSAGE_MAX_BYTES = 2048;
+var MIN_BUDGET_BYTES = 32;
+var SUFFIX_FIXED_BYTES = 12;
+function redactSecrets(text) {
+  const spans = findSecretSpans(text).sort((a, b) => b.start - a.start);
+  let out = text;
+  for (const span2 of spans) {
+    const marker = span2.id === "S10" ? "[redacted]" : `[redacted:${span2.id}]`;
+    out = out.slice(0, span2.start) + marker + out.slice(span2.end);
+  }
+  return out;
+}
+var digitsOf = (n) => String(n).length;
+function truncateUtf8(text, maxBytes) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < MIN_BUDGET_BYTES) {
+    throw new RangeError(`maxBytes must be a safe integer of at least ${MIN_BUDGET_BYTES}`);
+  }
+  const total = utf8ByteLength(text);
+  if (total <= maxBytes) return text;
+  let keepUnits = 0;
+  let keepBytes = 0;
+  for (let i = 0; i < text.length; ) {
+    const units = text.codePointAt(i) > 65535 ? 2 : 1;
+    const bytes = keepBytes + utf8ByteLength(text.slice(i, i + units));
+    if (bytes + SUFFIX_FIXED_BYTES + digitsOf(total - bytes) > maxBytes) break;
+    keepBytes = bytes;
+    i += units;
+    keepUnits = i;
+  }
+  return `${text.slice(0, keepUnits)}\u2026[+${total - keepBytes} bytes]`;
+}
+function redactMessage(text, maxBytes = MESSAGE_MAX_BYTES) {
+  return truncateUtf8(redactSecrets(text), maxBytes);
 }
 
 // ../core/src/upload/bundle.ts

@@ -9,7 +9,9 @@ type Result = { parsed: true; tests: Block[] } | { parsed: false; reason: string
 const REASONS = ["syntax-error-heavy", "too-large", "too-deep", "parser-threw"];
 
 async function indexTestFile(path: unknown, text: unknown): Promise<unknown> {
-  const core = (await import("@pharn-ci/core")) as unknown as { indexTestFile: (p: unknown, t: unknown) => unknown };
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
+    indexTestFile: (p: unknown, t: unknown) => unknown;
+  };
   return core.indexTestFile(path, text);
 }
 

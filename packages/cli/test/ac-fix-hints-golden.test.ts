@@ -77,7 +77,10 @@ const GOLDENS: Array<{ dir: string; argv: string[]; files: Record<string, string
 
 describe("the goldens with fix hints", { timeout: 120_000 }, () => {
   it("AC-9: pharn-ci check --format json on each golden fixture equals its regenerated report.json, every message carries fix, and the rendered report equals each golden markdown", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = {
+      ...(await import("../../core/src/fix/table.js")),
+      ...(await import("../../core/src/render/markdown.js")),
+    } as unknown as {
       renderMarkdown(report: unknown): string;
       MESSAGE_FIXES?: Record<string, { kind: string; hint: string }>;
     };

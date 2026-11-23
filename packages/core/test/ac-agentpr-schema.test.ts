@@ -41,7 +41,7 @@ describe("agent-pr-detection: schemas, purity and exports", { timeout: 60_000 },
   });
 
   it("AC-9: packages/core/src/index.ts exports the agent detection names", async () => {
-    const core = (await import("../src/index.js")) as unknown as Record<string, unknown>;
+    const core = (await import("../src/agents.js")) as unknown as Record<string, unknown>;
     expect(Array.isArray(core.KNOWN_AGENTS), "KNOWN_AGENTS").toBe(true);
     expect(Array.isArray(core.DEFAULT_AGENT_LABELS), "DEFAULT_AGENT_LABELS").toBe(true);
     for (const name of ["parseCoAuthorTrailers", "detectAgentPr", "agentPrMetaFields", "withAgentPrMeta"]) {

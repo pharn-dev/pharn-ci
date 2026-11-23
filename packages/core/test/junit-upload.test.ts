@@ -5,11 +5,11 @@ import {
   buildUploadMeta,
   check,
   parseJunitSources,
-  parseJunitXml,
   type Report,
   withUploadOutcome,
-  xmlAttribute,
 } from "../src/index.js";
+import { parseJunitXml } from "../src/junit/parse.js";
+import { xmlAttribute } from "../src/upload/junit.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 

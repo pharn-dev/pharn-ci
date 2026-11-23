@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { agentPolicyOf, parseUnifiedDiff } from "../src/index.js";
+import { parseUnifiedDiff } from "../src/index.js";
+import { agentPolicyOf } from "../src/policy/agents.js";
 import { fixture } from "./helpers.js";
 import { filePolicy, HUMAN_FACTS, p14Messages, p14 as p14WithFix, policyFixture, runP14 } from "./p14-run.js";
 import { withoutFix } from "./v090-codes.js";

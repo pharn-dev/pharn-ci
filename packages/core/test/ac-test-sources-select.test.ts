@@ -114,7 +114,7 @@ describe("test sources: the per-side path selection", () => {
 
 describe("test sources: the caps", () => {
   it("AC-3: the core entry point exports the three caps with their fixed values", async () => {
-    const core = (await import("../src/index.js")) as unknown as Record<string, unknown>;
+    const core = (await import("../src/testSources.js")) as unknown as Record<string, unknown>;
     expect(core.MAX_TEST_SOURCE_FILES).toBe(200);
     expect(core.MAX_TEST_SOURCE_FILE_BYTES).toBe(524288);
     expect(core.MAX_TEST_SOURCE_TOTAL_BYTES).toBe(16777216);

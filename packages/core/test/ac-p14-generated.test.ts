@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { agentPrSize, P14_GENERATED_FILES, parseUnifiedDiff } from "../src/index.js";
+import { parseUnifiedDiff } from "../src/index.js";
+import { agentPrSize, P14_GENERATED_FILES } from "../src/policy/rules/p14.js";
 import { fixture } from "./helpers.js";
 import { appPolicy, filePolicy, p14, policyFixture, runP14 } from "./p14-run.js";
 

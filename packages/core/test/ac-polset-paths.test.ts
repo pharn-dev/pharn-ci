@@ -23,7 +23,7 @@ const NEITHER = [
 
 describe("policy settings paths", () => {
   it("AC-3: exactly the settings and MCP paths of the two regexes are selected, MCP paths only when an MCP list is non-empty, sorted in code-unit order", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Paths;
+    const core = (await import("../src/policy/settings/paths.js")) as unknown as Paths;
     for (const name of ["isPolicySettingsPath", "isPolicyMcpPath", "policySettingsPaths"] as const) {
       expect(typeof core[name], `${name} is exported`).toBe("function");
     }

@@ -12,7 +12,7 @@ describe("schema/policy.v1.json and validatePolicy agree", () => {
   it("AC-4: Ajv2020 and validatePolicy give the same accept or reject verdict on every policy fixture", async () => {
     const schema: unknown = JSON.parse(readFileSync(new URL("schema/policy.v1.json", ROOT), "utf8"));
     const validate = new Ajv2020({ strict: true, allErrors: true }).compile(schema as object);
-    const { validatePolicy } = await import("@pharn-ci/core");
+    const { validatePolicy } = await import("../src/policy/validate.js");
 
     let checked = 0;
     for (const dir of DIRS) {

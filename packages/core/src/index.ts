@@ -1,103 +1,39 @@
 export {
-  type AcceptDecision,
   type AcceptIgnoredReason,
-  type AcceptLabelValidation,
   acceptLabelApplies,
   acceptTestIntegrity,
   carriesAcceptLabel,
-  DEFAULT_ACCEPT_LABEL,
   decideAcceptLabel,
-  GITHUB_LOGIN,
   ignoreAcceptLabel,
-  isDefaultAcceptLabel,
-  isLiftableUnreadableError,
-  MAX_ACCEPT_LABEL_LENGTH,
   validateAcceptLabel,
   withAcceptLabel,
 } from "./acceptLabel.js";
-export {
-  type AgentEvidence,
-  type AgentHint,
-  type AgentPrDetection,
-  type AgentPrFacts,
-  type AgentPrIncomplete,
-  agentPrMetaFields,
-  DEFAULT_AGENT_LABELS,
-  detectAgentPr,
-  KNOWN_AGENTS,
-  type KnownAgent,
-  LOGIN_PATTERN,
-  parseCoAuthorTrailers,
-  withAgentPrMeta,
-} from "./agents.js";
+export { type AgentPrFacts, detectAgentPr, LOGIN_PATTERN } from "./agents.js";
 export { type CheckInput, type CoverageFileInput, check } from "./check.js";
-export { type ReadDiffOptions, readCoverageChunks, readDiffChunks } from "./chunkInputs.js";
-export {
-  ConfigError,
-  isCoverageFormatSelection,
-  MAX_EXCLUDE_PATTERN_CHARS,
-  type PharnConfig,
-  parseConfig,
-  parseCoverageRoot,
-  parseExcludePattern,
-  parseThreshold,
-} from "./config.js";
-export { parseCobertura } from "./coverage/cobertura.js";
-export {
-  type CoverageFormatChoice,
-  chooseCoverageFormat,
-  coverageChoiceLine,
-  DETECTION_PREFIX,
-  type DetectedCoverageFormat,
-  detectCoverageFormat,
-} from "./coverage/detect.js";
-export { parseCoverage } from "./coverage/index.js";
-export { createLcovReader, parseLcov, parseLcovLines, parseLcovLinesAsync } from "./coverage/lcov.js";
-export { mergeCoverageMaps } from "./coverage/merge.js";
-export {
-  COVERAGE_FORMAT_SELECTIONS,
-  COVERAGE_FORMATS,
-  type CoverageFormat,
-  type CoverageFormatSelection,
-  type CoverageMap,
-  type LineHits,
-  type ParseCoverageOptions,
-} from "./coverage/types.js";
+export { readCoverageChunks, readDiffChunks } from "./chunkInputs.js";
+export { ConfigError, type PharnConfig, parseConfig, parseExcludePattern } from "./config.js";
+export { coverageChoiceLine } from "./coverage/detect.js";
+export { COVERAGE_FORMAT_SELECTIONS, type CoverageFormatSelection } from "./coverage/types.js";
 export {
   COVERAGE_DISCOVERY_CANDIDATES,
   type CoverageDiscovery,
-  type CoverageDiscoveryNotFound,
   chooseDiscoveredCoverage,
   coverageDiscoveryAmbiguousText,
   coverageDiscoveryLimitText,
   coverageDiscoveryLine,
-  coverageNotDiscoveredText,
 } from "./coverageDiscovery.js";
 export {
   type CoverageEntry,
   coverageEntryList,
-  type ExpandedCoverageEntry,
   expandCoverageEntries,
   MAX_COVERAGE_GLOB_FILES,
   MAX_COVERAGE_WALK_ENTRIES,
   parseCoverageEntries,
 } from "./coverageEntries.js";
+export { planDependencyLookups } from "./dependencies/check.js";
+export type { DependencyLookupResult, DependencyLookups, PlannedLookup } from "./dependencies/lookup.js";
+export { selectDependencyPaths } from "./dependencies/paths.js";
 export {
-  checkDependencies,
-  type DependencyUnreadReason,
-  MAX_DEPENDENCY_SIGNALS,
-  planDependencyLookups,
-  type ReportDependencies,
-} from "./dependencies/check.js";
-export {
-  type DependencyLookupResult,
-  type DependencyLookups,
-  MAX_LOOKUPS,
-  type PlannedLookup,
-} from "./dependencies/lookup.js";
-export { classifyDependencyFile, selectDependencyPaths } from "./dependencies/paths.js";
-export {
-  type PackageFacts,
   packageFacts,
   REGISTRY_LOOKUP_HOSTS,
   REGISTRY_MAX_BODY_BYTES,
@@ -105,381 +41,56 @@ export {
   registryLookupUrls,
   weeklyDownloads,
 } from "./dependencies/registry.js";
-export {
-  DEFAULT_MIN_AGE_DAYS,
-  DEFAULT_MIN_WEEKLY_DOWNLOADS,
-  DEPENDENCY_MODES,
-  type DependencyMode,
-  type DependencySettingsLayers,
-  isDependencyMode,
-  type ResolvedDependencySettings,
-  resolveDependencySettings,
-} from "./dependencies/settings.js";
-export type { DependencyEcosystem, DependencySignal, DependencySignalId } from "./dependencies/types.js";
-export {
-  createUnifiedDiffReader,
-  type DiffFile,
-  type DiffFileStatus,
-  type DiffHunk,
-  type DiffLineText,
-  MAX_ADDED_TEXT_CHARS,
-  MAX_ADDED_TEXT_LINES,
-  MAX_KEPT_LINE_CHARS,
-  MAX_KEPT_LINES,
-  MAX_OTHER_ADDED_TEXT_CHARS,
-  MAX_PRIORITY_ADDED_TEXT_CHARS,
-  parseUnifiedDiff,
-  type UnifiedDiffOptions,
-} from "./diff/unified.js";
-export { computeDiffCoverage, type DiffCoverageFile, type DiffCoverageResult } from "./diffCoverage.js";
-export { fixTarget, messageFix, withFixHints, withMessageFix } from "./fix/attach.js";
-export {
-  FIX_KINDS,
-  type FixEntry,
-  type FixHint,
-  type FixKind,
-  type FixSignalId,
-  MESSAGE_FIXES,
-  SIGNAL_FIXES,
-} from "./fix/table.js";
-export {
-  type ConfigDiffState,
-  type ConfigSource,
-  configDiffState,
-  configRepoPath,
-} from "./gateInputs.js";
-export { compileGlob, hasGlobSyntax, matchGlob } from "./glob.js";
-export { type DirEntry, type ListDir, type WalkBudget, WalkLimitError, walkGlob } from "./globWalk.js";
-export { injectionMessages } from "./injection/messages.js";
-export {
-  DEFAULT_EXEMPT as INJECTION_DEFAULT_EXEMPT,
-  INJECTION_INSTRUCTION_KINDS,
-  LOCALE_PATHS as INJECTION_LOCALE_PATHS,
-  MAX_VENDORED_TAIL_SEGMENTS,
-  VENDORED_DIRS as INJECTION_VENDORED_DIRS,
-} from "./injection/paths.js";
-export {
-  INJECTION_PHRASES,
-  INJECTION_PHRASES_VERSION,
-  type InjectionPhrase,
-  normalizeForPhrases,
-} from "./injection/phrases.js";
-export {
-  DEFAULT_INJECTION_SEVERITIES,
-  INJECTION_SIGNAL_IDS,
-  type InjectionSettings,
-  type InjectionSeverity,
-  injectionSettingsOf,
-} from "./injection/policy.js";
-export {
-  detectInjection,
-  type InjectionFinding,
-  type InjectionSignal,
-  injectionTextPriority,
-  keepInjectionText,
-  longestBlob,
-  MAX_BLOB_CHARS,
-  MAX_INJECTION_FINDINGS,
-  MAX_INJECTION_FINDINGS_PER_FILE,
-  type OmittedInjection,
-  scanInjection,
-} from "./injection/scan.js";
-export { type InvisibleFinding, scanInvisible } from "./injection/unicode.js";
-export {
-  gitDiffArgs,
-  InputError,
-  type InputErrorText,
-  type RawInputs,
-  type ResolvedInputs,
-  type ResolveInputsResult,
-  resolveInputs,
-} from "./inputs.js";
-export { JS_TS_EXTENSIONS, type JsTsExtension } from "./jsTsExtensions.js";
-export {
-  FLAKY_QUARANTINED_CAP,
-  type FlakyTally,
-  failuresAllQuarantined,
-  junitReport,
-  tallyJunit,
-} from "./junit/flaky.js";
-export {
-  JUNIT_MAX_DEPTH,
-  JUNIT_MESSAGE_READ_UNITS,
-  type JunitCase,
-  type JunitInvalidReason,
-  type JunitParse,
-  type JunitStatus,
-  parseJunitXml,
-} from "./junit/parse.js";
+export { type DependencySettingsLayers, resolveDependencySettings } from "./dependencies/settings.js";
+export { type DiffFile, parseUnifiedDiff } from "./diff/unified.js";
+export { type ConfigSource, configDiffState, configRepoPath } from "./gateInputs.js";
+export { type DirEntry, type WalkBudget, WalkLimitError, walkGlob } from "./globWalk.js";
+export { gitDiffArgs, type InputErrorText, type RawInputs, resolveInputs } from "./inputs.js";
+export { failuresAllQuarantined, junitReport, tallyJunit } from "./junit/flaky.js";
 export { parseQuarantineList, QUARANTINE_FILE_MAX_BYTES } from "./junit/quarantine.js";
 export {
-  JUNIT_MAX_CASES,
   JUNIT_MAX_FILES,
   JUNIT_MAX_TOTAL_BYTES,
-  type JunitDropReason,
   type JunitResults,
   type JunitSources,
   parseJunitSources,
 } from "./junit/results.js";
-export { collapseWhitespace, junitTestId, TEST_ID_MAX_UNITS, type TestIdParts } from "./junit/testId.js";
-export { createLineSplitter, splitLines, splitLinesAsync } from "./lines.js";
-export { normalizePath } from "./paths.js";
-export { type AgentPolicy, agentPolicyOf, type PolicyFileBase } from "./policy/agents.js";
-export { applyPolicy, type PolicyApplication, type PolicyLayers } from "./policy/apply.js";
-export type { UnknownNames } from "./policy/errors.js";
-export { POLICY_MAX_CHARS, POLICY_MAX_ERRORS } from "./policy/limits.js";
+export type { PolicyFileBase } from "./policy/agents.js";
+export { applyPolicy } from "./policy/apply.js";
 export { parsePolicyJson } from "./policy/parse.js";
-export type { IgnoredSetting, PolicyUnavailableReason, ResolvedPolicy, SignalOverrides } from "./policy/resolved.js";
-export {
-  type PolicyResponse,
-  type PolicyResponseValidation,
-  QUARANTINE_ITEM_MAX_UNITS,
-  RESPONSE_MAX_QUARANTINE_ITEMS,
-  validatePolicyResponse,
-} from "./policy/response.js";
-export { evaluatePolicyRules, MAX_RULE_VIOLATIONS } from "./policy/rules/evaluate.js";
-export { policyRuleMessages } from "./policy/rules/messages.js";
+export type { PolicyUnavailableReason, ResolvedPolicy } from "./policy/resolved.js";
+export { validatePolicyResponse } from "./policy/response.js";
 export { consistencySeverity } from "./policy/rules/p07.js";
-export { P13_DIFF_UNAVAILABLE_DETAIL, P13_UNCOMPARED_DETAIL } from "./policy/rules/p13.js";
-export { type AgentPrSize, agentPrSize, P14_GENERATED_FILES } from "./policy/rules/p14.js";
-export type { PolicyEvaluation, PolicyRuleInput, PolicyViolation } from "./policy/rules/types.js";
-export {
-  type SelfModificationClass,
-  selectSelfModificationPaths,
-  selfModificationClass,
-} from "./policy/selfmod/paths.js";
-export { isCountingHandler, matcherCovers } from "./policy/settings/hooks.js";
-export { type JsonMember, type JsonValue, parseSettingsJson, type SettingsJsonResult } from "./policy/settings/json.js";
-export { mcpGlobMatches } from "./policy/settings/mcp.js";
-export {
-  type McpServer,
-  readSettingsModel,
-  type SettingsModel,
-  type SettingsUnit,
-} from "./policy/settings/model.js";
-export {
-  isPolicyMcpPath,
-  isPolicySettingsPath,
-  policySettingsPaths,
-  settingsUnitAnchor,
-} from "./policy/settings/paths.js";
-export {
-  type NormalizedPolicyRule,
-  normalizePolicyRule,
-  type ParsedSettingsRule,
-  type PermissionRule,
-  parsePermissionRule,
-} from "./policy/settings/permissionRule.js";
-export type {
-  PolicySettingsDrop,
-  PolicySettingsOutcome,
-  PolicySettingsProblem,
-  PolicySettingsSources,
-  SettingsProblem,
-  SettingsProblemReason,
-} from "./policy/settings/types.js";
-export type {
-  PolicyAgents,
-  PolicyCoverage,
-  PolicyDependencies,
-  PolicyDocument,
-  PolicyError,
-  PolicyFlaky,
-  PolicyProtectedPathsMode,
-  PolicyRegistry,
-  PolicyRequiredHook,
-  PolicyRuleId,
-  PolicySettings,
-  PolicySetup,
-  PolicySeverity,
-  PolicySignalId,
-  PolicyTestIntegrity,
-  PolicyValidation,
-} from "./policy/types.js";
-export { validatePolicy } from "./policy/validate.js";
-export { formatRanges, type RenderMarkdownOptions, renderMarkdown } from "./render/markdown.js";
-export {
-  type BuildReportInput,
-  buildReport,
-  emptyTestIntegrity,
-  type Message,
-  type MessageCode,
-  type MessageLevel,
-  type OmittedSignals,
-  type Report,
-  type ReportDiffCoverage,
-  type ReportFlaky,
-  type ReportMeta,
-  type ReportMetaEvent,
-  type ReportPolicy,
-  type ReportPolicyViolation,
-  type ReportSetupHealth,
-  type ReportStaleInstruction,
-  type ReportTestChange,
-  type ReportTestChanges,
-  type ReportTestChangesFile,
-  type ReportTestExercise,
-  type ReportTestIntegrity,
-  type TestConfigUnavailable,
-  type TestIndexUnavailable,
-  type TestIntegrityMode,
-  type TestIntegritySignal,
-  testIntegritySignalMessages,
-  type Verdict,
-  verdictOf,
-} from "./report.js";
-export { agentConfigSecretMessages } from "./secrets/messages.js";
-export { MESSAGE_MAX_BYTES, redactMessage, redactSecrets, truncateUtf8 } from "./secrets/redact.js";
-export {
-  type AgentConfigSecretFinding,
-  type AgentConfigSources,
-  agentConfigSecretPaths,
-  SECRET_SCAN_KINDS,
-  scanAgentConfigSecrets,
-} from "./secrets/scan.js";
-export { findSecretSpans, MAX_TOKEN_BODY_CHARS, type SecretId, type SecretSpan } from "./secrets/spans.js";
-export {
-  agentInstructionPaths,
-  INSTRUCTION_KINDS,
-  type InstructionDeclarations,
-  instructionDeclarations,
-  instructionScope,
-} from "./setup/instructions.js";
-export {
-  type AgentSetupFile,
-  type AgentSetupInventory,
-  type AgentSetupKind,
-  classifySetupPath,
-  SETUP_RULES,
-  type SetupRule,
-  scanAgentSetup,
-} from "./setup/scan.js";
+export { selectSelfModificationPaths } from "./policy/selfmod/paths.js";
+export { policySettingsPaths } from "./policy/settings/paths.js";
+export type { PolicySettingsDrop, PolicySettingsSources } from "./policy/settings/types.js";
+export { renderMarkdown } from "./render/markdown.js";
+export type { Report, ReportMeta, ReportMetaEvent } from "./report.js";
+export { type AgentConfigSources, agentConfigSecretPaths } from "./secrets/scan.js";
+export { agentInstructionPaths } from "./setup/instructions.js";
+export { scanAgentSetup } from "./setup/scan.js";
 export { parseLsTreeSizes, parseLsTreeSymlinks } from "./setup/sizes.js";
-export {
-  detectStaleInstructions,
-  MAX_INSTRUCTION_FILES,
-  MAX_STALE_FINDINGS,
-  MAX_STALE_PER_FILE,
-  type StaleFinding,
-  type StaleId,
-  type StaleInstructionSources,
-  type StaleKind,
-  staleInstructionMessages,
-  staleInstructionPaths,
-} from "./setup/stale.js";
-export { type PackageScripts, parseMakeTargets, parsePackageScripts } from "./setup/staleManifests.js";
-export {
-  type InstructionCommand,
-  type InstructionReference,
-  type InstructionTokens,
-  MAX_SCAN_CHARS,
-  scanInstructionTokens,
-} from "./setup/staleScan.js";
-export { AGENT_TOOLS, type AgentSetupSummary, type AgentTool, summarizeAgentSetup } from "./setup/summary.js";
-export {
-  detectUnexercisedChanges,
-  EXERCISE_SKIPPED_FILES,
-  type ExerciseResult,
-  exerciseCandidates,
-  pythonModulePaths,
-} from "./signals/exercise.js";
-export {
-  coverageSourceLanguage,
-  isPackageJsonFile,
-  isPytestConfigFile,
-  isSnapshotFile,
-  isWorkflowFile,
-  keepSignalFileText,
-} from "./signals/signalFiles.js";
-export { MAX_TEST_CHANGE_ENTRIES, summarizeTestChanges } from "./signals/testChanges.js";
-export { type TestLanguage, testLanguage } from "./signals/testLines.js";
-export { type MatchCandidate, type MatchedPair, matchTests, type TestMatch } from "./signals/testMatch.js";
+export { type StaleInstructionSources, staleInstructionPaths } from "./setup/stale.js";
 export { modifiedTestSourcePaths, pythonNotFoundStopsComparison } from "./signals/testPairs.js";
-export { detectTI01 } from "./signals/ti01.js";
-export { movedTestFiles } from "./signals/ti01Moved.js";
-export { detectTI02 } from "./signals/ti02.js";
-export { detectTI03 } from "./signals/ti03.js";
-export { detectTI04 } from "./signals/ti04.js";
-export { detectTI05 } from "./signals/ti05.js";
-export { detectTI06 } from "./signals/ti06.js";
-export { detectTI07 } from "./signals/ti07.js";
-export { detectTI08 } from "./signals/ti08.js";
-export { detectTI09, type TI09Result, type UnreadConfigFile } from "./signals/ti09.js";
-export { detectTI10, type TI10Options } from "./signals/ti10.js";
-export { detectTI11 } from "./signals/ti11.js";
-export { detectTI12 } from "./signals/ti12.js";
-export { detectTI13 } from "./signals/ti13.js";
-export { detectTI14, type TI14Options } from "./signals/ti14.js";
-export { detectTI16 } from "./signals/ti16.js";
-export { detectTI17 } from "./signals/ti17.js";
-export { type TestConfigKind, testConfigKind } from "./testConfig/kinds.js";
-export {
-  definesTests,
-  deletedTestFiles,
-  isSnapFile,
-  isTestFile,
-  keepTestFileText,
-  testPackageDir,
-  testStem,
-} from "./testFiles.js";
-export { MAX_TEST_IMPORTS } from "./testIndex/imports.js";
-export { indexTestFile, indexTestFileWithImports } from "./testIndex/indexTestFile.js";
 export { oneLineDetail, pythonRunOutcome } from "./testIndex/pythonOutcome.js";
-export { type PythonIndexPlan, planPythonIndex, pythonIndexStdin } from "./testIndex/pythonPlan.js";
-export { pythonIndexFromRaw } from "./testIndex/pythonRaw.js";
+export { planPythonIndex, pythonIndexStdin } from "./testIndex/pythonPlan.js";
 export { type PythonTestIndex, pythonTestIndexFromRun, pythonTestSourceFiles } from "./testIndex/pythonSides.js";
 export {
-  MAX_PYTHON_DETAIL_CHARS,
-  MAX_PYTHON_RAW_ARRAY,
   PYTHON_INDEX_MAX_STDOUT_BYTES,
   PYTHON_INDEX_TIMEOUT_MS,
-  PYTHON_INDEX_UNAVAILABLE_REASONS,
   type PythonIndexFile,
   type PythonIndexRun,
-  type PythonIndexUnavailable,
-  type PythonIndexUnavailableReason,
   type PythonSourceFile,
   type PythonSpawnResult,
 } from "./testIndex/pythonTypes.js";
-export type {
-  TestAssertion,
-  TestAssertionGuard,
-  TestBlock,
-  TestBlockKind,
-  TestIndex,
-  TestIndexRefusal,
-  TestIndexRefusalReason,
-  TestIndexResult,
-  TestModifier,
-  TestModuleMock,
-} from "./testIndex/types.js";
-export {
-  MAX_TEST_INDEX_DEPTH,
-  PYTHON_MOCK_CALLEES,
-  TEST_MODIFIER_ORDER,
-} from "./testIndex/types.js";
-export {
-  isTestIntegrityMode,
-  type ResolvedTestIntegrityMode,
-  resolveTestIntegrityMode,
-  TEST_INTEGRITY_MODES,
-  type TestIntegrityModeSettings,
-  testIntegrityModeError,
-} from "./testIntegrityMode.js";
-export { HEAD_UNREADABLE_ERROR_REASONS, WHOLE_RUN_SENTENCE_LEADS } from "./testIntegrityUnreadable.js";
+export type { TestIndexResult } from "./testIndex/types.js";
+export { resolveTestIntegrityMode, type TestIntegrityModeSettings } from "./testIntegrityMode.js";
 export {
   DEPENDENCY_SOURCE_LIMITS,
-  isTestConfigFile,
   isUnsafeTestSourcePath,
-  MAX_TEST_SOURCE_FILE_BYTES,
-  MAX_TEST_SOURCE_FILES,
-  MAX_TEST_SOURCE_TOTAL_BYTES,
   planTestSourceReads,
   selectTestSourcePaths,
-  TEST_SOURCE_DROP_REASONS,
-  TEST_SOURCE_LIMITS,
   type TestSourceDrop,
-  type TestSourceDropReason,
   type TestSourceFile,
   type TestSourceObject,
   type TestSourceReadLimits,
@@ -490,8 +101,8 @@ export {
 export { decodeTestSourceText } from "./testSourceText.js";
 export { byCodeUnit, escapeLogLine, escapeLogText, utf8ByteLength } from "./text.js";
 export { buildUploadBundle } from "./upload/bundle.js";
-export { buildJunitResultsXml, UPLOAD_JUNIT_MAX_BYTES, UPLOAD_JUNIT_NAME, xmlAttribute } from "./upload/junit.js";
-export { buildUploadMeta, type UploadMeta } from "./upload/meta.js";
+export { buildJunitResultsXml, UPLOAD_JUNIT_MAX_BYTES, UPLOAD_JUNIT_NAME } from "./upload/junit.js";
+export { buildUploadMeta } from "./upload/meta.js";
 export { UPLOAD_REPORT_MAX_BYTES, type UploadOutcome, withUploadOutcome } from "./upload/outcome.js";
 export { buildUploadTar } from "./upload/tar.js";
 export { VERSION } from "./version.js";

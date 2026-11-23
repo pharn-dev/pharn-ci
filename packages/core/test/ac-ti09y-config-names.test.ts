@@ -22,7 +22,10 @@ const MODIFIED_VITE = [
 
 describe("test sources: vite.config.* is a test-config name", () => {
   it("AC-1: the predicate is true for vite.config.ts, web/vite.config.mjs and the other config names, false for vite.config. and src/vite.ts, and a modified web/vite.config.ts is selected on both sides", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("../src/diff/unified.js")),
+      ...(await import("../src/testSources.js")),
+    } as unknown as Core;
 
     for (const path of [
       "vite.config.ts",

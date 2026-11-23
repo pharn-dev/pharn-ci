@@ -65,7 +65,10 @@ const live = (line: string) => line.replace(/(`+)[\s\S]*?\1/g, "").replace(/\\[\
 
 describe("the Policy section's violation list", { timeout: 60_000 }, () => {
   it("AC-16: 12 mixed violations list blocks first, 10 open and 2 folded, each with a hint line; maxRows 3 lists 3 and counts the rest; a hostile path stays inert; an ignored setting renders its line", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("../src/render/markdown.js")),
+      ...(await import("../src/report.js")),
+    } as unknown as Core;
     const base = core.buildReport({
       version: "0.1.0",
       threshold: null,

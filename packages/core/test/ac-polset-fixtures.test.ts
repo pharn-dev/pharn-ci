@@ -44,7 +44,7 @@ describe("the fixtures of E3 item 23", () => {
     }
 
     // No secret-shaped value in a new fixture or in this increment's AC tests.
-    const { findSecretSpans } = (await import("@pharn-ci/core")) as unknown as {
+    const { findSecretSpans } = (await import("../src/secrets/spans.js")) as unknown as {
       findSecretSpans(text: string): { id: string; start: number; end: number }[];
     };
     const tests = ["packages/core/test", "packages/cli/test", "packages/action/test"].flatMap((dir) =>

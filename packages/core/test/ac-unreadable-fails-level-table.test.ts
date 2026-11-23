@@ -189,7 +189,9 @@ const levelFor = (report: Report, row: Row): string | null => {
 
 describe("CORE-69: the level of the unreadable and cut messages, by mode", () => {
   it("AC-15: HEAD_UNREADABLE_ERROR_REASONS is the one list of HEAD reasons that make the per-file form an error", async () => {
-    const core = (await import("../src/index.js")) as unknown as { HEAD_UNREADABLE_ERROR_REASONS?: unknown };
+    const core = (await import("../src/testIntegrityUnreadable.js")) as unknown as {
+      HEAD_UNREADABLE_ERROR_REASONS?: unknown;
+    };
     // CORE-50 (binary-diff-not-blind) appends `binary`, as the list's own doc comment says it would.
     expect(core.HEAD_UNREADABLE_ERROR_REASONS).toEqual(["too-deep", "too-large", "over-file-cap", "binary"]);
   });

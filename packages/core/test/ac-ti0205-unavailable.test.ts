@@ -134,7 +134,7 @@ describe("TEST_INTEGRITY_INDEX_UNAVAILABLE: a touched test file that could not b
   });
 
   it("AC-12: a modified src/b.test.ts whose head text the index refuses as syntax-error-heavy is named with its reason and gives no finding", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
       indexTestFile(path: string, text: string): { parsed: boolean; reason?: string };
     };
     expect(core.indexTestFile("src/b.test.ts", BROKEN), "the head text is refused").toEqual({

@@ -95,7 +95,7 @@ describe("TI03's alias reader on hostile text near the test-source size cap", ()
   it(
     "AC-7: a hostile Python test file just under MAX_TEST_SOURCE_FILE_BYTES returns without throwing, validates, gives the block TI03 of its resolvable alias, and takes less than 8 times a quarter-size one (median of three)",
     async () => {
-      const core = (await import("@pharn-ci/core")) as unknown as { MAX_TEST_SOURCE_FILE_BYTES: number };
+      const core = (await import("../src/testSources.js")) as unknown as { MAX_TEST_SOURCE_FILE_BYTES: number };
       const cap = core.MAX_TEST_SOURCE_FILE_BYTES;
       expect(cap).toBe(524288);
 

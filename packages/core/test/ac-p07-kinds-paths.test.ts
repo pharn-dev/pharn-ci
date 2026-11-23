@@ -14,7 +14,10 @@ interface Core {
 
 describe("org policy rule P07: instruction kinds, scopes and the paths it reads", { timeout: 60_000 }, () => {
   it("AC-8: INSTRUCTION_KINDS is the fixed list, instructionScope gives the root or the package directory, and agentInstructionPaths keeps the instruction files of scopes holding two or more, sorted", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("../src/setup/instructions.js")),
+      ...(await import("../src/setup/scan.js")),
+    } as unknown as Core;
 
     expect([...core.INSTRUCTION_KINDS]).toEqual([
       "claude-md",

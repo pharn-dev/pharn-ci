@@ -11,7 +11,10 @@ function withUnknownKeys(count: number): Record<string, unknown> {
 
 describe("validatePolicy caps its error list", () => {
   it("AC-9: more than POLICY_MAX_ERRORS errors end in one 'more errors not listed' entry; exactly that many are all listed", async () => {
-    const { validatePolicy, POLICY_MAX_ERRORS } = await import("@pharn-ci/core");
+    const { validatePolicy, POLICY_MAX_ERRORS } = {
+      ...(await import("../src/policy/limits.js")),
+      ...(await import("../src/policy/validate.js")),
+    };
     expect(POLICY_MAX_ERRORS).toBe(50);
 
     const over = validatePolicy(withUnknownKeys(POLICY_MAX_ERRORS + 7));

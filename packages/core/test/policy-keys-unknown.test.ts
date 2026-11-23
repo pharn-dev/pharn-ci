@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { check, type ResolvedPolicy, renderMarkdown, validatePolicy, validatePolicyResponse } from "../src/index.js";
+import { check, type ResolvedPolicy, renderMarkdown, validatePolicyResponse } from "../src/index.js";
 import { policyKeysUnknownMessage } from "../src/policy/messages.js";
+import { validatePolicy } from "../src/policy/validate.js";
 import { hasUnsafeChar } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";

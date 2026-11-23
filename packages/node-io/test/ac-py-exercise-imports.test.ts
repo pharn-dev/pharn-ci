@@ -75,7 +75,7 @@ describe("CORE-104: the Python index returns the module names a test file import
   it(
     "AC-3: keeps at most 1000 names per file (core's MAX_TEST_IMPORTS), the first ones, and leaves out a name over 500 characters",
     async () => {
-      const { MAX_TEST_IMPORTS } = await import("@pharn-ci/core");
+      const { MAX_TEST_IMPORTS } = await import("../../core/src/testIndex/imports.js");
       expect(MAX_TEST_IMPORTS).toBe(1000);
       const { PYTHON_INDEX_SCRIPT } = await import("../src/pythonIndexScript.js");
       expect(PYTHON_INDEX_SCRIPT).toContain(`\nMAX_IMPORTS = ${MAX_TEST_IMPORTS}\n`);

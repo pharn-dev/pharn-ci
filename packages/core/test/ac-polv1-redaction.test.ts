@@ -6,7 +6,7 @@ const SENTINEL = "SENTINEL_9f3c";
 
 describe("validatePolicy never echoes input in an error", () => {
   it("AC-8: no message holds the sentinel, and unknown keys are escaped, truncated and scrubbed in their path", async () => {
-    const { validatePolicy } = await import("@pharn-ci/core");
+    const { validatePolicy } = await import("../src/policy/validate.js");
 
     const documents: [string, unknown][] = [
       ["wrong type", { version: 1, coverage: { threshold: SENTINEL } }],

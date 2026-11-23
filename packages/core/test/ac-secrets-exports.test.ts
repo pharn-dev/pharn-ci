@@ -38,7 +38,11 @@ describe("the redaction module and the A7 scanner are pure and exported", () => 
       expect(purityViolations(readFileSync(path, "utf8")), path).toEqual([]);
     }
 
-    const core = (await import("@pharn-ci/core")) as unknown as Record<string, unknown>;
+    const core = {
+      ...(await import("../src/secrets/redact.js")),
+      ...(await import("../src/secrets/scan.js")),
+      ...(await import("../src/secrets/spans.js")),
+    } as unknown as Record<string, unknown>;
     for (const name of EXPORTS) {
       expect(Object.hasOwn(core, name), `@pharn-ci/core exports ${name}`).toBe(true);
       if (FUNCTIONS.has(name)) expect(typeof core[name], name).toBe("function");

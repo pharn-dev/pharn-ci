@@ -138,7 +138,7 @@ describe("the Action and the CLI write fix hints", { timeout: 120_000 }, () => {
     expect(cli.streamCalls.length, "the CLI streamed its diff").toBeGreaterThan(0);
     expect(cli.report).toEqual(goldenReport());
 
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = (await import("../../core/src/fix/table.js")) as unknown as {
       MESSAGE_FIXES?: Record<string, { kind: string; hint: string }>;
     };
     expect(core.MESSAGE_FIXES, "MESSAGE_FIXES is exported").toBeDefined();

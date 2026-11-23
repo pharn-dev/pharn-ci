@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
-import { check, injectionSettingsOf, type Report, validatePolicy } from "../src/index.js";
+import { check, type Report } from "../src/index.js";
+import { injectionSettingsOf } from "../src/injection/policy.js";
 import type { PolicyDocument } from "../src/policy/types.js";
+import { validatePolicy } from "../src/policy/validate.js";
 import { FIXTURES, fixture } from "./helpers.js";
 import { injectionFixture } from "./injection-fixture.js";
 import { expectValidReport } from "./schema.js";

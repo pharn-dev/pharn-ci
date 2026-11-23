@@ -102,7 +102,7 @@ describe("org policy rule P02: severity from policy.rules", { timeout: 60_000 },
     // CORE-123: the setting and no layer (it was "policy.rules.P02 (policy-file)").
     expect(ignored[0]?.text).toContain("applies: policy.rules.P02.");
 
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = (await import("../src/policy/rules/evaluate.js")) as unknown as Core;
     const evaluation = core.evaluatePolicyRules({
       policy: file("warn"),
       agentSetupFileCount: 1,

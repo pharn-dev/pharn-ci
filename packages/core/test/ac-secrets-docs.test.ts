@@ -59,7 +59,7 @@ function messageCodeDescription(schema: string): string {
 // the README code rows.
 describe("A7 schema and fixtures", () => {
   it("AC-22: the schema documents A7, and no committed fixture or test holds a secret", async () => {
-    const { findSecretSpans } = (await import("../src/index.js")) as unknown as {
+    const { findSecretSpans } = (await import("../src/secrets/spans.js")) as unknown as {
       findSecretSpans(text: string): { id: string; start: number; end: number }[];
     };
 

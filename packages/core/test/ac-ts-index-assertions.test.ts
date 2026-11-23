@@ -29,7 +29,9 @@ type Result = Index | { parsed: false; reason: string };
 const MODIFIERS = ["skip", "only", "todo", "fails", "concurrent", "each", "skipIf", "runIf"];
 
 async function indexTestFile(path: string, text: string): Promise<Result> {
-  const core = (await import("@pharn-ci/core")) as unknown as { indexTestFile: (p: unknown, t: unknown) => unknown };
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
+    indexTestFile: (p: unknown, t: unknown) => unknown;
+  };
   return core.indexTestFile(path, text) as Result;
 }
 

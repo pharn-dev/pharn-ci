@@ -44,7 +44,13 @@ const order = (a: Violation, b: Violation) =>
 
 describe("the report's policy object", { timeout: 60_000 }, () => {
   it("AC-12: app, file and unavailable policies write source, version, fetchedAt and sorted violations right before meta, and evaluatePolicyRules returns the same violations", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("../src/check.js")),
+      ...(await import("../src/diff/unified.js")),
+      ...(await import("../src/policy/rules/evaluate.js")),
+      ...(await import("../src/setup/scan.js")),
+      ...(await import("../src/setup/summary.js")),
+    } as unknown as Core;
     const repoFiles = fixture("policy-rules/p08-violates/files.txt").trim().split("\n");
     const diffText = fixture("policy-rules/p09-violates/pr.diff");
     const p08 = JSON.parse(fixture("policy-rules/p08-violates/policy.json"));

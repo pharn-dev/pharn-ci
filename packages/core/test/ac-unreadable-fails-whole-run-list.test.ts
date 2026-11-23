@@ -66,7 +66,10 @@ const didNotRun = (report: Report): string[] =>
 
 describe("CORE-69: the exported list of whole-run sentences matches what check() writes", () => {
   it("AC-17: every did-not-run sentence check() writes into TEST_INTEGRITY_INDEX_UNAVAILABLE starts with an entry of WHOLE_RUN_SENTENCE_LEADS, and every entry starts one", async () => {
-    const core = (await import("../src/index.js")) as unknown as {
+    const core = {
+      ...(await import("../src/testIntegrityUnreadable.js")),
+      ...(await import("../src/testSources.js")),
+    } as unknown as {
       WHOLE_RUN_SENTENCE_LEADS?: unknown;
       unavailableTestSources(reason: string): { base: unknown; head: unknown };
     };

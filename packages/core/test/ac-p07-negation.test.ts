@@ -51,7 +51,10 @@ const p07 = (report: Report) => (report.policy?.violations ?? []).filter((v) => 
 
 describe("org policy rule P07: negated mentions", { timeout: 60_000 }, () => {
   it("AC-4: a negating cue before a span, `is not` or `isn't` after it, `instead of`, and a `## Don't` section keep npm from contradicting pnpm; instructionDeclarations gives pnpm for texts 1, 3 and 5 and nothing for 2 and 4", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("../src/check.js")),
+      ...(await import("../src/setup/instructions.js")),
+    } as unknown as Core;
     expect(typeof core.instructionDeclarations).toBe("function");
 
     for (const [i, claude] of CLAUDE_TEXTS.entries()) {

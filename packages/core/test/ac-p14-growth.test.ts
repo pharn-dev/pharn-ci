@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { agentPolicyOf, detectAgentPr, parseUnifiedDiff } from "../src/index.js";
+import { detectAgentPr, parseUnifiedDiff } from "../src/index.js";
+import { agentPolicyOf } from "../src/policy/agents.js";
 import { detectP14 } from "../src/policy/rules/p14.js";
 import { measureGrowth } from "./growth.js";
 

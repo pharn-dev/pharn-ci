@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 
 describe("validatePolicy and parsePolicyJson on hostile values", () => {
   it("AC-5: every hostile value returns ok: false with at least one error, and nothing throws or hangs", async () => {
-    const { validatePolicy, parsePolicyJson } = await import("@pharn-ci/core");
+    const { validatePolicy, parsePolicyJson } = {
+      ...(await import("../src/policy/parse.js")),
+      ...(await import("../src/policy/validate.js")),
+    };
 
     const cyclicKnown: Record<string, unknown> = { version: 1 };
     cyclicKnown.coverage = cyclicKnown;

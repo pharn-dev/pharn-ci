@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   failuresAllQuarantined,
-  JUNIT_MAX_CASES,
   JUNIT_MAX_FILES,
   JUNIT_MAX_TOTAL_BYTES,
   type JunitSources,
@@ -9,6 +8,7 @@ import {
   parseQuarantineList,
   tallyJunit,
 } from "../src/index.js";
+import { JUNIT_MAX_CASES } from "../src/junit/results.js";
 import { fixture } from "./helpers.js";
 
 // Flaky tests (A6): several JUnit files under the run's caps, the tally under a quarantine list, and the quarantine list

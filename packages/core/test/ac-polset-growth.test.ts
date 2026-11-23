@@ -43,7 +43,10 @@ const mcpFile = (n: number) => {
 
 describe("policy settings grow close to linearly", { timeout: 300_000 }, () => {
   it("AC-23: parseSettingsJson, P02 and P05 at 4n take less than 8 times as long as at n, each call within 15 s of CPU time", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("../src/check.js")),
+      ...(await import("../src/policy/settings/json.js")),
+    } as unknown as Core;
     expect(typeof core.parseSettingsJson, "parseSettingsJson is exported").toBe("function");
 
     // The parser.

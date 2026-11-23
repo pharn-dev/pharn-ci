@@ -10,7 +10,7 @@ interface TrailersModule {
   parseCoAuthorTrailers(message: string): Trailer[];
 }
 
-const load = async () => (await import("../src/index.js")) as unknown as TrailersModule;
+const load = async () => (await import("../src/agents.js")) as unknown as TrailersModule;
 
 const ROOT = new URL("../../../", import.meta.url);
 const agentPrFixture = (name: string) => readFileSync(new URL(`fixtures/agent-pr/${name}`, ROOT), "utf8");

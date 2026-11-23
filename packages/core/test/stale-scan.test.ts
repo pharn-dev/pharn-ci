@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseMakeTargets, parsePackageScripts, scanInstructionTokens } from "../src/index.js";
-import { classifyPath, MAX_SCAN_CHARS, MAX_TOKENS_PER_FILE } from "../src/setup/staleScan.js";
+import { parseMakeTargets, parsePackageScripts } from "../src/setup/staleManifests.js";
+import { classifyPath, MAX_SCAN_CHARS, MAX_TOKENS_PER_FILE, scanInstructionTokens } from "../src/setup/staleScan.js";
 import { fixture } from "./helpers.js";
 
 // Stale instructions (Horizon 2 item H3): what an instruction file names. Fixtures under fixtures/stale-instructions/

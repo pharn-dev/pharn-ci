@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type DiffFile, detectStaleInstructions, scanAgentSetup } from "../../core/src/index.js";
+import { type DiffFile, scanAgentSetup } from "../../core/src/index.js";
+import { detectStaleInstructions } from "../../core/src/setup/stale.js";
 import { runGit, runGitBatch } from "../src/io.js";
 import { readStaleInstructionSources } from "../src/staleInstructions.js";
 

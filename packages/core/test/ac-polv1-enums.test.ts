@@ -23,7 +23,13 @@ describe("schema/policy.v1.json enums and the core entry point", () => {
     const expectItems = resolve(resolve(props(top.setup).expect)?.items as Node | undefined);
     const mode = resolve(props(top.test_integrity).mode);
 
-    const core = await import("@pharn-ci/core");
+    const core = {
+      ...(await import("../src/policy/limits.js")),
+      ...(await import("../src/policy/parse.js")),
+      ...(await import("../src/policy/validate.js")),
+      ...(await import("../src/setup/summary.js")),
+      ...(await import("../src/testIntegrityMode.js")),
+    };
     expect(expectItems?.enum).toEqual([...core.AGENT_TOOLS]);
     expect(mode?.enum).toEqual([...core.TEST_INTEGRITY_MODES]);
     expect(core.POLICY_MAX_CHARS).toBe(262144);

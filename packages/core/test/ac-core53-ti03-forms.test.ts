@@ -50,7 +50,7 @@ function raw(name: string, line: number, endLine: number, extra: Record<string, 
 }
 
 async function fromRaw(tests: RawBlock[][]): Promise<Mapped> {
-  const { pythonIndexFromRaw } = await import("@pharn-ci/core");
+  const { pythonIndexFromRaw } = await import("../src/testIndex/pythonRaw.js");
   return pythonIndexFromRaw(
     JSON.stringify(tests.map((list, id) => ({ id, parsed: true, normalized: "", tests: list, mocks: [] }))),
     tests.length,

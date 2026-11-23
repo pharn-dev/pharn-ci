@@ -25,7 +25,10 @@ const SECTIONS = ["coverage", "setup", "test_integrity", "flaky", "policy", "age
 
 describe("validatePolicy and parsePolicyJson on fixtures/policy/valid/", () => {
   it("AC-2: every valid fixture is accepted by both, with a deep-equal policy in fresh objects", async () => {
-    const { validatePolicy, parsePolicyJson } = await import("@pharn-ci/core");
+    const { validatePolicy, parsePolicyJson } = {
+      ...(await import("../src/policy/parse.js")),
+      ...(await import("../src/policy/validate.js")),
+    };
 
     const files = readdirSync(VALID).filter((name) => name.endsWith(".json"));
     for (const name of REQUIRED) expect(files, `fixture ${name}`).toContain(name);

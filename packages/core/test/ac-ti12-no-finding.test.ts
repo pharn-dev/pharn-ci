@@ -84,7 +84,7 @@ async function runBlock(c: Case): Promise<Report> {
 async function mocksOf(files: SourceFile[], path: string): Promise<Mock[]> {
   const file = files.find((f) => f.path === path);
   if (file === undefined) throw new Error(`the fixture has no text for ${path}`);
-  const core = (await import("@pharn-ci/core")) as unknown as {
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
     indexTestFile(path: string, text: string): { parsed: boolean; mocks?: Mock[] };
   };
   const result = core.indexTestFile(file.path, file.text);
@@ -199,7 +199,7 @@ const CASES: ReadonlyArray<{ name: string; title: string; holds(c: Case): Promis
 describe("TI12: mocks that do not replace a source file the change edits give no finding", () => {
   for (const { name, title, holds } of CASES) {
     it(`AC-11: ${title} gives no TI12`, async () => {
-      const core = (await import("@pharn-ci/core")) as unknown as Record<string, unknown>;
+      const core = (await import("../src/signals/ti12.js")) as unknown as Record<string, unknown>;
       expect(typeof core.detectTI12, "TI12 exists, so its absence here is the case's doing").toBe("function");
       const c = loadCase(name);
       await holds(c);

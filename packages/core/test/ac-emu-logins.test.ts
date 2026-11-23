@@ -1,17 +1,11 @@
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
-import {
-  agentPrMetaFields,
-  check,
-  decideAcceptLabel,
-  detectAgentPr,
-  GITHUB_LOGIN,
-  LOGIN_PATTERN,
-  validatePolicy,
-  validatePolicyResponse,
-} from "../src/index.js";
+import { GITHUB_LOGIN } from "../src/acceptLabel.js";
+import { agentPrMetaFields } from "../src/agents.js";
+import { check, decideAcceptLabel, detectAgentPr, LOGIN_PATTERN, validatePolicyResponse } from "../src/index.js";
 import { POLICY_PATTERNS } from "../src/policy/grammar.js";
+import { validatePolicy } from "../src/policy/validate.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 

@@ -51,7 +51,10 @@ const DIFF = [
 describe("test sources: snapshot files are not read", () => {
   it("AC-12: the read plan selects no .snap path on either side for a modified, added, deleted and renamed snapshot, keeps the .test.ts file on both, and isSnapFile is true only for a.test.ts.snap", async () => {
     const { parseUnifiedDiff } = await import("../src/diff/unified.js");
-    const core = (await import("../src/index.js")) as unknown as {
+    const core = {
+      ...(await import("../src/testFiles.js")),
+      ...(await import("../src/testSources.js")),
+    } as unknown as {
       selectTestSourcePaths: Select;
       isSnapFile: (path: string) => boolean;
     };

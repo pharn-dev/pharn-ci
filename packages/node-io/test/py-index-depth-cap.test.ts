@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { MAX_TEST_INDEX_DEPTH } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import { MAX_TEST_INDEX_DEPTH } from "../../core/src/testIndex/types.js";
 import { indexPythonTests } from "../src/index.js";
 import { PYTHON_INDEX_SCRIPT } from "../src/pythonIndexScript.js";
 

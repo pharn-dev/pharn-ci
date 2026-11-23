@@ -170,7 +170,11 @@ describe("the P02–P06 and POLICY_SETTINGS_INVALID messages", { timeout: 60_000
     expect(messageOf(big, "POLICY_P02").text).toBe(
       `P02 forbidden permission allowed: 60 findings at ${locs} and 40 more${P02_TAIL}`,
     );
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("../src/check.js")),
+      ...(await import("../src/policy/rules/evaluate.js")),
+      ...(await import("../src/render/markdown.js")),
+    } as unknown as Core;
     const evaluation = core.evaluatePolicyRules({
       policy: FILE(forbid),
       agentSetupFileCount: 1,

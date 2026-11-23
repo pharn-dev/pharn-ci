@@ -66,7 +66,7 @@ interface Scanner {
 }
 
 async function load(): Promise<Scanner> {
-  return (await import("../src/index.js")) as unknown as Scanner;
+  return (await import("../src/secrets/scan.js")) as unknown as Scanner;
 }
 
 const byFinding = (a: Finding, b: Finding) => byCodeUnit(a.id, b.id) || byCodeUnit(a.path, b.path) || a.line - b.line;

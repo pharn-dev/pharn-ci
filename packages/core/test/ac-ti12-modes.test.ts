@@ -88,7 +88,7 @@ async function runCase(c: Case, mode: Mode): Promise<Report> {
 /** The file-level mocks of one fixture file, through the existing JS/TS test index. */
 async function mocksOf(file: SourceFile | undefined): Promise<Mock[]> {
   if (file === undefined) throw new Error("the fixture file is missing");
-  const core = (await import("@pharn-ci/core")) as unknown as {
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
     indexTestFile(path: string, text: string): { parsed: boolean; mocks?: Mock[] };
   };
   const result = core.indexTestFile(file.path, file.text);
@@ -134,7 +134,7 @@ describe("TI12: a mock of the module the change edits, in each mode", () => {
   }
 
   it("AC-8: in mode off the same change gives no TI12 signal and no TEST_INTEGRITY_TI12 message", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Record<string, unknown>;
+    const core = (await import("../src/signals/ti12.js")) as unknown as Record<string, unknown>;
     expect(typeof core.detectTI12, "TI12 exists, so its absence in mode off is the mode's doing").toBe("function");
     const { c } = await theCase();
     const report = await runCase(c, "off");

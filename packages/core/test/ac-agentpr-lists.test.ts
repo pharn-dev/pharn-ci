@@ -8,7 +8,7 @@ interface ListsModule {
   DEFAULT_AGENT_LABELS: unknown;
 }
 
-const load = async () => (await import("../src/index.js")) as unknown as ListsModule;
+const load = async () => (await import("../src/agents.js")) as unknown as ListsModule;
 
 /** The seven verified known agents, in the SPEC's order. */
 const EXPECTED_AGENTS = [

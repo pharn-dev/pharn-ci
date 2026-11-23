@@ -92,7 +92,10 @@ function expectFixedErrors(result: Validation, name: string, offending: string[]
 
 describe("the policy response envelope", () => {
   it("AC-13: validatePolicyResponse accepts the valid envelope and refuses each invalid one with RFC 6901 paths and fixed messages, capped at POLICY_MAX_ERRORS", async () => {
-    const { validatePolicyResponse, POLICY_MAX_ERRORS } = (await import("@pharn-ci/core")) as unknown as {
+    const { validatePolicyResponse, POLICY_MAX_ERRORS } = {
+      ...(await import("../src/policy/limits.js")),
+      ...(await import("../src/policy/response.js")),
+    } as unknown as {
       validatePolicyResponse: (value: unknown) => Validation;
       POLICY_MAX_ERRORS: number;
     };

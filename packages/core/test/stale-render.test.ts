@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildReport, type Report, renderMarkdown, scanAgentSetup, staleInstructionMessages } from "../src/index.js";
+import { type Report, renderMarkdown, scanAgentSetup } from "../src/index.js";
 import type { ReportStaleInstruction } from "../src/report.js";
+import { buildReport } from "../src/report.js";
+import { staleInstructionMessages } from "../src/setup/stale.js";
 
 // Stale instructions (Horizon 2 item H3): the "📄 Instructions" section of the PR comment.
 

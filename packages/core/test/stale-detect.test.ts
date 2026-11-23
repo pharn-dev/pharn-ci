@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { DiffFile } from "../src/diff/unified.js";
+import { type StaleInstructionSources, scanAgentSetup } from "../src/index.js";
 import {
   detectStaleInstructions,
   MAX_STALE_FINDINGS,
   MAX_STALE_PER_FILE,
-  type StaleInstructionSources,
-  scanAgentSetup,
   staleInstructionMessages,
-} from "../src/index.js";
+} from "../src/setup/stale.js";
 import { fixture } from "./helpers.js";
 
 // Stale instructions (Horizon 2 item H3): SI01 to SI03 against a fixed tree, diff-aware (SI04 is not emitted since

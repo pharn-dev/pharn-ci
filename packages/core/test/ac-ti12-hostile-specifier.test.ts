@@ -71,7 +71,7 @@ const diffPaths = (diff: string) => [...diff.matchAll(/^\+\+\+ b\/(.+)$/gm)].map
 
 async function indexOf(file: SourceFile | undefined): Promise<{ tests: Block[]; mocks: Mock[] }> {
   if (file === undefined) throw new Error("the fixture file is missing");
-  const core = (await import("@pharn-ci/core")) as unknown as {
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
     indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[]; mocks?: Mock[] };
   };
   const result = core.indexTestFile(file.path, file.text);

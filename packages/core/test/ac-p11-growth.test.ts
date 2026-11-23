@@ -37,7 +37,11 @@ const diffText = (count: number) => `${Array.from({ length: count }, (_, i) => m
 describe("org policy rule P11: linear time", { timeout: 180_000 }, () => {
   it("AC-20: with 20 protected globs, the P11 rule over a 4,000-entry diff takes under 8 times as long as over a 1,000-entry diff", async () => {
     expect(GLOBS).toHaveLength(20);
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("../src/agents.js")),
+      ...(await import("../src/diff/unified.js")),
+      ...(await import("../src/policy/agents.js")),
+    } as unknown as Core;
     const { detectP11 } = (await import("../src/policy/rules/p11.js")) as unknown as P11Module;
     const policy = {
       source: "app",

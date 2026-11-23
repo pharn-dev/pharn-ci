@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  collapseWhitespace,
-  JUNIT_MAX_DEPTH,
-  JUNIT_MESSAGE_READ_UNITS,
-  junitTestId,
-  parseJunitXml,
-  TEST_ID_MAX_UNITS,
-} from "../src/index.js";
+import { JUNIT_MAX_DEPTH, JUNIT_MESSAGE_READ_UNITS, parseJunitXml } from "../src/junit/parse.js";
+import { collapseWhitespace, junitTestId, TEST_ID_MAX_UNITS } from "../src/junit/testId.js";
 import { fixture } from "./helpers.js";
 
 // Flaky tests (A6): the JUnit XML reader and the test id. Inputs are the hand-written files in fixtures/junit/.

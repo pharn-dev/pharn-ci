@@ -73,7 +73,7 @@ function loadCase(name: string): Case {
 async function testsOf(files: SourceFile[], path: string): Promise<Block[]> {
   const file = files.find((f) => f.path === path);
   if (file === undefined) throw new Error(`the fixture has no text for ${path}`);
-  const core = (await import("@pharn-ci/core")) as unknown as {
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
     indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
   };
   const result = core.indexTestFile(file.path, file.text);

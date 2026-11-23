@@ -116,7 +116,7 @@ async function runBlock(c: Case): Promise<Report> {
 async function testsOf(c: Case, side: "base" | "head"): Promise<Block[]> {
   const file = c[side].find((f) => f.path === PATH);
   if (file === undefined) throw new Error(`the fixture has no ${side} text for ${PATH}`);
-  const core = (await import("@pharn-ci/core")) as unknown as {
+  const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
     indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
   };
   const result = core.indexTestFile(file.path, file.text);

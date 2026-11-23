@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  check,
   MAX_ADDED_TEXT_LINES,
   MAX_OTHER_ADDED_TEXT_CHARS,
   MAX_PRIORITY_ADDED_TEXT_CHARS,
-  type Report,
-  readDiffChunks,
-} from "../src/index.js";
+} from "../src/diff/unified.js";
+import { check, type Report, readDiffChunks } from "../src/index.js";
 import { DEFAULT_INJECTION_SEVERITIES } from "../src/injection/policy.js";
 import { fixture } from "./helpers.js";
 import { addedFileDiff, injectionFixture } from "./injection-fixture.js";

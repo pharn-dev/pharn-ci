@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  check,
-  evaluatePolicyRules,
-  MAX_RULE_VIOLATIONS,
-  type PolicyRuleInput,
-  parseUnifiedDiff,
-} from "../src/index.js";
+import { check, parseUnifiedDiff } from "../src/index.js";
+import { evaluatePolicyRules, MAX_RULE_VIOLATIONS } from "../src/policy/rules/evaluate.js";
+import type { PolicyRuleInput } from "../src/policy/rules/types.js";
 import { byCodeUnit } from "../src/text.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";

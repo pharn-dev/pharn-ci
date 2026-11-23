@@ -53,7 +53,7 @@ function expectEntry(table: Record<string, Entry>, key: string): void {
 
 describe("fix hints: a table entry for every documented code and signal id", () => {
   it("AC-2: every message code the schema documents has an entry with a closed kind and a non-empty hint of at most 200 characters", async () => {
-    const { MESSAGE_FIXES } = (await import("../src/index.js")) as unknown as Tables;
+    const { MESSAGE_FIXES } = (await import("../src/fix/table.js")) as unknown as Tables;
     expect(MESSAGE_FIXES, "MESSAGE_FIXES is exported").toBeDefined();
     const codes = documentedCodes();
     // Control: the extraction finds the codes of every era of the schema.
@@ -64,7 +64,7 @@ describe("fix hints: a table entry for every documented code and signal id", () 
   });
 
   it("AC-2: every signal id the schema documents (TI01-TI16, the P ids core produces, SI01-SI04, PI01-PI05, D01-D05) has an entry with a closed kind and a non-empty hint of at most 200 characters", async () => {
-    const { SIGNAL_FIXES } = (await import("../src/index.js")) as unknown as Tables;
+    const { SIGNAL_FIXES } = (await import("../src/fix/table.js")) as unknown as Tables;
     expect(SIGNAL_FIXES, "SIGNAL_FIXES is exported").toBeDefined();
     const ps = policyIds();
     // Control: P01 to P14 as core produces them (there is no rule P12).

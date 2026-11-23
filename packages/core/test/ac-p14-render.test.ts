@@ -1,13 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import {
-  agentPolicyOf,
-  type Report as CoreReport,
-  detectAgentPr,
-  evaluatePolicyRules,
-  parseUnifiedDiff,
-  renderMarkdown,
-} from "../src/index.js";
+import { type Report as CoreReport, detectAgentPr, parseUnifiedDiff, renderMarkdown } from "../src/index.js";
+import { agentPolicyOf } from "../src/policy/agents.js";
+import { evaluatePolicyRules } from "../src/policy/rules/evaluate.js";
 import { AGENT_FACTS, appPolicy, p14Messages, policyFixture, runP14 } from "./p14-run.js";
 import { purityViolations } from "./purity-check.js";
 

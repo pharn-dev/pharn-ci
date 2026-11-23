@@ -8,7 +8,7 @@ type Result = { ok: true; value: JsonValue; duplicates: unknown[] } | { ok: fals
 type Parse = (text: string, options: { jsonc: boolean }) => Result;
 
 async function load(): Promise<Parse> {
-  const core = (await import("@pharn-ci/core")) as unknown as { parseSettingsJson: Parse };
+  const core = (await import("../src/policy/settings/json.js")) as unknown as { parseSettingsJson: Parse };
   expect(typeof core.parseSettingsJson, "parseSettingsJson is exported").toBe("function");
   return core.parseSettingsJson;
 }

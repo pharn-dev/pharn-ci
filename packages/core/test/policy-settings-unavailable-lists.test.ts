@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { check, evaluatePolicyRules, type PolicyRuleInput, policyRuleMessages } from "../src/index.js";
+import { check } from "../src/index.js";
+import { evaluatePolicyRules } from "../src/policy/rules/evaluate.js";
+import { policyRuleMessages } from "../src/policy/rules/messages.js";
+import type { PolicyRuleInput } from "../src/policy/rules/types.js";
 import { fixture } from "./helpers.js";
 import { expectValidReport } from "./schema.js";
 import { withoutFix } from "./v090-codes.js";

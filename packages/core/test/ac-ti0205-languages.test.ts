@@ -113,7 +113,7 @@ describe("testIntegrity.languages names the languages indexed in the run", () =>
     const noPython = await run({ testSources: SOURCES });
     expect(noPython.testIntegrity.languages).toEqual(["js", "ts"]);
 
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
       indexTestFile(path: string, text: string): { parsed: boolean; reason?: string };
     };
     for (const [path, text] of [

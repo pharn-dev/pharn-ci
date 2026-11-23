@@ -185,7 +185,7 @@ describe("TI06 on Python test files, through the Python test index", () => {
     "AC-6: self.assertEqual(a, b) becoming assert a == b gives no TI06",
     async () => {
       requirePython();
-      const core = (await import("@pharn-ci/core")) as unknown as Record<string, unknown>;
+      const core = (await import("../../core/src/signals/ti06.js")) as unknown as Record<string, unknown>;
       expect(typeof core.detectTI06, "TI06 exists, so its absence here is the case's doing").toBe("function");
       const c = loadCase("pass-py-equal-to-assert");
       expectChange(c, "self.assertEqual(a, b)", "assert a == b");

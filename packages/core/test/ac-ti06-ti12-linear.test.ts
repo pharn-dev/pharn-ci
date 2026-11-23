@@ -100,7 +100,7 @@ describe("TI06: the comparison of one file grows less than eightfold from a quar
       expect(run.sizes.count).toBeGreaterThan(100);
     }
     // The generated files are valid TypeScript: the existing test index parses them with no syntax error.
-    const core = (await import("@pharn-ci/core")) as unknown as {
+    const core = (await import("../src/testIndex/indexTestFile.js")) as unknown as {
       indexTestFile(path: string, text: string): { parsed: boolean; syntaxErrors?: number };
     };
     for (const run of [full, quarter]) {

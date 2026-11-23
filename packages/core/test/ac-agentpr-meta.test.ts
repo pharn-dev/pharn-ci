@@ -32,7 +32,7 @@ interface MetaModule {
   withAgentPrMeta(report: Report, detection: Detection, facts: Facts): Report;
 }
 
-const load = async () => (await import("../src/index.js")) as unknown as MetaModule;
+const load = async () => (await import("../src/agents.js")) as unknown as MetaModule;
 
 const ROOT = new URL("../../../", import.meta.url);
 const agentPrFixture = (name: string) => readFileSync(new URL(`fixtures/agent-pr/${name}`, ROOT), "utf8");

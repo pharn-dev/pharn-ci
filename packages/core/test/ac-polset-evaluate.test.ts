@@ -27,7 +27,10 @@ const allowFile = (rules: string[]) =>
 
 describe("evaluatePolicyRules: lines, order and the per-rule cap", { timeout: 60_000 }, () => {
   it("AC-20: every violation has a line (null for P01, P08, P09, P10), the order is id, path, line, detail, both caps are 50 and every rule id is capped, and P08 is unchanged", async () => {
-    const core = (await import("@pharn-ci/core")) as unknown as Core;
+    const core = {
+      ...(await import("../src/diff/unified.js")),
+      ...(await import("../src/policy/rules/evaluate.js")),
+    } as unknown as Core;
     expect(core.MAX_RULE_VIOLATIONS).toBe(50);
     // CORE-123 (R5.6): the MAX_P08_VIOLATIONS alias of the same cap is gone; P08 is capped by MAX_RULE_VIOLATIONS.
     expect(Object.hasOwn(core, "MAX_P08_VIOLATIONS")).toBe(false);
