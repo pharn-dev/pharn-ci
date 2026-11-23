@@ -2,10 +2,8 @@ import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { isTestFile } from "../testFiles.js";
 import { byCodeUnit } from "../text.js";
+import { capFindings, MAX_FINDINGS_PER_FILE } from "./findingCap.js";
 import { coverageSourceLanguage } from "./signalFiles.js";
-
-/** The most TI13 signals one file gives; the rest are dropped, keeping the lowest line numbers. */
-const MAX_PER_FILE = 20;
 
 type Family = "istanbul" | "v8" | "c8" | "pragma";
 
@@ -86,7 +84,7 @@ function markerOf(
  * count, `if` or `else`) is `warn` instead; a whole-file or range hint there keeps the mode. A marker is matched by its
  * normalized text (lower case, white space collapsed): a removed line of the same file with the same marker accounts
  * for one added marker (an edit or a move), and each removed marker is used once, in line order. At most 20 signals per
- * file, on the lowest line numbers. No comment text reaches a signal: every detail is one fixed sentence.
+ * file (`capFindings`), on the lowest line numbers. No comment text reaches a signal: every detail is one fixed sentence.
  */
 export function detectTI13(diff: readonly DiffFile[], mode: "block" | "warn"): TestIntegritySignal[] {
   const signals: TestIntegritySignal[] = [];
@@ -120,12 +118,13 @@ export function detectTI13(diff: readonly DiffFile[], mode: "block" | "warn"): T
     }
     // A hint on one line of a file the change adds marks code that never had coverage to lose: warn, not block.
     const newFile = file.status === "added";
-    for (const { line, family, lineLevel } of fresh.slice(0, MAX_PER_FILE)) {
+    for (const { line, family, lineLevel } of fresh) {
       const severity = newFile && lineLevel ? "warn" : mode;
       signals.push({ id: "TI13", severity, path: file.path, line, detail: DETAILS[family] });
     }
   }
-  return signals.sort(
+  // The lowest lines, whatever their severity.
+  return capFindings(signals, MAX_FINDINGS_PER_FILE, () => 0).kept.sort(
     (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(a.detail, b.detail),
   );
 }

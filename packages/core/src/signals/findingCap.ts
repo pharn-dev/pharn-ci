@@ -11,15 +11,18 @@ export interface OmittedFindings {
 }
 
 const RANK = { block: 0, warn: 1, info: 2 } as const;
+const bySeverity = (signal: TestIntegritySignal): number => RANK[signal.severity];
 
 /**
- * At most `limit` findings per file and per signal id. Within a file and id the findings are taken block first, then
- * warn, then info, each by ascending line (a signal without a line last), so a blocking finding is never the one left
- * out. `kept` has the input's order; `omitted` has one entry per file and id that lost findings, in first-seen order.
+ * At most `limit` findings per file and per signal id. Within a file and id the findings are taken by `rank` (block
+ * first, then warn, then info, unless a signal passes its own), each by ascending line (a signal without a line last),
+ * so a blocking finding is never the one left out. `kept` has the input's order; `omitted` has one entry per file and
+ * id that lost findings, in first-seen order.
  */
 export function capFindings(
   signals: readonly TestIntegritySignal[],
   limit: number = MAX_FINDINGS_PER_FILE,
+  rank: (signal: TestIntegritySignal) => number = bySeverity,
 ): { kept: TestIntegritySignal[]; omitted: OmittedFindings[] } {
   const groups = new Map<string, TestIntegritySignal[]>();
   for (const signal of signals) {
@@ -36,7 +39,7 @@ export function capFindings(
       .map((signal, index) => ({ signal, index }))
       .sort(
         (a, b) =>
-          RANK[a.signal.severity] - RANK[b.signal.severity] ||
+          rank(a.signal) - rank(b.signal) ||
           (a.signal.line ?? Number.POSITIVE_INFINITY) - (b.signal.line ?? Number.POSITIVE_INFINITY) ||
           a.index - b.index,
       );

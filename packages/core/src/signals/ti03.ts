@@ -3,6 +3,7 @@ import type { TestIntegritySignal } from "../report.js";
 import { isTestFile } from "../testFiles.js";
 import type { TestSourceSide, TestSources } from "../testSources.js";
 import { byCodeUnit } from "../text.js";
+import { capFindings, MAX_FINDINGS_PER_FILE } from "./findingCap.js";
 import { pythonImportAliases } from "./pythonAliases.js";
 import {
   type JsTestLine,
@@ -14,12 +15,6 @@ import {
   testLanguage,
 } from "./testLines.js";
 import type { Ti03Category, Ti03Finding } from "./ti03Pairs.js";
-
-/**
- * The most TI03 signals one file gives. The unconditional skips of existing tests (the ones that take the mode as their
- * severity) are kept first, then the rest, each on the lowest line numbers, so warn findings can never push a block out.
- */
-const MAX_PER_FILE = 20;
 
 type Category = Ti03Category;
 
@@ -251,7 +246,8 @@ function findingsOf(
  *
  * The pair pass is `pairs`: what `detectTI03Pairs` found in the base-to-head test pairs, when the test files were
  * compared. Both passes give one finding per line, the stronger category winning (existing, conditional, cannot-place,
- * adds). At most 20 per file: the existing ones first, then the rest, each on the lowest line numbers. The detail is one
+ * adds). At most 20 per file (`capFindings`): the existing ones first, then the rest, each on the lowest line numbers,
+ * so warn findings can never push a block out. The detail is one
  * fixed sentence per category; no test text reaches a signal.
  *
  * A Python line is also read through the aliases the test file binds with its own top-level `import` / `from` lines
@@ -286,13 +282,9 @@ export function detectTI03(
     }
   }
   for (const { path, line, category } of pairs) note(path, line, category);
-  const rank = (category: Category) => (category === "existing" ? 0 : 1);
   const signals: TestIntegritySignal[] = [];
   for (const [path, lines] of byPath) {
-    const found = [...lines]
-      .map(([line, category]) => ({ line, category }))
-      .sort((a, b) => rank(a.category) - rank(b.category) || a.line - b.line);
-    for (const { line, category } of found.slice(0, MAX_PER_FILE)) {
+    for (const [line, category] of lines) {
       signals.push({
         id: "TI03",
         severity: category === "existing" ? mode : "warn",
@@ -302,5 +294,9 @@ export function detectTI03(
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  // The skips of existing tests (the mode as their severity) first, also in mode warn, then the rest.
+  const existingFirst = (signal: TestIntegritySignal) => (signal.detail === DETAILS.existing ? 0 : 1);
+  return capFindings(signals, MAX_FINDINGS_PER_FILE, existingFirst).kept.sort(
+    (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0),
+  );
 }

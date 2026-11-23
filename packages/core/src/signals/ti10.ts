@@ -4,11 +4,9 @@ import type { TestIntegritySignal } from "../report.js";
 import { deletedTestFiles, isTestFile } from "../testFiles.js";
 import type { TestSourceSide, TestSources } from "../testSources.js";
 import { byCodeUnit } from "../text.js";
+import { capFindings, MAX_FINDINGS_PER_FILE } from "./findingCap.js";
 import { type PackageScripts, readPackageScripts } from "./packageScripts.js";
 import { isPackageJsonFile } from "./signalFiles.js";
-
-/** The most TI10 signals one file gives; the rest are dropped, keeping the lowest line numbers. */
-const MAX_PER_FILE = 20;
 
 /** The ways the value of a test script can be weakened, plus the removal of a script that runs with the tests. */
 type Kind =
@@ -237,7 +235,7 @@ function scanKinds(value: string): Set<Kind> {
  * objects are compared, so the layout of the file does not matter. Otherwise (no sources, a side unavailable, a text
  * dropped, or not JSON) the added and removed diff lines are read, where a script line is one `"key": "value"` pair
  * and the diff needs its kept hunks. `--passWithNoTests` gives nothing when the tracked files hold no test file and the
- * diff deletes none. The severity is the mode; at most 20 per file, on the lowest line numbers. No script key or value
+ * diff deletes none. The severity is the mode; at most 20 per file (`capFindings`), on the lowest line numbers. No script key or value
  * reaches a signal: every detail is one fixed sentence.
  *
  * A `package.json` that git shows as binary (a `-diff` or `binary` attribute, or non-text content; CORE-50) has no diff
@@ -269,12 +267,15 @@ export function detectTI10(diff: readonly DiffFile[], options: TI10Options): Tes
       continue;
     }
 
+    // In line and detail order, so that of two findings on one line the cap keeps the one with the first detail.
     found.sort((a, b) => (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(DETAILS[a.kind], DETAILS[b.kind]));
-    for (const { line, kind } of found.slice(0, MAX_PER_FILE)) {
+    for (const { line, kind } of found) {
       signals.push({ id: "TI10", severity: options.mode, path: file.path, line, detail: DETAILS[kind] });
     }
   }
-  return signals.sort(
+  // A finding without a line is kept first, then the lowest lines.
+  const lineless = (signal: TestIntegritySignal) => (signal.line === null ? 0 : 1);
+  return capFindings(signals, MAX_FINDINGS_PER_FILE, lineless).kept.sort(
     (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(a.detail, b.detail),
   );
 }

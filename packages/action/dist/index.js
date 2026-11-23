@@ -37840,7 +37840,8 @@ function detectUnexercisedChanges(diff, touched, repoFiles, excluded, python = t
 // ../core/src/signals/findingCap.ts
 var MAX_FINDINGS_PER_FILE = 20;
 var RANK3 = { block: 0, warn: 1, info: 2 };
-function capFindings(signals, limit = MAX_FINDINGS_PER_FILE) {
+var bySeverity = (signal2) => RANK3[signal2.severity];
+function capFindings(signals, limit = MAX_FINDINGS_PER_FILE, rank = bySeverity) {
   const groups = /* @__PURE__ */ new Map();
   for (const signal2 of signals) {
     const key = `${signal2.id}\0${signal2.path}`;
@@ -37853,7 +37854,7 @@ function capFindings(signals, limit = MAX_FINDINGS_PER_FILE) {
   for (const group of groups.values()) {
     if (group.length <= limit) continue;
     const ranked = group.map((signal2, index) => ({ signal: signal2, index })).sort(
-      (a, b) => RANK3[a.signal.severity] - RANK3[b.signal.severity] || (a.signal.line ?? Number.POSITIVE_INFINITY) - (b.signal.line ?? Number.POSITIVE_INFINITY) || a.index - b.index
+      (a, b) => rank(a.signal) - rank(b.signal) || (a.signal.line ?? Number.POSITIVE_INFINITY) - (b.signal.line ?? Number.POSITIVE_INFINITY) || a.index - b.index
     );
     for (const { signal: signal2 } of ranked.slice(limit)) dropped.add(signal2);
     const first = group[0];
@@ -38791,7 +38792,6 @@ function detectTI02(match, mode) {
 }
 
 // ../core/src/signals/ti03.ts
-var MAX_PER_FILE = 20;
 var DETAILS = {
   existing: "An unconditional skip was added to a test that the diff shows existed before this change, so that test no longer runs.",
   conditional: "A conditional skip was added; the test is skipped only where its condition holds.",
@@ -38951,11 +38951,9 @@ function detectTI03(diff, mode, sources, pairs = []) {
     }
   }
   for (const { path, line, category } of pairs) note(path, line, category);
-  const rank = (category) => category === "existing" ? 0 : 1;
   const signals = [];
   for (const [path, lines] of byPath) {
-    const found = [...lines].map(([line, category]) => ({ line, category })).sort((a, b) => rank(a.category) - rank(b.category) || a.line - b.line);
-    for (const { line, category } of found.slice(0, MAX_PER_FILE)) {
+    for (const [line, category] of lines) {
       signals.push({
         id: "TI03",
         severity: category === "existing" ? mode : "warn",
@@ -38965,7 +38963,10 @@ function detectTI03(diff, mode, sources, pairs = []) {
       });
     }
   }
-  return signals.sort((a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  const existingFirst = (signal2) => signal2.detail === DETAILS.existing ? 0 : 1;
+  return capFindings(signals, MAX_FINDINGS_PER_FILE, existingFirst).kept.sort(
+    (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0)
+  );
 }
 
 // ../core/src/signals/ti03Pairs.ts
@@ -39175,7 +39176,6 @@ function detectTI03Pairs(input) {
 }
 
 // ../core/src/signals/ti04.ts
-var MAX_PER_FILE2 = 20;
 var DETAIL = "A focused-run marker (`.only`, `fit` or `fdescribe`) was added, so the runner may skip the other tests of this file or of the whole run.";
 function detectTI04(diff, mode) {
   const signals = [];
@@ -39189,20 +39189,17 @@ function detectTI04(diff, mode) {
         if (parsed !== null && parsed.kind === "call" && parsed.token === "only") removed.add(parsed.name);
       }
     }
-    const lines = [];
     for (const hunk of file.hunks) {
       for (const entry of hunk.added) {
         const parsed = parseJsTestCall(entry.text);
         if (parsed === null || parsed.kind !== "call" || parsed.token !== "only") continue;
-        if (!removed.has(parsed.name)) lines.push(entry.line);
+        if (!removed.has(parsed.name)) {
+          signals.push({ id: "TI04", severity: mode, path: file.path, line: entry.line, detail: DETAIL });
+        }
       }
     }
-    lines.sort((a, b) => a - b);
-    for (const line of lines.slice(0, MAX_PER_FILE2)) {
-      signals.push({ id: "TI04", severity: mode, path: file.path, line, detail: DETAIL });
-    }
   }
-  return signals.sort((a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
+  return capFindings(signals).kept.sort((a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0));
 }
 
 // ../core/src/signals/ti05.ts
@@ -40549,7 +40546,6 @@ function readPackageScripts(text) {
 }
 
 // ../core/src/signals/ti10.ts
-var MAX_PER_FILE3 = 20;
 var DETAILS2 = {
   "or-true": "A test script now ignores the exit status of a command, so it passes even when the tests fail.",
   echo: "A test script now prints a message in place of running the tests, or after a failing run, so it can pass without the tests passing.",
@@ -40704,11 +40700,12 @@ function detectTI10(diff, options) {
       continue;
     }
     found.sort((a, b) => (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(DETAILS2[a.kind], DETAILS2[b.kind]));
-    for (const { line, kind } of found.slice(0, MAX_PER_FILE3)) {
+    for (const { line, kind } of found) {
       signals.push({ id: "TI10", severity: options.mode, path: file.path, line, detail: DETAILS2[kind] });
     }
   }
-  return signals.sort(
+  const lineless = (signal2) => signal2.line === null ? 0 : 1;
+  return capFindings(signals, MAX_FINDINGS_PER_FILE, lineless).kept.sort(
     (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(a.detail, b.detail)
   );
 }
@@ -42673,7 +42670,6 @@ function detectTI12(touched, diff) {
 }
 
 // ../core/src/signals/ti13.ts
-var MAX_PER_FILE4 = 20;
 var DETAILS3 = {
   istanbul: "An Istanbul coverage hint was added, so the code it marks leaves the coverage this check grades.",
   v8: "A V8 coverage hint was added, so the code it marks leaves the coverage this check grades.",
@@ -42739,12 +42735,12 @@ function detectTI13(diff, mode) {
       else fresh.push(entry);
     }
     const newFile = file.status === "added";
-    for (const { line, family, lineLevel } of fresh.slice(0, MAX_PER_FILE4)) {
+    for (const { line, family, lineLevel } of fresh) {
       const severity2 = newFile && lineLevel ? "warn" : mode;
       signals.push({ id: "TI13", severity: severity2, path: file.path, line, detail: DETAILS3[family] });
     }
   }
-  return signals.sort(
+  return capFindings(signals, MAX_FINDINGS_PER_FILE, () => 0).kept.sort(
     (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0) || byCodeUnit(a.detail, b.detail)
   );
 }
@@ -45285,12 +45281,12 @@ function signalHint(id, label, blocks, detail) {
 var MAX_FINDINGS = 20;
 var OPEN_FINDINGS = 10;
 var SEVERITY_RANK2 = { block: 0, warn: 1, info: 2 };
-function bySeverity(signals) {
+function bySeverity2(signals) {
   const rank = (s) => SEVERITY_RANK2[s.severity] ?? 3;
   return signals.map((signal2, index) => ({ signal: signal2, index })).sort((a, b) => rank(a.signal) - rank(b.signal) || a.index - b.index).map(({ signal: signal2 }) => signal2);
 }
 function listedSignals(report) {
-  return bySeverity(report.testIntegrity.signals).slice(0, MAX_FINDINGS);
+  return bySeverity2(report.testIntegrity.signals).slice(0, MAX_FINDINGS);
 }
 var SIGNAL_MESSAGE_CODE = /^TEST_INTEGRITY_TI\d\d$/;
 var SEVERITY_ICON = { block: LEVEL_ICON.error, warn: LEVEL_ICON.warn, info: LEVEL_ICON.info };
@@ -45456,7 +45452,7 @@ function policyLines(report, maxRows) {
   if (violations.length === 0) {
     if (report.policy?.source !== "none") lines.push("No policy violations.", "");
   } else {
-    const listed2 = bySeverity(violations).slice(0, Math.min(MAX_POLICY_VIOLATIONS, maxRows));
+    const listed2 = bySeverity2(violations).slice(0, Math.min(MAX_POLICY_VIOLATIONS, maxRows));
     const violationLines = (violation) => {
       const icon = SEVERITY_ICON[violation.severity] ?? LEVEL_ICON.info;
       const id = inlineText(String(violation.id));
@@ -45549,7 +45545,7 @@ function injectionSignalsOf(report) {
   return Array.isArray(signals) ? signals : [];
 }
 function listedInjection(report) {
-  return bySeverity(injectionSignalsOf(report)).slice(0, MAX_FINDINGS);
+  return bySeverity2(injectionSignalsOf(report)).slice(0, MAX_FINDINGS);
 }
 var INJECTION_MESSAGE_CODE = /^INJECTION_PI\d\d$/;
 function injectionLines(report) {
@@ -45630,7 +45626,7 @@ function hasDependencySection(report) {
   return typeof deps.checked === "number" && deps.checked > 0 || dependencySignalsOf(report).length > 0 || report.messages.some((m) => m.code === "DEPENDENCY_CHECK_INCOMPLETE" || m.code === "DEPENDENCY_LOOKUP_UNAVAILABLE");
 }
 function listedDependencySignals(report, maxRows) {
-  return bySeverity(dependencySignalsOf(report)).slice(0, Math.min(MAX_DEPENDENCY_FINDINGS, Math.max(maxRows, 1)));
+  return bySeverity2(dependencySignalsOf(report)).slice(0, Math.min(MAX_DEPENDENCY_FINDINGS, Math.max(maxRows, 1)));
 }
 function dependencyLines(report, maxRows) {
   const label = acceptLabelOf(report);
