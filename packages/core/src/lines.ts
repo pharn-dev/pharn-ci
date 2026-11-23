@@ -39,10 +39,3 @@ export function* splitLines(chunks: Iterable<string>): Generator<string> {
   for (const chunk of chunks) yield* splitter.push(chunk);
   yield* splitter.finish();
 }
-
-/** The lines of a stream of chunks, as `joined.split(/\r?\n/)` would give them. */
-export async function* splitLinesAsync(chunks: AsyncIterable<string>): AsyncGenerator<string> {
-  const splitter = createLineSplitter();
-  for await (const chunk of chunks) yield* splitter.push(chunk);
-  yield* splitter.finish();
-}

@@ -24,16 +24,6 @@ export function parseLcovLines(lines: Iterable<string>, options: ParseCoverageOp
   return reader.finish();
 }
 
-/** Like `parseLcovLines`, for lines that arrive from a stream. A rejection of the stream rejects the promise. */
-export async function parseLcovLinesAsync(
-  lines: AsyncIterable<string>,
-  options: ParseCoverageOptions = {},
-): Promise<CoverageMap> {
-  const reader = createLcovReader(options);
-  for await (const line of lines) reader.push(line);
-  return reader.finish();
-}
-
 /**
  * An lcov tracefile read one line at a time: `push` each line (without its line end), then `finish` for the map.
  * Memory holds the coverage map, never the text. `skipped` is the number of `DA` records dropped so far: one read

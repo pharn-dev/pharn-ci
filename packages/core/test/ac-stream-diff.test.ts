@@ -33,9 +33,18 @@ async function* asAsync(items: Iterable<string>): AsyncGenerator<string> {
 
 describe("unified diff line reader", () => {
   it("AC-2: every diff fixture, header cases included, as written and with CRLF, parses line by line to what parseUnifiedDiff returns", async () => {
-    const { parseUnifiedDiff, createUnifiedDiffReader, parseUnifiedDiffLines, parseUnifiedDiffLinesAsync } =
-      await import("../src/diff/unified.js");
+    const { parseUnifiedDiff, createUnifiedDiffReader, parseUnifiedDiffLines } = await import("../src/diff/unified.js");
     const { splitLines } = await import("../src/lines.js");
+    // CORE-142: parseUnifiedDiffLinesAsync, used by tests only, is gone; the chunks go through the real streaming entry
+    // point, which keeps the line text check() keeps, so it is compared with the whole-text parser given the same options.
+    const { readDiffChunks } = await import("../src/chunkInputs.js");
+    const { keepSignalFileText } = await import("../src/signals/signalFiles.js");
+    const { injectionTextPriority, keepInjectionText } = await import("../src/injection/scan.js");
+    const checkOptions = {
+      keepText: keepSignalFileText(),
+      keepAddedText: keepInjectionText,
+      priorityAddedText: injectionTextPriority,
+    };
 
     const names = diffFixtures();
     expect(names).toContain("diff/header-cases.diff");
@@ -79,6 +88,7 @@ describe("unified diff line reader", () => {
         ["CRLF", written.replace(/\n/g, "\r\n")],
       ] as const) {
         const expected = JSON.stringify(parseUnifiedDiff(text));
+        const expectedWithText = JSON.stringify(parseUnifiedDiff(text, checkOptions));
         const where = `${name} (${variant})`;
 
         for (const [how, chunks] of chunkings(text)) {
@@ -89,11 +99,14 @@ describe("unified diff line reader", () => {
           const results = {
             createUnifiedDiffReader: reader.finish(),
             parseUnifiedDiffLines: parseUnifiedDiffLines(lines),
-            parseUnifiedDiffLinesAsync: await parseUnifiedDiffLinesAsync(asAsync(lines)),
           };
           for (const [api, files] of Object.entries(results)) {
             compared++;
             if (JSON.stringify(files) !== expected) mismatches.push(`${where}, ${how}: ${api}`);
+          }
+          compared++;
+          if (JSON.stringify(await readDiffChunks(asAsync(chunks))) !== expectedWithText) {
+            mismatches.push(`${where}, ${how}: readDiffChunks`);
           }
         }
       }

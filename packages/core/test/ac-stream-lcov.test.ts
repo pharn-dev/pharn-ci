@@ -43,10 +43,10 @@ const canonical = (map: Map<string, Map<number, number>>) =>
 
 describe("lcov line reader", () => {
   it("AC-1: every lcov fixture, as written and with CRLF, parses line by line to what parseLcov returns", async () => {
-    const { parseLcov, createLcovReader, parseLcovLines, parseLcovLinesAsync } = await import(
-      "../src/coverage/lcov.js"
-    );
+    const { parseLcov, createLcovReader, parseLcovLines } = await import("../src/coverage/lcov.js");
     const { splitLines } = await import("../src/lines.js");
+    // CORE-142: parseLcovLinesAsync, used by tests only, is gone; the chunks go through the real streaming entry point.
+    const { readCoverageChunks } = await import("../src/chunkInputs.js");
 
     const names = lcovFixtures();
     // The lcov fixtures of fixtures/lcov/, fixtures/golden*/, fixtures/coverage-multi/ and the others.
@@ -76,7 +76,7 @@ describe("lcov line reader", () => {
             const results = {
               createLcovReader: reader.finish(),
               parseLcovLines: parseLcovLines(lines, options),
-              parseLcovLinesAsync: await parseLcovLinesAsync(asAsync(lines), options),
+              readCoverageChunks: (await readCoverageChunks(asAsync(chunks), "lcov", options)).parsed,
             };
             for (const [api, map] of Object.entries(results)) {
               compared++;

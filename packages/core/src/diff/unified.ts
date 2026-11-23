@@ -136,16 +136,6 @@ export function parseUnifiedDiffLines(lines: Iterable<string>, options: UnifiedD
   return reader.finish();
 }
 
-/** Like `parseUnifiedDiffLines`, for lines that arrive from a stream. A rejection of the stream rejects the promise. */
-export async function parseUnifiedDiffLinesAsync(
-  lines: AsyncIterable<string>,
-  options: UnifiedDiffOptions = {},
-): Promise<DiffFile[]> {
-  const reader = createUnifiedDiffReader(options);
-  for await (const line of lines) reader.push(line);
-  return reader.finish();
-}
-
 /**
  * A unified diff read one line at a time: `push` each line (without its line end), then `finish` for the files.
  * Memory holds the parsed paths and added line numbers, plus the bounded text of the files `keepText` selects.

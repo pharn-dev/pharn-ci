@@ -7,16 +7,6 @@ async function load() {
   return import("../src/lines.js");
 }
 
-async function collect(lines: AsyncIterable<string>): Promise<string[]> {
-  const out: string[] = [];
-  for await (const line of lines) out.push(line);
-  return out;
-}
-
-async function* asAsync(chunks: readonly string[]): AsyncGenerator<string> {
-  for (const chunk of chunks) yield chunk;
-}
-
 /** Cuts `text` into chunks of `size` characters (the last one may be shorter). */
 function cut(text: string, size: number): string[] {
   const chunks: string[] = [];
@@ -42,13 +32,14 @@ const CASES: Record<string, readonly string[]> = {
 
 describe("core line splitter", () => {
   it("AC-3: gives the lines text.split(/\\r?\\n/) gives for the joined chunks, whatever the chunk boundaries", async () => {
-    const { createLineSplitter, splitLines, splitLinesAsync } = await load();
+    const { createLineSplitter, splitLines } = await load();
 
+    // CORE-142: splitLinesAsync, used by tests only, is gone. A stream of chunks is split by createLineSplitter inside
+    // readCoverageChunks and readDiffChunks, which ac-stream-lcov.test.ts and ac-stream-diff.test.ts feed these chunkings.
     const check = async (chunks: readonly string[], label: string) => {
       const expected = chunks.join("").split(/\r?\n/);
 
       expect([...splitLines(chunks)], `${label} (splitLines)`).toEqual(expected);
-      expect(await collect(splitLinesAsync(asAsync(chunks))), `${label} (splitLinesAsync)`).toEqual(expected);
 
       const splitter = createLineSplitter();
       const pushed: string[] = [];

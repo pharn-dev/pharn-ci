@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createUnifiedDiffReader, parseUnifiedDiff, parseUnifiedDiffLinesAsync } from "../src/diff/unified.js";
+import { readDiffChunks } from "../src/chunkInputs.js";
+import { createUnifiedDiffReader, parseUnifiedDiff } from "../src/diff/unified.js";
 import { fixture } from "./helpers.js";
 
 // Policy rule P14 (agent PR size cap) counts removed lines, so the diff parser now records how many lines each entry
@@ -36,17 +37,22 @@ describe("the diff parser counts removed lines", () => {
     for (const file of tricky) expect(Object.hasOwn(file, "removedCount")).toBe(file.removedCount !== undefined);
   });
 
-  it("the line reader and the async reader give the same entries as the whole-text parser", async () => {
+  it("the line reader and the streaming reader give the same entries as the whole-text parser", async () => {
+    // CORE-142: parseUnifiedDiffLinesAsync, used by tests only, is gone; the streaming reader the CLI and the Action
+    // use is readDiffChunks, which also keeps line text, so its paths and counts are compared.
+    const counts = (files: readonly { path: string; status: string; removedCount?: number }[]) =>
+      files.map((file) => [file.path, file.status, file.removedCount]);
     for (const name of NAMES) {
       const text = fixture(`policy-rules/p14/${name}`);
       const whole = parseUnifiedDiff(text);
       const reader = createUnifiedDiffReader();
       for (const line of text.split(/\r?\n/)) reader.push(line);
       expect(reader.finish(), name).toEqual(whole);
-      async function* lines() {
-        for (const line of text.split("\n")) yield line;
+      async function* chunks() {
+        // One chunk per line, each with its own line end.
+        yield* text.split(/(?<=\n)/);
       }
-      expect(await parseUnifiedDiffLinesAsync(lines()), name).toEqual(whole);
+      expect(counts(await readDiffChunks(chunks())), name).toEqual(counts(whole));
     }
   });
 });

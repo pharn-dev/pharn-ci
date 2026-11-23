@@ -25,18 +25,27 @@ afterEach(() => {
 async function load() {
   const { nodeDeps } = await import("../src/nodeDeps.js");
   const { createNodeIo } = await import("../../action/src/node-io.js");
-  const { splitLinesAsync } = await import("../../core/src/lines.js");
-  const { parseLcov, parseLcovLinesAsync } = await import("../../core/src/coverage/lcov.js");
-  const { parseUnifiedDiff, parseUnifiedDiffLinesAsync } = await import("../../core/src/diff/unified.js");
+  // CORE-142: the test-only splitLinesAsync, parseLcovLinesAsync and parseUnifiedDiffLinesAsync are gone; the streams
+  // go through the entry points the CLI and the Action call, readCoverageChunks and readDiffChunks.
+  const { readCoverageChunks, readDiffChunks } = await import("../../core/src/chunkInputs.js");
+  const { parseLcov } = await import("../../core/src/coverage/lcov.js");
+  const { parseUnifiedDiff } = await import("../../core/src/diff/unified.js");
   const { gitDiffArgs } = await import("../../core/src/inputs.js");
+  const { keepSignalFileText } = await import("../../core/src/signals/signalFiles.js");
+  const { injectionTextPriority, keepInjectionText } = await import("../../core/src/injection/scan.js");
+  const checkOptions = {
+    keepText: keepSignalFileText(),
+    keepAddedText: keepInjectionText,
+    priorityAddedText: injectionTextPriority,
+  };
   return {
     nodeDeps,
     createNodeIo,
-    splitLinesAsync,
+    readCoverageChunks,
+    readDiffChunks,
     parseLcov,
-    parseLcovLinesAsync,
     parseUnifiedDiff,
-    parseUnifiedDiffLinesAsync,
+    checkOptions,
     gitDiffArgs,
   };
 }
@@ -88,7 +97,7 @@ async function caught(promise: Promise<unknown>): Promise<Error> {
 
 describe("the CLI's and the Action's real streaming", () => {
   it("AC-14: a large lcov file with a BOM, CRLF and multi-byte paths, streamed from disk, parses as read whole", async () => {
-    const { nodeDeps, createNodeIo, splitLinesAsync, parseLcov, parseLcovLinesAsync } = await load();
+    const { nodeDeps, createNodeIo, readCoverageChunks, parseLcov } = await load();
     const dir = tempDir("pharn-ci-stream-lcov-");
     const path = join(dir, "lcov.info");
     const bytes = bigLcov();
@@ -108,15 +117,14 @@ describe("the CLI's and the Action's real streaming", () => {
     ] as const) {
       const chunks = await deps.readFileStream(path);
       expect(chunks, label).not.toBeNull();
-      const map = await parseLcovLinesAsync(splitLinesAsync(chunks as AsyncIterable<string>), options);
+      const { parsed: map } = await readCoverageChunks(chunks as AsyncIterable<string>, "lcov", options);
       expect(map.size, label).toBe(expected.size);
       expect(canonical(map), label).toBe(canonical(expected));
     }
   }, 60_000);
 
   it("AC-15: a real streamed git diff parses as read whole, a missing base rejects with git's error, and the timeout holds", async () => {
-    const { nodeDeps, createNodeIo, splitLinesAsync, parseUnifiedDiff, parseUnifiedDiffLinesAsync, gitDiffArgs } =
-      await load();
+    const { nodeDeps, createNodeIo, readDiffChunks, parseUnifiedDiff, checkOptions, gitDiffArgs } = await load();
     const dir = tempDir("pharn-ci-stream-git-");
     const sh = (...args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
     sh("init", "-q", "-b", "main");
@@ -160,9 +168,9 @@ describe("the CLI's and the Action's real streaming", () => {
       ["cli", nodeDeps(dir)],
       ["action", createNodeIo(dir)],
     ] as const) {
-      const expected = parseUnifiedDiff(await deps.git(args));
+      const expected = parseUnifiedDiff(await deps.git(args), checkOptions);
       expect(expected.length, label).toBeGreaterThanOrEqual(3);
-      const streamed = await parseUnifiedDiffLinesAsync(splitLinesAsync(deps.gitStream(args)));
+      const streamed = await readDiffChunks(deps.gitStream(args));
       expect(streamed, label).toEqual(expected);
     }
 
