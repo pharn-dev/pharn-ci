@@ -168,8 +168,8 @@ describe("docs contract", () => {
       .split("\n")
       .filter((line) => line.startsWith("## "));
     expect(headings[0], "CHANGELOG.md starts with the Unreleased section").toBe("## [Unreleased]");
-    expect(headings[1], "the release heading under Unreleased").toMatch(
-      new RegExp(`^## \\[${version.replace(/\./g, "\\.")}\\] - (\\d{4}-\\d{2}-\\d{2}|YYYY-MM-DD)$`),
-    );
+    const release = /^## \[([^\]]+)\] - (?:\d{4}-\d{2}-\d{2}|YYYY-MM-DD)$/.exec(headings[1] ?? "");
+    expect(release, `the release heading under Unreleased: ${headings[1]}`).not.toBeNull();
+    expect(release?.[1], "the version of the newest release heading").toBe(version);
   });
 });
