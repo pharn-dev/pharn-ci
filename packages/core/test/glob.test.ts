@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 type Match = (pattern: string, path: string) => boolean;
 
 async function loadMatchGlob(): Promise<Match> {
-  const core = await import("../src/index.js");
+  const core = await import("../src/glob.js");
   return (core as unknown as { matchGlob: Match }).matchGlob;
 }
 
