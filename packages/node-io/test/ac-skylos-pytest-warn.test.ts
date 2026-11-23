@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -33,11 +34,6 @@ function requirePython(): void {
       `this test needs python3 3.8 or newer on PATH and found ${PYTHON.version === "" ? `none (${PYTHON.error || "python3 did not run"})` : `python3 ${PYTHON.version}`}`,
     );
   }
-}
-
-interface SourceFile {
-  path: string;
-  text: string;
 }
 
 /** The `<logical path>.txt` files under one side of a case, as test-source files sorted by logical path. */
@@ -74,9 +70,7 @@ async function runCase(name: string) {
     base: { files: sideFiles(`${root}base`), dropped: [] },
     head: { files: sideFiles(`${root}head`), dropped: [] },
   };
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const pythonTestIndex = await io.indexPythonTestSources(sources);
   if ([...sources.base.files, ...sources.head.files].some((f) => f.path.endsWith(".py"))) {
     expect(pythonTestIndex?.available, `${name}: the Python index ran`).toBe(true);
@@ -94,7 +88,7 @@ async function runCase(name: string) {
     testSources: sources,
     pythonTestIndex,
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return { report, markdown: renderMarkdown(report) };
 }

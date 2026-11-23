@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -35,21 +36,6 @@ function requirePython(): void {
       `this test needs python3 3.8 or newer on PATH and found ${PYTHON.version === "" ? `none (${PYTHON.error || "python3 did not run"})` : `python3 ${PYTHON.version}`}`,
     );
   }
-}
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -93,9 +79,7 @@ async function runCase(name: string) {
   const base = sideFiles(`${root}base`);
   const head = sideFiles(`${root}head`);
   const testSources = { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } };
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const pythonTestIndex = await io.indexPythonTestSources(testSources);
   expect(pythonTestIndex?.available, `${name}: the Python index ran`).toBe(true);
   const { check } = await import("../../core/test/text-coverage.js");
@@ -109,9 +93,9 @@ async function runCase(name: string) {
     testSources,
     pythonTestIndex,
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  const ti03 = (report as unknown as Report).testIntegrity.signals
+  const ti03 = report.testIntegrity.signals
     .filter((s) => String(s.id) === "TI03")
     .map(({ severity, path, line, detail }) => ({ severity, path, line, detail }));
   return { diff, base, head, ti03 };

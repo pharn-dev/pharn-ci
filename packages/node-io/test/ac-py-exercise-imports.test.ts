@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import type { PythonIndexFile as IndexedFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 
 // CORE-104 (R3.8): the Python test index also returns, per parsed file, the module names of every import statement in
@@ -10,17 +11,11 @@ import { describe, expect, it } from "vitest";
 const FIXTURES = fileURLToPath(new URL("../../../fixtures/", import.meta.url));
 const SLOW = 60_000;
 
-interface IndexedFile {
-  path: string;
-  result: { parsed: boolean };
-  imports?: string[];
-}
-
 async function indexOne(path: string, text: string): Promise<IndexedFile> {
   const { indexPythonTests } = await import("../src/index.js");
   const run = await indexPythonTests([{ path, text }]);
   if (!run.available) throw new Error(`the Python index is unavailable: ${run.reason} (${run.detail})`);
-  const [file] = run.files as IndexedFile[];
+  const [file] = run.files;
   if (file === undefined) throw new Error("the run gave no file");
   return file;
 }

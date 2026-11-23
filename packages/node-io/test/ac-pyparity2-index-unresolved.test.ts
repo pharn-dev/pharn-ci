@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import type { TestIndexResult as Result } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { TestBlock as Block } from "../../core/src/testIndex/types.js";
 
 // indexPythonTests is loaded inside the test body: the AC test is written before the Python index resolves aliases, so
 // nothing the build adds may run while the file loads. The three alias fixtures are written by the build, so the test
@@ -31,24 +33,10 @@ function requirePython(): void {
   }
 }
 
-type Assertion = { chain: string; line: number };
-type Mock = { callee: string; specifier: string | null; line: number };
-type Block = {
-  kind: string;
-  name: string;
-  line: number;
-  modifiers: string[];
-  assertionCount: number;
-  assertions: Assertion[];
-};
-type Index = { parsed: true; syntaxErrors: number; tests: Block[]; mocks: Mock[] };
-type Result = Index | { parsed: false; reason: string };
-type Run = { available: true; files: { path: string; result: Result }[] } | { available: false; reason: string };
+type Index = Extract<Result, { parsed: true }>;
 
 async function indexResult(path: string, text: string): Promise<Result> {
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTests: (files: { path: string; text: string }[]) => Promise<Run>;
-  };
+  const io = await import("../src/index.js");
   const run = await io.indexPythonTests([{ path, text }]);
   if (!run.available) throw new Error(`the run is unavailable: ${JSON.stringify(run)}`);
   return (run.files[0] as { result: Result }).result;

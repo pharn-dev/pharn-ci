@@ -1,12 +1,10 @@
+import type { TestIndexResult as Result } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 
 // indexPythonTests is loaded inside the test body: this test is written before it exists, so nothing the build adds
 // may run while the file loads. The real interpreter runs; a missing python3 fails the test.
 
 const SLOW = 60_000;
-
-type Result = { parsed: true; tests: { name: string; line: number; endLine: number }[] } | { parsed: false };
-type Run = { available: true; files: { path: string; result: Result }[] } | { available: false; reason: string };
 
 /** One text with blocks, a decorator, a multi-line string, an assertion and a mock, as lines. */
 const LINES = [
@@ -31,9 +29,7 @@ describe("indexPythonTests: line endings and a byte order mark", () => {
   it(
     "AC-8: LF, CRLF and CR endings and a leading U+FEFF give the same result, and the BOM text is parsed",
     async () => {
-      const io = (await import("../src/index.js")) as unknown as {
-        indexPythonTests: (files: { path: string; text: string }[]) => Promise<Run>;
-      };
+      const io = await import("../src/index.js");
       const lf = LINES.join("\n");
       const forms: [label: string, text: string][] = [
         ["LF", lf],

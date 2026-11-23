@@ -11,17 +11,13 @@ import { describe, expect, it } from "vitest";
 const SLOW = 60_000;
 const fixture = (name: string) => readFileSync(new URL(`../../../fixtures/py-index/${name}`, import.meta.url), "utf8");
 
-type Run = { available: true; files: { path: string; result: unknown }[] } | { available: false; reason: string };
-
 const PLANTED = ["ast.py", "json.py", "sitecustomize.py"];
 
 describe("indexPythonTests: modules planted on the parent's path", () => {
   it(
     "AC-16: ignores ast.py, json.py and sitecustomize.py in the parent's cwd and PYTHONPATH and still matches the AC-1 golden",
     async () => {
-      const io = (await import("../src/index.js")) as unknown as {
-        indexPythonTests: (files: { path: string; text: string }[]) => Promise<Run>;
-      };
+      const io = await import("../src/index.js");
       const text = fixture("test_functions.py.txt");
       const golden = JSON.parse(fixture("test_functions.index.json")) as unknown;
 

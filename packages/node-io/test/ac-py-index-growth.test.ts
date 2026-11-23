@@ -1,3 +1,4 @@
+import type { TestIndexResult as Result } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { measureGrowth } from "../../core/test/growth.js";
 
@@ -10,9 +11,6 @@ import { measureGrowth } from "../../core/test/growth.js";
 const CEILING_MS = 15_000;
 const MAX_RATIO = 8;
 const SLOW = 300_000;
-
-type Result = { parsed: true; tests: unknown[] } | { parsed: false; reason: string };
-type Run = { available: true; files: { path: string; result: Result }[] } | { available: false; reason: string };
 
 /** A valid Python test file of exactly `bytes` UTF-8 bytes: test functions, then a comment line to pad. */
 function sizedTests(bytes: number): string {
@@ -45,10 +43,8 @@ describe("indexPythonTests: growth from quarter to full size", () => {
   it.each(INPUTS)(
     "AC-11: %s grows by less than 8 times from a quarter of its size, each run within 15 s",
     async (label, make, size) => {
-      const io = (await import("../src/index.js")) as unknown as {
-        indexPythonTests: (files: { path: string; text: string }[]) => Promise<Run>;
-      };
-      const core = (await import("../../core/src/testSources.js")) as unknown as { MAX_TEST_SOURCE_FILE_BYTES: number };
+      const io = await import("../src/index.js");
+      const core = await import("../../core/src/testSources.js");
       const cap = core.MAX_TEST_SOURCE_FILE_BYTES;
       expect(cap).toBe(524_288);
       const full = size === "cap" ? cap : size;

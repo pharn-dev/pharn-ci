@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -37,18 +38,6 @@ function requirePython(): void {
       `this test needs python3 3.8 or newer on PATH and found ${PYTHON.version === "" ? `none (${PYTHON.error || "python3 did not run"})` : `python3 ${PYTHON.version}`}`,
     );
   }
-}
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
 }
 
 function sideFiles(dir: string): SourceFile[] {
@@ -97,9 +86,7 @@ async function runCase(name: string, mode: "block" | "warn" = "block") {
   const headText = head.find((f) => f.path === PY)?.text ?? "";
   expectDiffMatches(diff, baseText, headText);
   const testSources = { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } };
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const pythonTestIndex = await io.indexPythonTestSources(testSources);
   expect(pythonTestIndex?.available, `${name}: the Python index ran`).toBe(true);
   const { check } = await import("../../core/test/text-coverage.js");
@@ -113,9 +100,9 @@ async function runCase(name: string, mode: "block" | "warn" = "block") {
     testSources,
     pythonTestIndex,
     testIntegrityMode: { input: mode },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  const ti03 = (report as unknown as { testIntegrity: { signals: Signal[] } }).testIntegrity.signals
+  const ti03 = report.testIntegrity.signals
     .filter((s) => String(s.id) === "TI03")
     .map(({ severity, path, line, detail }) => ({ severity, path, line, detail }));
   return { baseText, headText, ti03 };

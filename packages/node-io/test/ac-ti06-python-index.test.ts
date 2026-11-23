@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Report, TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -35,24 +36,10 @@ function requirePython(): void {
   }
 }
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[]; languages: string[] };
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -93,9 +80,7 @@ const linesEqual = (text: string, line: string) => text.split("\n").filter((l) =
 
 /** Index the case's Python sources with node-io, then run check() on them in mode block. */
 async function runPython(c: Case): Promise<Report> {
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const sources = { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } };
   const pythonTestIndex = await io.indexPythonTestSources(sources);
   expect(pythonTestIndex?.available, "the Python index ran").toBe(true);
@@ -111,9 +96,9 @@ async function runPython(c: Case): Promise<Report> {
     testSources: sources,
     pythonTestIndex,
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  const typed = report as unknown as Report;
+  const typed = report;
   expect(typed.testIntegrity.languages, "the Python file was compared").toEqual(["py"]);
   return typed;
 }
@@ -185,7 +170,7 @@ describe("TI06 on Python test files, through the Python test index", () => {
     "AC-6: self.assertEqual(a, b) becoming assert a == b gives no TI06",
     async () => {
       requirePython();
-      const core = (await import("../../core/src/signals/ti06.js")) as unknown as Record<string, unknown>;
+      const core = await import("../../core/src/signals/ti06.js");
       expect(typeof core.detectTI06, "TI06 exists, so its absence here is the case's doing").toBe("function");
       const c = loadCase("pass-py-equal-to-assert");
       expectChange(c, "self.assertEqual(a, b)", "assert a == b");

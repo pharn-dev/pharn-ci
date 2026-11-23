@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -32,11 +33,6 @@ function requirePython(): void {
   }
 }
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
-
 /** The `<logical path>.txt` files under one side of the case, as test-source files sorted by logical path. */
 function sideFiles(dir: string): SourceFile[] {
   return readdirSync(dir, { recursive: true, encoding: "utf8" })
@@ -54,9 +50,7 @@ async function run(withIndex: boolean) {
       base: { files: sideFiles(`${ROOT}base`), dropped: [] },
       head: { files: sideFiles(`${ROOT}head`), dropped: [] },
     };
-    const io = (await import("../src/index.js")) as unknown as {
-      indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-    };
+    const io = await import("../src/index.js");
     const pythonTestIndex = await io.indexPythonTestSources(sources);
     expect(pythonTestIndex?.available, "the Python index ran").toBe(true);
     extra = { testSources: sources, pythonTestIndex };
@@ -70,7 +64,7 @@ async function run(withIndex: boolean) {
     repoFiles: readFileSync(`${ROOT}files.txt`, "utf8").trim().split("\n"),
     testIntegrityMode: { input: "block" },
     ...extra,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report;
 }

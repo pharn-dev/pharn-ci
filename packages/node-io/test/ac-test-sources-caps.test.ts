@@ -2,6 +2,12 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type {
+  DiffFile,
+  TestSourceDrop as Drop,
+  TestSourceSide as Side,
+  TestSourceFile as SourceFile,
+} from "@pharn-ci/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { gitDiffArgs, parseUnifiedDiff } from "../../core/src/index.js";
 
@@ -9,12 +15,7 @@ import { gitDiffArgs, parseUnifiedDiff } from "../../core/src/index.js";
 // nothing that depends on them may run while the file loads. Each test builds a real git repository whose feature
 // branch adds the files, and reads them with the real git runners.
 
-type SourceFile = { path: string; text: string };
-type Drop = { path: string; reason: string };
-type Side = { unavailable: string } | { files: SourceFile[]; dropped: Drop[] };
-type Sources = { base: Side; head: Side };
 type GitDeps = { git(args: string[]): Promise<string>; gitBatch(args: string[], input: string): Promise<Uint8Array> };
-type Reader = (deps: GitDeps, options: { revisions: unknown; diff: readonly unknown[] }) => Promise<Sources>;
 
 const SLOW = 120_000;
 
@@ -55,15 +56,9 @@ function featureRepo() {
 }
 
 async function load() {
-  const { readTestSources, runRevisions } = (await import("../src/index.js")) as unknown as {
-    readTestSources: Reader;
-    runRevisions(deps: GitDeps, base: string): unknown;
-  };
-  const io = (await import("../src/io.js")) as unknown as {
-    runGit(cwd: string, args: string[]): Promise<string>;
-    runGitBatch(cwd: string, args: string[], input: string): Promise<Uint8Array>;
-  };
-  return (dir: string, diff: readonly unknown[]) => {
+  const { readTestSources, runRevisions } = await import("../src/index.js");
+  const io = await import("../src/io.js");
+  return (dir: string, diff: readonly DiffFile[]) => {
     const deps: GitDeps = {
       git: (args) => io.runGit(dir, args),
       gitBatch: (args, input) => io.runGitBatch(dir, args, input),

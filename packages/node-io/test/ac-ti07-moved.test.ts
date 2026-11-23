@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Report, TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { TestMatch as Match, MatchedPair as Pair } from "../../core/src/signals/testMatch.js";
 import { expectValidReport } from "../../core/test/schema.js";
 import { withoutFix } from "../../core/test/v090-codes.js";
 
@@ -182,30 +184,6 @@ const MOVED: Record<string, string[]> = {
   "TI02/pass-moved-to-added-file": ["src/a.test.ts › totals the cart -> src/c.test.ts › sums the cart"],
 };
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Block {
-  name: string;
-  path: string[];
-}
-interface Pair {
-  basePath: string;
-  headPath: string;
-  base: Block;
-  head: Block;
-}
-interface Match {
-  unmatched: unknown[];
-  pairs: Pair[];
-  moved?: Pair[];
-}
-interface Report {
-  testIntegrity: { signals: { id: string; severity: string; path: string; line: number | null }[] };
-  messages: { code: string; level: string; text: string }[];
-}
-
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
 function sideFiles(dir: string): SourceFile[] {
@@ -230,21 +208,15 @@ async function runFixture(name: string): Promise<{ match: Match; report: Report 
   const head = sideFiles(`${root}head`);
   const sources = { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } };
 
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const pythonTestIndex = await io.indexPythonTestSources(sources);
   if (name.includes("pytest") || name.includes("unittest")) {
     expect(pythonTestIndex?.available, "the Python index ran with the real interpreter").toBe(true);
   }
 
-  const core = (await import("@pharn-ci/core")) as unknown as { parseUnifiedDiff(text: string): unknown[] };
-  const pairsModule = (await import("../../core/src/signals/testPairs.js")) as unknown as {
-    indexTouchedTestFiles(diff: unknown[], sources: unknown, python: unknown): unknown;
-  };
-  const matchModule = (await import("../../core/src/signals/testMatch.js")) as unknown as {
-    matchTests(touched: unknown): Match;
-  };
+  const core = await import("@pharn-ci/core");
+  const pairsModule = await import("../../core/src/signals/testPairs.js");
+  const matchModule = await import("../../core/src/signals/testMatch.js");
   const touched = pairsModule.indexTouchedTestFiles(core.parseUnifiedDiff(diffText), sources, pythonTestIndex);
   const match = matchModule.matchTests(touched);
 
@@ -259,7 +231,7 @@ async function runFixture(name: string): Promise<{ match: Match; report: Report 
     testSources: sources,
     pythonTestIndex,
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]) as unknown as Report;
+  });
   expectValidReport(report);
   return { match, report };
 }

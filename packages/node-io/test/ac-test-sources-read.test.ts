@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { TestSourceSide as Side, TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { gitDiffArgs, parseUnifiedDiff } from "../../core/src/index.js";
 
@@ -9,11 +10,7 @@ import { gitDiffArgs, parseUnifiedDiff } from "../../core/src/index.js";
 // nothing that depends on them may run while the file loads. It runs against a real git repository in a temporary
 // directory, built with git as packages/node-io/test/git-allowlist.test.ts builds one.
 
-type SourceFile = { path: string; text: string };
-type Side = { unavailable: string } | { files: SourceFile[]; dropped: { path: string; reason: string }[] };
-type Sources = { base: Side; head: Side };
 type GitDeps = { git(args: string[]): Promise<string>; gitBatch(args: string[], input: string): Promise<Uint8Array> };
-type Reader = (deps: GitDeps, options: { revisions: unknown; diff: readonly unknown[] }) => Promise<Sources>;
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -41,14 +38,8 @@ function repo() {
 }
 
 async function load() {
-  const { readTestSources, runRevisions } = (await import("../src/index.js")) as unknown as {
-    readTestSources: Reader;
-    runRevisions(deps: GitDeps, base: string): unknown;
-  };
-  const io = (await import("../src/io.js")) as unknown as {
-    runGit(cwd: string, args: string[]): Promise<string>;
-    runGitBatch(cwd: string, args: string[], input: string): Promise<Uint8Array>;
-  };
+  const { readTestSources, runRevisions } = await import("../src/index.js");
+  const io = await import("../src/io.js");
   return { readTestSources, runRevisions, runGit: io.runGit, runGitBatch: io.runGitBatch };
 }
 

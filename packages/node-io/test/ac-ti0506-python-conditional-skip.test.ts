@@ -2,7 +2,9 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { PythonIndexFile as IndexFile, Report, TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { TestBlock as Block } from "../../core/src/testIndex/types.js";
 import { expectValidReport } from "../../core/test/schema.js";
 
 // CORE-54 on Python test files: a conditional skip (`@pytest.mark.skipif(cond)`) no longer excuses a test from TI05
@@ -34,35 +36,13 @@ function requirePython(): void {
   }
 }
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
 }
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Block {
-  kind: string;
-  name: string;
-  line: number;
-  modifiers: string[];
-  assertionCount: number;
-}
-interface IndexFile {
-  path: string;
-  result: { parsed: boolean; tests?: Block[] };
-}
 interface Run {
-  report: { testIntegrity: { signals: Signal[] } };
+  report: Report;
   base: IndexFile[];
   head: IndexFile[];
 }
@@ -105,12 +85,12 @@ async function runPython(c: Case, mode: "block" | "warn"): Promise<Run> {
     testSources: sources,
     pythonTestIndex,
     testIntegrityMode: { input: mode },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return {
-    report: report as unknown as Run["report"],
-    base: pythonTestIndex.base as unknown as IndexFile[],
-    head: pythonTestIndex.head as unknown as IndexFile[],
+    report,
+    base: pythonTestIndex.base,
+    head: pythonTestIndex.head,
   };
 }
 

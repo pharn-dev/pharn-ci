@@ -18,6 +18,7 @@ import { stubGitBatch } from "./required-deps.js";
 const SHA_A = "a".repeat(40);
 const SHA_B = "b".repeat(40);
 const AGENT_FILES = [".mcp.json", "AGENTS.md", "CLAUDE.md", ".claude/settings.json", "src/a.ts"];
+// Deliberately partial (no top-level `version`): the cast stays so the fixture value is not changed (CORE-135).
 const FILE_POLICY = {
   source: "file",
   path: "policy/org.json",

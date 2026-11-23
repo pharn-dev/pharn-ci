@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Report, TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -32,22 +33,6 @@ const EXPECTED = [
   "",
 ];
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Entry {
-  path: string;
-  name: string;
-  line: number;
-}
-interface Report {
-  testIntegrity: {
-    signals: { detail: string }[];
-    changes?: { added: Entry[]; removed: Entry[]; modified: Entry[]; renamed: Entry[] };
-  };
-}
-
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
 function sideFiles(dir: string): SourceFile[] {
@@ -69,9 +54,7 @@ async function report(): Promise<Report> {
   const base = sideFiles(`${ROOT}base`);
   const head = sideFiles(`${ROOT}head`);
   const diff = readFileSync(`${ROOT}change.diff`, "utf8");
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const sources = { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } };
   const pythonTestIndex = await io.indexPythonTestSources(sources);
   expect(pythonTestIndex?.available, "the Python index ran with the real interpreter").toBe(true);
@@ -86,9 +69,9 @@ async function report(): Promise<Report> {
     testSources: sources,
     pythonTestIndex,
     testIntegrityMode: { input: "warn" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(result);
-  return result as unknown as Report;
+  return result;
 }
 
 describe("renderMarkdown(): the collapsed Tests changed table", () => {
@@ -98,7 +81,7 @@ describe("renderMarkdown(): the collapsed Tests changed table", () => {
       const r = await report();
       expect(r.testIntegrity.changes, "the report holds testIntegrity.changes").toBeDefined();
       const { renderMarkdown } = await import("@pharn-ci/core");
-      const markdown = renderMarkdown(r as never);
+      const markdown = renderMarkdown(r);
       const lines = markdown.split("\n");
 
       const start = lines.indexOf(HEADING);

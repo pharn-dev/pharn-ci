@@ -1,7 +1,10 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Report, TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { ReportTestChanges as Changes, ReportTestChange as Entry } from "../../core/src/report.js";
+import type { TestBlock as Block } from "../../core/src/testIndex/types.js";
 import { expectValidReport } from "../../core/test/schema.js";
 
 // indexPythonTestSources, check(), the JS/TS test index and the fixture are loaded inside the test body: the AC test
@@ -15,40 +18,6 @@ const FIXTURES = fileURLToPath(new URL("../../../fixtures/", import.meta.url));
 const ROOT = `${FIXTURES}tests-changed/`;
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const SLOW = 60_000;
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Block {
-  kind: string;
-  path: string[];
-  line: number;
-}
-interface Entry {
-  path: string;
-  name: string;
-  line: number;
-}
-interface Changes {
-  totals: { added: number; removed: number; modified: number; renamed: number };
-  files: Array<{
-    path: string;
-    language: string;
-    added: number;
-    removed: number;
-    modified: number;
-    renamed: number;
-  }>;
-  added: Entry[];
-  removed: Entry[];
-  modified: Entry[];
-  renamed: Entry[];
-  truncated?: number;
-}
-interface Report {
-  testIntegrity: { mode: string; changes?: Changes };
-}
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
@@ -75,9 +44,7 @@ const textAt = (files: SourceFile[], path: string) => {
 
 /** The head (or base) line of a JS/TS test by its full name, through the existing JS/TS test index. */
 async function jsLine(files: SourceFile[], path: string, fullName: string): Promise<number> {
-  const core = (await import("../../core/src/testIndex/indexTestFile.js")) as unknown as {
-    indexTestFile(path: string, text: string): { parsed: boolean; tests?: Block[] };
-  };
+  const core = await import("../../core/src/testIndex/indexTestFile.js");
   const result = core.indexTestFile(path, textAt(files, path));
   if (!result.parsed) throw new Error(`${path} does not parse`);
   const found = (result.tests ?? []).filter((b) => b.kind === "test" && b.path.join(" › ") === fullName);
@@ -98,9 +65,7 @@ async function runTestsChanged(): Promise<{ report: Report; base: SourceFile[]; 
   const base = sideFiles(`${ROOT}base`);
   const head = sideFiles(`${ROOT}head`);
   const diff = readFileSync(`${ROOT}change.diff`, "utf8");
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const sources = { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } };
   const pythonTestIndex = await io.indexPythonTestSources(sources);
   expect(pythonTestIndex?.available, "the Python index ran with the real interpreter").toBe(true);
@@ -115,9 +80,9 @@ async function runTestsChanged(): Promise<{ report: Report; base: SourceFile[]; 
     testSources: sources,
     pythonTestIndex,
     testIntegrityMode: { input: "warn" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return { report: report as unknown as Report, base, head };
+  return { report, base, head };
 }
 
 const byPathThenLine = (a: Entry, b: Entry) => (a.path < b.path ? -1 : a.path > b.path ? 1 : a.line - b.line);

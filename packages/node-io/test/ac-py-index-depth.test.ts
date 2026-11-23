@@ -7,9 +7,6 @@ import { describe, expect, it } from "vitest";
 const CEILING_MS = 15_000;
 const SLOW = 60_000;
 
-type Result = { parsed: true } | { parsed: false; reason: string };
-type Run = { available: true; files: { path: string; result: Result }[] } | { available: false; reason: string };
-
 const DEEP: [label: string, text: string][] = [
   ["5000 nested parentheses", `def test_deep():\n    x = ${"(".repeat(5000)}1${")".repeat(5000)}\n`],
   [
@@ -24,9 +21,7 @@ describe("indexPythonTests: inputs too deep for the parser", () => {
   it.each(DEEP)(
     "AC-10: refuses %s as too-deep, within 15 s",
     async (_label, text) => {
-      const io = (await import("../src/index.js")) as unknown as {
-        indexPythonTests: (files: { path: string; text: string }[]) => Promise<Run>;
-      };
+      const io = await import("../src/index.js");
       expect(Buffer.byteLength(text)).toBeLessThanOrEqual(524_288);
 
       const started = performance.now();

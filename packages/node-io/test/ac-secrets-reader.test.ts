@@ -20,14 +20,6 @@ function cut(n: number, seed: number): string {
   return s;
 }
 
-type SourceFile = { path: string; text: string };
-type Drop = { path: string; reason: string };
-type Sources = { unavailable: string } | { files: SourceFile[]; dropped: Drop[] };
-type Reader = (
-  deps: { gitBatch(args: string[], input: string): Promise<Uint8Array> },
-  paths: readonly string[],
-) => Promise<Sources>;
-
 const SLOW = 30_000;
 
 const dirs: string[] = [];
@@ -56,9 +48,7 @@ describe("readAgentConfigSources", () => {
   it(
     "AC-17: reads committed blobs at HEAD: the committed text, a symlink as its link text, and too-large, binary and missing drops",
     async () => {
-      const { readAgentConfigSources } = (await import("../src/index.js")) as unknown as {
-        readAgentConfigSources: Reader;
-      };
+      const { readAgentConfigSources } = await import("../src/index.js");
       const { runGitBatch } = await import("../src/io.js");
       const r = repo();
 

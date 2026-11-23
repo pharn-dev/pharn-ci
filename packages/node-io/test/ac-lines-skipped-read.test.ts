@@ -10,8 +10,6 @@ import { expectValidReport } from "../../core/test/schema.js";
 
 const CODE = "COVERAGE_LINES_SKIPPED";
 
-type Message = { level: string; code: string; text: string };
-
 // Valid DA records for src/a.ts plus 2 malformed ones (a zero line number and a non-integer line number).
 const LCOV = ["TN:", "SF:src/a.ts", "DA:1,1", "DA:0,1", "DA:2,3", "DA:x,1", "end_of_record", ""].join("\n");
 
@@ -99,7 +97,7 @@ describe("readCoverageFiles + check(): skipped records summed across streamed fi
       expectValidReport(report);
       expect(report.diffCoverage).not.toBeNull();
 
-      const skipped = (report.messages as readonly Message[]).filter((message) => message.code === CODE);
+      const skipped = report.messages.filter((message) => message.code === CODE);
       expect(skipped).toHaveLength(1);
       expect(skipped[0]?.level).toBe("info");
       expect(skipped[0]?.text).toContain("3");

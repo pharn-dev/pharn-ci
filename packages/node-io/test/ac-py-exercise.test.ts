@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { PythonIndexRun, Report, PythonSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -16,19 +17,11 @@ const CODE = "TESTS_NOT_EXERCISING_CHANGES";
 const UNAVAILABLE = "TEST_INTEGRITY_INDEX_UNAVAILABLE";
 const SLOW = 60_000;
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   repoFiles: string[];
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Report {
-  messages: { code: string; level: string; text: string }[];
-  testIntegrity: { exercise?: { checked: number; notExercised: string[] } };
 }
 
 function sideFiles(dir: string): SourceFile[] {
@@ -56,13 +49,11 @@ function loadCase(name: string): Case {
   };
 }
 
-type Index = (files: readonly SourceFile[]) => Promise<unknown>;
+type Index = (files: readonly SourceFile[]) => Promise<PythonIndexRun>;
 
 /** Indexes the case's Python test sources (with the real python3 unless `index` is given), then runs check(). */
 async function runCase(c: Case, index?: Index): Promise<Report> {
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown, index?: Index): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const sources = { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } };
   const pythonTestIndex = await io.indexPythonTestSources(sources, index);
   if (index === undefined) expect(pythonTestIndex?.available, "the real python3 indexed the tests").toBe(true);
@@ -76,9 +67,9 @@ async function runCase(c: Case, index?: Index): Promise<Report> {
     repoFiles: c.repoFiles,
     testSources: sources,
     pythonTestIndex,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const exerciseOf = (report: Report) => report.messages.filter((m) => m.code === CODE);

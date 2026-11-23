@@ -2,7 +2,9 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
 
 // Skylos nine, part 2: the case → signal → severity cells cannot drift from check(). Every vitest cell is recomputed
@@ -36,14 +38,8 @@ function requirePython(): void {
   }
 }
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-}
+/** A signal as the table cell reads it: its id as a plain string and its severity. */
+type Signal = Pick<TestIntegritySignal, "severity"> & { id: string };
 
 /** The `<logical path>.txt` files under one side of a case, as test-source files sorted by logical path. */
 function sideFiles(dir: string): SourceFile[] {
@@ -110,7 +106,7 @@ async function runVitest(name: string): Promise<Signal[]> {
     repoFiles: read(`fixtures/skylos-nine/${name}/files.txt`).trim().split("\n"),
     testIntegrityMode: { input: "block" },
     ...sources,
-  } as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report.testIntegrity.signals.map((s) => ({ id: String(s.id), severity: s.severity }));
 }
@@ -121,9 +117,7 @@ async function runPytest(name: string): Promise<Signal[]> {
     base: { files: sideFiles(`${root}base`), dropped: [] },
     head: { files: sideFiles(`${root}head`), dropped: [] },
   };
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const pythonTestIndex = await io.indexPythonTestSources(sources);
   if ([...sources.base.files, ...sources.head.files].some((f) => f.path.endsWith(".py"))) {
     expect(pythonTestIndex?.available, `${name}: the Python index ran`).toBe(true);
@@ -139,7 +133,7 @@ async function runPytest(name: string): Promise<Signal[]> {
     testSources: sources,
     pythonTestIndex,
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
   return report.testIntegrity.signals.map((s) => ({ id: String(s.id), severity: s.severity }));
 }

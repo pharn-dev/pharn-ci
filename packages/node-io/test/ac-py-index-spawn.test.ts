@@ -1,19 +1,11 @@
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
+import type { PythonSpawn as Spawn } from "../src/index.js";
 
 // indexPythonTests and the script constants are loaded inside the test body: this test is written before they exist,
 // so nothing the build adds may run while the file loads. A recording fake spawn stands in for the interpreter and
 // answers with PLAN.md's raw output format.
 
-type Run = { available: true; files: { path: string; result: unknown }[] } | { available: false; reason: string };
-type SpawnResult = {
-  errorCode: string | null;
-  timedOut: boolean;
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-};
-type Spawn = (command: string, args: readonly string[], options: unknown, stdin: string) => Promise<SpawnResult>;
 type Recorded = { command: string; args: readonly string[]; options: unknown; stdin: string };
 
 const PLANTED_ENV: Record<string, string> = {
@@ -47,11 +39,7 @@ describe("indexPythonTests: how the interpreter is spawned", () => {
   ] as [string, string | undefined][])(
     "AC-13: spawns python3 once with -I -S -B -c, the bootstrap and the main script, no shell, the tmpdir cwd, a minimal env (%s), the timeout and output cap, and a stdin of ids and texts only",
     async (_label, systemRoot) => {
-      const io = (await import("../src/index.js")) as unknown as {
-        indexPythonTests: (files: { path: string; text: string }[], deps: { spawn: Spawn }) => Promise<Run>;
-        PYTHON_BOOTSTRAP: string;
-        PYTHON_INDEX_SCRIPT: string;
-      };
+      const io = await import("../src/index.js");
       expect(typeof io.PYTHON_BOOTSTRAP).toBe("string");
       expect(typeof io.PYTHON_INDEX_SCRIPT).toBe("string");
       expect(io.PYTHON_BOOTSTRAP.length).toBeGreaterThan(0);

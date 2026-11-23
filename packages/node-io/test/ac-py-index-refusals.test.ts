@@ -1,16 +1,12 @@
+import type { TestIndexResult as Result } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { PythonSpawn as Spawn } from "../src/index.js";
 
 // indexPythonTests and spawnPython are loaded inside the test body: this test is written before they exist, so
 // nothing the build adds may run while the file loads. The real interpreter runs through the exported spawnPython,
 // wrapped to count the spawns; a missing python3 fails the test.
 
 const SLOW = 60_000;
-
-type Result =
-  | { parsed: true; syntaxErrors: number; tests: { kind: string; name: string }[] }
-  | { parsed: false; reason: string };
-type Run = { available: true; files: { path: string; result: Result }[] } | { available: false; reason: string };
-type Spawn = (command: string, args: readonly string[], options: unknown, stdin: string) => Promise<unknown>;
 
 const FILES = [
   { path: "tests/test_first.py", text: "def test_first():\n    assert 1 == 1\n" },
@@ -23,10 +19,7 @@ describe("indexPythonTests: per-file refusals", () => {
   it(
     "AC-9: refuses the syntax-error and NUL-byte files as syntax-error, parses both valid files, keeps input order, and spawns once",
     async () => {
-      const io = (await import("../src/index.js")) as unknown as {
-        indexPythonTests: (files: { path: string; text: string }[], deps: { spawn: Spawn }) => Promise<Run>;
-        spawnPython: Spawn;
-      };
+      const io = await import("../src/index.js");
       expect(typeof io.spawnPython).toBe("function");
       let spawns = 0;
       const spawn: Spawn = (command, args, options, stdin) => {

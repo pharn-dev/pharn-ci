@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { PythonTestIndex, Report, TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -20,21 +21,6 @@ const ADDED = ["pkg/text/test_text_ops.py", "pkg/io/test_io_ops.py"];
 const MOVED_DETAIL =
   "Test file deleted; every test it held is found again, by name and body, in another test file of this change.";
 const TODAY = "Test file deleted; its removed lines defined tests.";
-
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[] };
-}
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
@@ -67,11 +53,16 @@ function diffSection(diff: string, path: string): string {
   return part;
 }
 
-async function run(diff: string, base: SourceFile[], head: SourceFile[], pythonTestIndex: unknown): Promise<Report> {
+async function run(
+  diff: string,
+  base: SourceFile[],
+  head: SourceFile[],
+  pythonTestIndex: PythonTestIndex | undefined,
+): Promise<Report> {
   const { check } = await import("../../core/test/text-coverage.js");
   const report = check({
     version: "0.1.0",
-    coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },
+    coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" as const },
     diff: { text: diff },
     repoRoot: REPO_ROOT,
     threshold: 80,
@@ -79,9 +70,9 @@ async function run(diff: string, base: SourceFile[], head: SourceFile[], pythonT
     testSources: { base: { files: base, dropped: [] }, head: { files: head, dropped: [] } },
     pythonTestIndex,
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 describe("TI01 precision on Python test files, through the Python test index", () => {
@@ -101,9 +92,7 @@ describe("TI01 precision on Python test files, through the Python test index", (
         for (const name of names) expect(headDefs.has(name), `${path}: ${name} reappears`).toBe(true);
       }
 
-      const io = (await import("../src/index.js")) as unknown as {
-        indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-      };
+      const io = await import("../src/index.js");
       const pythonTestIndex = await io.indexPythonTestSources({
         base: { files: base, dropped: [] },
         head: { files: head, dropped: [] },

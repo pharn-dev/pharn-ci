@@ -1,20 +1,9 @@
+import type { PythonIndexRun as Run, PythonSpawnResult as SpawnResult } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { PythonSpawn as Spawn } from "../src/index.js";
 
 // indexPythonTests is loaded inside each test body: these tests are written before it exists, so nothing the build
 // adds may run while the file loads. A fake spawn returns each process outcome in turn.
-
-type Run =
-  | { available: true; files: { path: string; result: unknown }[] }
-  | { available: false; reason: string; detail: string };
-type SpawnResult = {
-  errorCode: string | null;
-  timedOut: boolean;
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-};
-type Spawn = (command: string, args: readonly string[], options: unknown, stdin: string) => Promise<SpawnResult>;
-type Index = (files: { path: string; text: string }[], deps: { spawn: Spawn }) => Promise<Run>;
 
 const FILES = [{ path: "tests/test_one.py", text: "def test_one():\n    assert True\n" }];
 const MIB = 1024 * 1024;
@@ -67,7 +56,7 @@ const OUTCOMES: [label: string, result: () => SpawnResult, reason: string][] = [
 
 describe("indexPythonTests: a run that cannot give an index", () => {
   it.each(OUTCOMES)("AC-15: %s gives an unavailable run with a one-line detail", async (_label, result, reason) => {
-    const io = (await import("../src/index.js")) as unknown as { indexPythonTests: Index };
+    const io = await import("../src/index.js");
     const spawn: Spawn = async () => result();
 
     let run: Run;

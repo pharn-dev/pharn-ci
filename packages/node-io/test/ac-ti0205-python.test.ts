@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Report, TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
 
@@ -33,24 +34,10 @@ function requirePython(): void {
   }
 }
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
-}
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[]; languages: string[] };
 }
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -88,9 +75,7 @@ const textAt = (files: SourceFile[], path: string) => {
 
 /** Index the case's Python sources with node-io, then run check() on them in mode block. */
 async function runPython(c: Case): Promise<Report> {
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown, index?: unknown): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const sources = { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } };
   const pythonTestIndex = await io.indexPythonTestSources(sources);
   expect(pythonTestIndex?.available, "the Python index ran").toBe(true);
@@ -106,9 +91,9 @@ async function runPython(c: Case): Promise<Report> {
     testSources: sources,
     pythonTestIndex,
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report as unknown as Report;
+  return report;
 }
 
 const signalsOf = (report: Report, id: string) => report.testIntegrity.signals.filter((s) => String(s.id) === id);

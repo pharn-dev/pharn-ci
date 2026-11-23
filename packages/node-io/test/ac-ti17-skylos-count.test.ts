@@ -2,8 +2,11 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal as Signal } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
+import type { TextCheckInput } from "../../core/test/text-coverage.js";
 
 // ti17-always-true-matcher-2, AC-21. The nine vitest cases (with fixtures/skylos-nine-sources/ where present) and the
 // pytest cases (with the -any and -aliased variants, indexed with the real python3) run through check() in mode block,
@@ -49,15 +52,6 @@ function requirePython(): void {
   }
 }
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
-interface Signal {
-  id: string;
-  severity: string;
-}
-
 /** The `<logical path>.txt` files under one side of a case, as test-source files sorted by logical path. */
 function sideFiles(dir: string): SourceFile[] {
   let names: string[];
@@ -84,11 +78,10 @@ const sourcesAt = (dir: string) => {
 
 async function signalsOf(caseDir: string, sourcesDir: string, python: boolean): Promise<Signal[]> {
   const sources = sourcesAt(sourcesDir);
-  let extra: Record<string, unknown> = sources === undefined ? {} : { testSources: sources };
+  let extra: Pick<TextCheckInput, "testSources" | "pythonTestIndex"> =
+    sources === undefined ? {} : { testSources: sources };
   if (python && sources !== undefined) {
-    const io = (await import("../src/index.js")) as unknown as {
-      indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-    };
+    const io = await import("../src/index.js");
     const pythonTestIndex = await io.indexPythonTestSources(sources);
     if ([...sources.base.files, ...sources.head.files].some((f) => f.path.endsWith(".py"))) {
       expect(pythonTestIndex?.available, `${caseDir}: the Python index ran`).toBe(true);
@@ -105,9 +98,9 @@ async function signalsOf(caseDir: string, sourcesDir: string, python: boolean): 
     repoFiles: readFileSync(`${caseDir}/files.txt`, "utf8").trim().split("\n"),
     testIntegrityMode: { input: "block" },
     ...extra,
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  return report.testIntegrity.signals as unknown as Signal[];
+  return report.testIntegrity.signals;
 }
 
 const caught = (signals: Signal[]) => signals.some((s) => s.severity !== "info");

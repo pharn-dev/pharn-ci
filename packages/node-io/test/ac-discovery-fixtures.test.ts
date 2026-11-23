@@ -58,7 +58,7 @@ describe("discoverCoverage over fixtures/coverage-discovery/", () => {
       );
       const chosen = chooseDiscoveredCoverage(filesUnder(repoRoot));
       expect(discovered, dir).toEqual(chosen);
-      expect(normalized(discovered as never), dir).toEqual(normalized(expected));
+      expect(normalized(discovered), dir).toEqual(normalized(expected));
     }
   });
 });

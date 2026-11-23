@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
+import type { PythonIndexRun } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { TestBlock as Block } from "../../core/src/testIndex/types.js";
 
 // CORE-53 (R2.4): what the Python test index records for the ways a test is switched off, read with the real python3.
 // The index script is loaded inside each test body. With no python3 of 3.8 or newer on PATH the tests fail with that
@@ -25,27 +27,12 @@ function requirePython(): void {
   }
 }
 
-interface Block {
-  kind: string;
-  name: string;
-  path: string[];
-  line: number;
-  modifiers: string[];
-  guarded?: string;
-  emptyTable?: boolean;
-  removedAt?: number;
-  moduleSkip?: number;
-}
-type Run = { available: true; files: { path: string; result: { parsed: true; tests: Block[] } }[] };
-
 /** The blocks of one Python test file, indexed with the real python3. */
 async function blocksOf(text: string): Promise<Block[]> {
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTests(files: { path: string; text: string }[]): Promise<Run>;
-  };
+  const io = await import("../src/index.js");
   const run = await io.indexPythonTests([{ path: "tests/test_forms.py", text }]);
   expect(run.available, "the Python index ran").toBe(true);
-  const result = run.files[0]?.result;
+  const result = (run as Extract<PythonIndexRun, { available: true }>).files[0]?.result;
   expect(result?.parsed, "the file parsed").toBe(true);
   return (result as { tests: Block[] }).tests;
 }

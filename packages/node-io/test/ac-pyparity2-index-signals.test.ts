@@ -2,7 +2,9 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { TestIntegritySignal } from "../../core/src/report.js";
 import { expectValidReport } from "../../core/test/schema.js";
 
 // indexPythonTestSources and check() are loaded inside the test body: the AC test is written before the Python index
@@ -34,25 +36,13 @@ function requirePython(): void {
   }
 }
 
-interface SourceFile {
-  path: string;
-  text: string;
-}
 interface Case {
   diff: string;
   base: SourceFile[];
   head: SourceFile[];
 }
-interface Signal {
-  id: string;
-  severity: string;
-  path: string;
-  line: number | null;
-  detail: string;
-}
-interface Report {
-  testIntegrity: { signals: Signal[]; languages: string[] };
-}
+/** A signal as the test compares it: its id as a plain string. */
+type Signal = Pick<TestIntegritySignal, "severity" | "path" | "line" | "detail"> & { id: string };
 
 const byPath = (a: SourceFile, b: SourceFile) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
@@ -90,9 +80,7 @@ const linesOf = (text: string) => text.split("\n").map((line) => line.replace(/\
 
 /** Index the case's Python sources with node-io, then run check() on them in mode block. */
 async function runPython(c: Case): Promise<Signal[]> {
-  const io = (await import("../src/index.js")) as unknown as {
-    indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-  };
+  const io = await import("../src/index.js");
   const sources = { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } };
   const pythonTestIndex = await io.indexPythonTestSources(sources);
   expect(pythonTestIndex?.available, "the Python index ran").toBe(true);
@@ -108,9 +96,9 @@ async function runPython(c: Case): Promise<Signal[]> {
     testSources: sources,
     pythonTestIndex,
     testIntegrityMode: { input: "block" },
-  } as unknown as Parameters<typeof check>[0]);
+  });
   expectValidReport(report);
-  const typed = report as unknown as Report;
+  const typed = report;
   expect(typed.testIntegrity.languages, "the Python file was compared").toEqual(["py"]);
   return typed.testIntegrity.signals.map((s) => ({
     id: String(s.id),

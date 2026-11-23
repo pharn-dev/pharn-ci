@@ -2,28 +2,20 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { PolicyFileBase as Base } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 
 // E3 item 24a part B (P11), AC-17. readPolicyFileAt and runGitBatch are loaded inside the test body: the AC test is
 // written before readPolicyFileAt exists, so nothing the build adds may run while this file loads. The reads go to a
 // real temporary repository through runGitBatch; the unsafe path goes through a recording git reader.
 
-type Base = { kind: string; document?: unknown };
-type Reader = (
-  deps: { gitBatch(args: string[], input: string): Promise<Uint8Array> },
-  options: { rev: string; path: string },
-) => Promise<Base>;
-interface Io {
-  runGitBatch(cwd: string, args: string[], input: string): Promise<Uint8Array>;
-}
-
 const VALID = { version: 1, agents: { protected_paths: ["src/**"] } };
 const MAX = 1_048_576;
 
 describe("node-io: the file: policy read at a git revision", { timeout: 60_000 }, () => {
   it("AC-17: a valid committed policy is a document, a missing path is absent, and invalid JSON, a non-policy document, a file over 1 MiB, a NUL byte, a missing revision and an unsafe path are unreadable with no other key; it never rejects", async () => {
-    const { readPolicyFileAt } = (await import("../src/index.js")) as unknown as { readPolicyFileAt: Reader };
-    const { runGitBatch } = (await import("../src/io.js")) as unknown as Io;
+    const { readPolicyFileAt } = await import("../src/index.js");
+    const { runGitBatch } = await import("../src/io.js");
 
     // realpath: on macOS tmpdir() is behind a symlink, while git reports physical paths.
     const dir = realpathSync(mkdtempSync(join(tmpdir(), "pharn-ci-p11-policy-at-rev-")));

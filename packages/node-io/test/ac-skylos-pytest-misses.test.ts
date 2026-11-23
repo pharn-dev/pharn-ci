@@ -2,8 +2,10 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { TestSourceFile as SourceFile } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
 import { expectValidReport } from "../../core/test/schema.js";
+import type { TextCheckInput } from "../../core/test/text-coverage.js";
 
 // Skylos nine, part 2: the two pytest cases the signals miss (hard-coded-answer and the mock.ANY variant of
 // always-true-matcher). Each runs through check() in mode block with the real Python index and the renderer without
@@ -33,11 +35,6 @@ function requirePython(): void {
       `this test needs python3 3.8 or newer on PATH and found ${PYTHON.version === "" ? `none (${PYTHON.error || "python3 did not run"})` : `python3 ${PYTHON.version}`}`,
     );
   }
-}
-
-interface SourceFile {
-  path: string;
-  text: string;
 }
 
 /** The `<logical path>.txt` files under one side of a case, as test-source files sorted by logical path. */
@@ -97,9 +94,7 @@ describe("Skylos nine for pytest: the two misses run cleanly and give no signal"
           base: { files: sideFiles(`${root}base`), dropped: [] },
           head: { files: sideFiles(`${root}head`), dropped: [] },
         };
-        const io = (await import("../src/index.js")) as unknown as {
-          indexPythonTestSources(sources: unknown): Promise<{ available: boolean } | undefined>;
-        };
+        const io = await import("../src/index.js");
         const pythonTestIndex = await io.indexPythonTestSources(sources);
         if ([...sources.base.files, ...sources.head.files].some((f) => f.path.endsWith(".py"))) {
           expect(pythonTestIndex?.available, `${name}: the Python index ran`).toBe(true);
@@ -107,7 +102,7 @@ describe("Skylos nine for pytest: the two misses run cleanly and give no signal"
 
         const { renderMarkdown } = await import("@pharn-ci/core");
         const { check } = await import("../../core/test/text-coverage.js");
-        const input = {
+        const input: TextCheckInput = {
           version: "0.1.0",
           coverage: { text: readFileSync(`${FIXTURES}test-files-deleted/coverage.info`, "utf8"), format: "lcov" },
           diff: { text: diff },
@@ -117,7 +112,7 @@ describe("Skylos nine for pytest: the two misses run cleanly and give no signal"
           testSources: sources,
           pythonTestIndex,
           testIntegrityMode: { input: "block" },
-        } as unknown as Parameters<typeof check>[0];
+        };
 
         let report: ReturnType<typeof check> | undefined;
         expect(() => {

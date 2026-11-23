@@ -1,4 +1,6 @@
+import type { PythonIndexRun as Run, PythonSpawnResult as SpawnResult } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { PythonSpawn as Spawn } from "../src/index.js";
 
 // indexPythonTests and spawnPython are loaded inside each test body: these tests are written before they exist, so
 // nothing the build adds may run while the file loads. Fake spawns answer by interpreter name; the last two tests use
@@ -7,24 +9,8 @@ import { describe, expect, it } from "vitest";
 const SLOW = 60_000;
 const REASONS = ["python-not-found", "python-too-old", "python-failed", "timeout", "output-too-large", "bad-output"];
 
-type Run =
-  | { available: true; files: { path: string; result: unknown }[] }
-  | { available: false; reason: string; detail: string };
-type SpawnResult = {
-  errorCode: string | null;
-  timedOut: boolean;
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-};
-type Spawn = (command: string, args: readonly string[], options: unknown, stdin: string) => Promise<SpawnResult>;
-type Index = (
-  files: { path: string; text: string }[],
-  deps: { interpreters?: readonly string[]; spawn?: Spawn },
-) => Promise<Run>;
-
 async function load() {
-  return (await import("../src/index.js")) as unknown as { indexPythonTests: Index; spawnPython: Spawn };
+  return await import("../src/index.js");
 }
 
 const FILES = [{ path: "tests/test_one.py", text: "def test_one():\n    assert True\n" }];

@@ -1,4 +1,6 @@
+import type { TestIndexResult as Result } from "@pharn-ci/core";
 import { describe, expect, it } from "vitest";
+import type { PythonSpawn as Spawn } from "../src/index.js";
 
 // indexPythonTests is loaded inside each test body: these tests are written before it exists, so nothing the build
 // adds may run while the file loads. A recording fake spawn stands in for the interpreter: it reads the stdin JSON and
@@ -6,18 +8,6 @@ import { describe, expect, it } from "vitest";
 // (too-large) is told apart from a file that was sent.
 
 const SLOW = 60_000;
-
-type Result = { parsed: false; reason: string } | { parsed: true };
-type Run = { available: true; files: { path: string; result: Result }[] } | { available: false; reason: string };
-type SpawnResult = {
-  errorCode: string | null;
-  timedOut: boolean;
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-};
-type Spawn = (command: string, args: readonly string[], options: unknown, stdin: string) => Promise<SpawnResult>;
-type Index = (files: { path: string; text: string }[], deps: { spawn: Spawn }) => Promise<Run>;
 
 /** A fake spawn that records every stdin it receives and answers each sent entry with a parser-threw refusal. */
 function recordingSpawn() {
@@ -38,8 +28,8 @@ function recordingSpawn() {
   return { spawn, stdins, sentTexts };
 }
 
-async function load(): Promise<Index> {
-  const io = (await import("../src/index.js")) as unknown as { indexPythonTests: Index };
+async function load() {
+  const io = await import("../src/index.js");
   return io.indexPythonTests;
 }
 
