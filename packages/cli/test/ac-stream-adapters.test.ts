@@ -177,14 +177,11 @@ async function runAction(inputs: Record<string, string>, fakes: Fakes & { compar
     context: {
       eventName: "pull_request",
       sha: HEAD_SHA,
-      ref: "refs/pull/7/merge",
-      repo: { owner: "octo", repo: "demo" },
-      issue: { owner: "octo", repo: "demo", number: 7 },
       payload: {
         pull_request: {
           number: 7,
-          base: { sha: BASE_SHA, ref: "main" },
-          head: { sha: HEAD_SHA, ref: "feature" },
+          base: { sha: BASE_SHA },
+          head: { sha: HEAD_SHA },
         },
       },
     },
@@ -198,7 +195,7 @@ async function runAction(inputs: Record<string, string>, fakes: Fakes & { compar
       },
       viewerLogin: async () => "github-actions[bot]",
       listComments: async () => [],
-      createComment: async () => {},
+      createComment: async () => null,
       updateComment: async () => {},
     },
     writeFile: async (path: string, text: string) => {
