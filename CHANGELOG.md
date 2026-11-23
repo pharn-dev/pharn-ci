@@ -11,6 +11,12 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- The TI01 and TI02 test pairing is one bounded loop (CORE-145): the prefix index, the moved-test-file matcher and the
+  first-unused-entry list are replaced by one walk over the new-at-head tests, and each rule compares a removed test
+  with at most 256 not-yet-paired new tests, in head order. Below 256 new tests the pairs are the same as before. A test
+  whose match lies past the bound is reported, where the old index (which counted 256 posting entries) could sometimes
+  still find it: a TI02 at the mode's level, and a deleted test file holding such a test stays at the mode's level for
+  TI01. The accept label clears such a block when the test was in fact renamed or moved. See `docs/LIMITS.md`.
 - A `file:` policy a pull request edits can no longer loosen any setting the file may carry (CORE-348): the Action and
   the CLI read the file at the base commit (the base branch's copy) before applying it and unite the two copies key by
   key, so the stricter value applies for the threshold, the mode, `setup.require`, `setup.expect`, `setup.consistency`,

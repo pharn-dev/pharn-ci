@@ -237,7 +237,8 @@ and the tests cite them.
     the comment. **Residual:** a hostile test name is rendered inert (control characters and the invisible and
     bidirectional characters of B1 turned into spaces, the markdown escaped), but a name is free text of up to 300
     characters in a PR comment; the matching of
-    tests is bounded per test (at most 256 probes) and linear in the number of tests, not in the text. A
+    tests is bounded per test (each rule compares a removed test with at most 256 not-yet-paired new tests) and linear
+    in the number of tests, not in the text. A
     symlink test file is read as its link target path, and in a partial clone a blob that is not local reads as missing.
 19. **The test index parses the text of the PR's test files with TypeScript's parser.** `indexTestFile` (called by
     `check()` for TI02 and TI05 on every pull request that modifies a JS/TS test file) reads the text of a JavaScript or TypeScript test file, which a PR

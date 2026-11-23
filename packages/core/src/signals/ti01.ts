@@ -2,12 +2,103 @@ import { BINARY_DELETED_DETAIL, BINARY_RENAMED_AWAY_DETAIL } from "../binaryDeta
 import type { DiffFile } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { definesTests, isRenamedAwayTest, isSnapFile, isTestFile, testPackageDir, testStem } from "../testFiles.js";
+import { indexTestFile } from "../testIndex/indexTestFile.js";
+import type { PythonTestIndex } from "../testIndex/pythonSides.js";
+import type { TestIndexResult } from "../testIndex/types.js";
+import type { TestSources } from "../testSources.js";
 import { byCodeUnit, cutCodeUnits } from "../text.js";
 import { coverageSourceLanguage } from "./signalFiles.js";
 import { testLanguage } from "./testLines.js";
-import { sameStemDeletions } from "./ti01Moved.js";
+import type { DeletedTestFile, DeletedTestFiles } from "./testMatch.js";
+import { languageOf } from "./testPairs.js";
 
 const MAX_DETAIL = 300;
+
+/**
+ * The deleted test files for which the diff also adds a test file, or renames a file to a test path, at another path
+ * with the same stem (`testStem`). A renamed-away file is never in it: only a deletion is replaced. The stem only lifts
+ * the name check of the moved-file rule of `matchTests` and picks the detail of TI01; the tests' bodies decide the
+ * severity.
+ */
+export function sameStemDeletions(diff: readonly DiffFile[]): Set<string> {
+  const stems = new Map<string, Set<string>>();
+  for (const file of diff) {
+    if ((file.status !== "added" && file.status !== "renamed") || !isTestFile(file.path)) continue;
+    const stem = testStem(file.path);
+    const paths = stems.get(stem);
+    if (paths === undefined) stems.set(stem, new Set([file.path]));
+    else paths.add(file.path);
+  }
+  const linked = new Set<string>();
+  for (const file of diff) {
+    if (file.status !== "deleted" || !isTestFile(file.path) || file.binary === true) continue;
+    const paths = stems.get(testStem(file.path));
+    if (paths === undefined) continue;
+    for (const path of paths) {
+      if (path !== file.path) {
+        linked.add(file.path);
+        break;
+      }
+    }
+  }
+  return linked;
+}
+
+/** The deleted test files, indexed at the merge base: the input of the moved-file rule of `matchTests`. */
+export interface IndexedDeletedFiles extends DeletedTestFiles {
+  /**
+   * The deleted test files whose base text was kept (or, for Python, indexed) but that the test index refused
+   * (`syntax-error-heavy`, `too-deep`, `parser-threw`, ...): never in `files`. TI01 says their text could not be parsed,
+   * not that it was not available.
+   */
+  unparsed: ReadonlySet<string>;
+}
+
+/**
+ * Indexes the base text of every test file the diff deletes (a binary one is skipped), in path order: JS/TS by the test
+ * index, Python by the Python index's base entries. `files` lists each one that parsed, with the `test` blocks in line
+ * order and the `describe` blocks; a file that held no test is listed too. `unparsed` is every deleted file whose text
+ * was there but the index refused, and `stemLinked` is `sameStemDeletions`. All three are empty when the base side of
+ * the sources is unavailable; a deleted Python file needs the Python index.
+ */
+export function indexDeletedTestFiles(
+  diff: readonly DiffFile[],
+  sources: TestSources,
+  python: PythonTestIndex | undefined,
+): IndexedDeletedFiles {
+  const indexed: IndexedDeletedFiles = { files: [], unparsed: new Set(), stemLinked: new Set() };
+  if ("unavailable" in sources.base) return indexed;
+  const deleted = diff
+    .filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true)
+    .map((file) => file.path)
+    .sort(byCodeUnit);
+  if (deleted.length === 0) return indexed;
+
+  const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
+  const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
+  const files: DeletedTestFile[] = [];
+  const unparsed = new Set<string>();
+  for (const path of new Set(deleted)) {
+    const language = languageOf(path);
+    let result: TestIndexResult | undefined;
+    if (language === "py") result = pythonBase?.get(path);
+    else if (language !== null) {
+      const text = texts.get(path);
+      if (text !== undefined) result = indexTestFile(path, text);
+    }
+    if (result === undefined) continue;
+    if (!result.parsed) {
+      unparsed.add(path);
+      continue;
+    }
+    files.push({
+      path,
+      tests: result.tests.filter((block) => block.kind === "test").sort((a, b) => a.line - b.line),
+      groups: result.tests.filter((block) => block.kind === "describe"),
+    });
+  }
+  return { files, unparsed, stemLinked: sameStemDeletions(diff) };
+}
 
 /** Whether the lines the diff removed from this file define tests; `unknown` when the text was not kept. */
 function removedTests(file: DiffFile): "yes" | "no" | "unknown" {
@@ -28,7 +119,7 @@ function removedTests(file: DiffFile): "yes" | "no" | "unknown" {
  * `block` (shown as `warn` in mode `warn`), or `info` when the same diff also deletes a source file with the same name,
  * deletes JS/TS or Python source files of the package that holds the test (never the repository root) and no JS/TS or
  * Python file of that package is left in `repoFiles` (the head tracked-file list; empty shows no remaining file), or (for a deleted file in
- * `moved`, see `movedTestFiles`) when every test it held is found again, by body, in a new test of this change. A
+ * `moved`, the moved-file rule of `matchTests`, fed by `indexDeletedTestFiles`) when every test it held is found again, by body, in a new test of this change. A
  * deleted file with a same-stem test file added or renamed to (`sameStemDeletions`) needs no name match, only the body
  * evidence; without it the file stays `block` and the detail says whether its tests were compared (`compared`), its
  * base text was read but could not be parsed (`unparsed`), or the text was not available. A renamed-away file is never
@@ -40,8 +131,8 @@ function removedTests(file: DiffFile): "yes" | "no" | "unknown" {
  * no removed line, so its text was not read, and the signal is the mode's severity with a fixed sentence (CORE-50).
  * Fail closed: no `info` softening applies to it (a same-name source or the rest of the package deleted alongside, a
  * moved or same-stem test), because the change that hides a test file's text is the evasion this rule closes, and
- * those softenings rest on path evidence the same change controls. `ti01Moved.ts` skips binary entries, so the moved
- * and same-stem softenings never hold a binary path either. Known false blocks, cleared by the accept label: a binary
+ * those softenings rest on path evidence the same change controls. `indexDeletedTestFiles` skips binary entries, so the
+ * moved and same-stem softenings never hold a binary path either. Known false blocks, cleared by the accept label: a binary
  * helper file under a test directory (`conftest.py`, a `.d.ts`), a binary test file deleted with its same-name source
  * or its whole package, and a test file deleted or renamed away under an attribute the repository already carried. A
  * binary candidate in another language (an image, `.bin`, `.json`) is not counted.

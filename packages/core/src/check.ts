@@ -62,8 +62,7 @@ import { keepSignalFileText, textCutModifiedTestFiles, textCutSignalFiles } from
 import { summarizeTestChanges } from "./signals/testChanges.js";
 import { matchTests } from "./signals/testMatch.js";
 import { binaryTouchedTestFiles, indexTouchedTestFiles, withBinaryTestFiles } from "./signals/testPairs.js";
-import { detectTI01 } from "./signals/ti01.js";
-import { movedTestFiles } from "./signals/ti01Moved.js";
+import { detectTI01, indexDeletedTestFiles } from "./signals/ti01.js";
 import { detectTI02 } from "./signals/ti02.js";
 import { detectTI03 } from "./signals/ti03.js";
 import { detectTI03Pairs, type Ti03Finding } from "./signals/ti03Pairs.js";
@@ -169,7 +168,7 @@ export interface CheckInput {
    * TI01's moved-test check. TI02, TI05, TI06, TI07 and TI12 compare the JS/TS (and, with `pythonTestIndex`, Python)
    * test files the diff modifies, and the report's `testChanges` summarizes that comparison; TI09 compares the touched
    * test-runner config files. TI01 indexes the base text of a deleted test file to find its tests again in a new test
-   * of this change (`movedTestFiles`), which makes the deletion `info`. TI03 judges the compared test pairs, and reads the top-level imports of
+   * of this change (`indexDeletedTestFiles` and `matchTests`), which makes the deletion `info`. TI03 judges the compared test pairs, and reads the top-level imports of
    * the Python test files in it to resolve `import pytest as pt` style aliases; without them it reads the literal
    * spellings only. The tests-exercise check reads the imports of the added and modified JS/TS test files at HEAD
    * (`detectUnexercisedChanges`) and adds one `TESTS_NOT_EXERCISING_CHANGES` warn message for the changed source files
@@ -334,10 +333,13 @@ export function check(input: CheckInput): Report {
     parsedDiff !== null && testIntegrity.mode !== "off" && input.testSources !== undefined
       ? indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex)
       : null;
-  const movedTests =
-    touched === null || parsedDiff === null || input.testSources === undefined
+  // The pairing runs once, when the touched files could be compared; it also finds the deleted test files whose tests
+  // moved, which TI01 reads. `touched !== null` implies a diff and the sources.
+  const deletedFiles =
+    touched === null || touched.notRun !== null || parsedDiff === null || input.testSources === undefined
       ? undefined
-      : movedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex, touched);
+      : indexDeletedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex);
+  const match = touched === null || touched.notRun !== null ? undefined : matchTests(touched, deletedFiles);
   // Mode off computes nothing; the signals carry their effective severity for the mode. TI15 is not emitted (CORE-144).
   const testIntegritySignals =
     parsedDiff === null || testIntegrity.mode === "off"
@@ -346,9 +348,9 @@ export function check(input: CheckInput): Report {
           ...detectTI01(
             parsedDiff,
             testIntegrity.mode,
-            movedTests?.files,
-            movedTests?.compared,
-            movedTests?.unparsed,
+            match?.movedFiles.moved,
+            match?.movedFiles.compared,
+            deletedFiles?.unparsed,
             input.repoFiles,
           ),
           ...detectTI04(parsedDiff, testIntegrity.mode),
@@ -398,18 +400,19 @@ export function check(input: CheckInput): Report {
         unavailable: { notRun: touched.notRun },
         configUnavailable,
       };
-    } else {
-      const match = matchTests(touched);
+    } else if (match !== undefined) {
       testChanges = summarizeTestChanges(touched, match) ?? undefined;
       // A test of a deleted file that TI01 found again in another file is judged like any other pair, unless the match
       // already pairs that head test.
       const matchedHeads = new Set([...match.pairs, ...match.moved, ...match.replaced].map((pair) => pair.head));
-      const movedPairs = (movedTests?.pairs ?? []).filter((pair) => !matchedHeads.has(pair.head));
+      const movedPairs = match.movedFiles.pairs.filter((pair) => !matchedHeads.has(pair.head));
       const judged = movedPairs.length === 0 ? match : { ...match, pairs: [...match.pairs, ...movedPairs] };
       ti03Pairs = detectTI03Pairs({
         match: judged,
         touched,
-        ...(movedTests?.groups === undefined ? {} : { movedGroups: movedTests.groups }),
+        ...(deletedFiles === undefined
+          ? {}
+          : { movedGroups: new Map(deletedFiles.files.map((file) => [file.path, file.groups])) }),
         diff: parsedDiff,
         sources: input.testSources,
       });

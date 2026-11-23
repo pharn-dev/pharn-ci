@@ -37755,9 +37755,6 @@ function tokenSetMemo() {
 var FOUR_FIFTHS = { num: 4, den: 5 };
 var HALF = { num: 1, den: 2 };
 var THREE_QUARTERS = { num: 3, den: 4 };
-function ceilRatio(n, ratio) {
-  return Math.floor((ratio.num * n + ratio.den - 1) / ratio.den);
-}
 function overlap(a, b) {
   const [small, large] = a.size <= b.size ? [a, b] : [b, a];
   let both = 0;
@@ -37766,6 +37763,9 @@ function overlap(a, b) {
 }
 function jaccardAtLeast(a, b, ratio = FOUR_FIFTHS) {
   if (a.size === 0 && b.size === 0) return true;
+  const small = Math.min(a.size, b.size);
+  const large = Math.max(a.size, b.size);
+  if (ratio.den * small < ratio.num * large) return false;
   const both = overlap(a, b);
   return ratio.den * both >= ratio.num * (a.size + b.size - both);
 }
@@ -37773,125 +37773,6 @@ function containsAtLeast(old, fresh, ratio) {
   if (old.size === 0) return true;
   return ratio.den * overlap(old, fresh) >= ratio.num * old.size;
 }
-var CursorHeap = class {
-  list = [];
-  at = [];
-  key = [];
-  get size() {
-    return this.key.length;
-  }
-  push(list, at, key) {
-    this.list.push(list);
-    this.at.push(at);
-    this.key.push(key);
-    let i = this.key.length - 1;
-    while (i > 0) {
-      const parent = i - 1 >> 1;
-      if (this.key[parent] <= this.key[i]) break;
-      this.swap(i, parent);
-      i = parent;
-    }
-  }
-  /** The smallest cursor, removed. */
-  pop() {
-    const top = { list: this.list[0], at: this.at[0], key: this.key[0] };
-    const last = this.key.length - 1;
-    this.swap(0, last);
-    this.list.pop();
-    this.at.pop();
-    this.key.pop();
-    let i = 0;
-    for (; ; ) {
-      const left = 2 * i + 1;
-      const right = left + 1;
-      let smallest = i;
-      if (left < this.key.length && this.key[left] < this.key[smallest]) smallest = left;
-      if (right < this.key.length && this.key[right] < this.key[smallest]) smallest = right;
-      if (smallest === i) break;
-      this.swap(i, smallest);
-      i = smallest;
-    }
-    return top;
-  }
-  swap(a, b) {
-    for (const column of [this.list, this.at, this.key]) {
-      const held = column[a];
-      column[a] = column[b];
-      column[b] = held;
-    }
-  }
-};
-var SimilarityIndex = class {
-  constructor(heads, candidates, ratio = FOUR_FIFTHS) {
-    this.heads = heads;
-    this.ratio = ratio;
-    for (const set of heads) this.count(set);
-    for (const set of candidates) this.count(set);
-    heads.forEach((set, index) => {
-      if (set.size === 0) {
-        this.empty.push(index);
-        return;
-      }
-      for (const token of this.prefix(set)) {
-        const list = this.postings.get(token);
-        if (list === void 0) this.postings.set(token, [index]);
-        else list.push(index);
-      }
-    });
-  }
-  heads;
-  ratio;
-  frequency = /* @__PURE__ */ new Map();
-  postings = /* @__PURE__ */ new Map();
-  empty = [];
-  count(set) {
-    for (const token of set) this.frequency.set(token, (this.frequency.get(token) ?? 0) + 1);
-  }
-  prefix(set) {
-    const frequency = this.frequency;
-    const ordered = [...set].sort((a, b) => (frequency.get(a) ?? 0) - (frequency.get(b) ?? 0) || byCodeUnit(a, b));
-    return ordered.slice(0, set.size - ceilRatio(set.size, this.ratio) + 1);
-  }
-  /**
-   * The index of the first head set similar to `candidate`, below `below`, not skipped and accepted, or -1 when there
-   * is none. `bounded` is true when the probe stopped at the bound without finding one, so a similar head set may exist.
-   */
-  find(candidate, isSkipped, below = Number.POSITIVE_INFINITY, accept = () => true) {
-    if (candidate.size === 0) {
-      for (const index of this.empty) {
-        if (index >= below) break;
-        if (!isSkipped(index) && accept(index)) return { index, bounded: false };
-      }
-      return { index: -1, bounded: false };
-    }
-    const lists = [];
-    const heap = new CursorHeap();
-    for (const token of this.prefix(candidate)) {
-      const list = this.postings.get(token);
-      if (list === void 0) continue;
-      lists.push(list);
-      heap.push(lists.length - 1, 0, list[0]);
-    }
-    const least = ceilRatio(candidate.size, this.ratio);
-    const most = Math.floor(this.ratio.den * candidate.size / this.ratio.num);
-    let probes = 0;
-    let previous = -1;
-    while (heap.size > 0) {
-      const { list, at, key } = heap.pop();
-      const entries = lists[list];
-      if (at + 1 < entries.length) heap.push(list, at + 1, entries[at + 1]);
-      if (key >= below) break;
-      if (key === previous) continue;
-      previous = key;
-      if (++probes > MAX_SIMILARITY_PROBES) return { index: -1, bounded: true };
-      if (isSkipped(key)) continue;
-      const head = this.heads[key];
-      if (head.size < least || head.size > most) continue;
-      if (jaccardAtLeast(candidate, head, this.ratio) && accept(key)) return { index: key, bounded: false };
-    }
-    return { index: -1, bounded: false };
-  }
-};
 
 // ../core/src/signals/nameWords.ts
 var WORD = /[\p{L}\p{N}]+/gu;
@@ -38011,45 +37892,62 @@ function eachReplacements(candidates, fresh) {
 // ../core/src/signals/testMatch.ts
 var byLine = (a, b) => a.line - b.line;
 var leafName = (block) => block.path[block.path.length - 1] ?? "";
-var OtherFileList = class {
+var FreeList = class {
   constructor(entries) {
     this.entries = entries;
-    const n = entries.length;
-    this.next = new Int32Array(n + 1);
-    this.blockEnd = new Int32Array(n + 1);
-    for (let i = 0; i <= n; i++) this.next[i] = i;
-    this.blockEnd[n] = n;
-    for (let i = n - 1; i >= 0; i--) {
-      const following = entries[i + 1];
-      this.blockEnd[i] = following !== void 0 && following.fileIndex === entries[i].fileIndex ? this.blockEnd[i + 1] : i + 1;
-    }
   }
   entries;
   next;
-  blockEnd;
-  find(from) {
+  runEnd;
+  build() {
+    if (this.next === void 0 || this.runEnd === void 0) {
+      const n = this.entries.length;
+      const next = new Int32Array(n + 1);
+      const runEnd = new Int32Array(n + 1);
+      for (let i = 0; i <= n; i++) next[i] = i;
+      runEnd[n] = n;
+      for (let i = n - 1; i >= 0; i--) {
+        const following = this.entries[i + 1];
+        runEnd[i] = following !== void 0 && following.fileIndex === this.entries[i].fileIndex ? runEnd[i + 1] : i + 1;
+      }
+      this.next = next;
+      this.runEnd = runEnd;
+    }
+    return { next: this.next, runEnd: this.runEnd };
+  }
+  /** The first index at or after `from` whose entry is not used (the length of the list when there is none). */
+  find(next, from) {
     const n = this.entries.length;
     let root = from;
-    while (root < n && (this.next[root] !== root || this.entries[root].used)) {
-      if (this.next[root] === root) this.next[root] = root + 1;
-      root = this.next[root];
+    while (root < n && (next[root] !== root || this.entries[root].used)) {
+      if (next[root] === root) next[root] = root + 1;
+      root = next[root];
     }
     let step = from;
     while (step < root) {
-      const following = this.next[step];
-      this.next[step] = root;
+      const following = next[step];
+      next[step] = root;
       step = following;
     }
     return root;
   }
-  /** The first unused entry that is not in file `fileIndex`, or null. */
-  firstOutside(fileIndex) {
+  walk(options) {
     const n = this.entries.length;
-    let at = this.find(0);
-    while (at < n) {
+    if (n === 0) return null;
+    const { next, runEnd } = this.build();
+    const before = Math.min(options.before ?? n, n);
+    const limit = options.limit ?? MAX_SIMILARITY_PROBES;
+    let offered = 0;
+    let at = this.find(next, 0);
+    while (at < before) {
       const entry = this.entries[at];
-      if (entry.fileIndex !== fileIndex) return entry;
-      at = this.find(this.blockEnd[at]);
+      if (entry.fileIndex === options.own) {
+        at = this.find(next, runEnd[at]);
+        continue;
+      }
+      if (++offered > limit) return null;
+      if (!options.held?.has(entry) && options.test(entry)) return entry;
+      at = this.find(next, at + 1);
     }
     return null;
   }
@@ -38059,7 +37957,84 @@ function push(map, key, value) {
   if (list === void 0) map.set(key, [value]);
   else list.push(value);
 }
-function matchTests(touched) {
+function memoOf(compute) {
+  const memo = /* @__PURE__ */ new Map();
+  return (block) => {
+    let found = memo.get(block);
+    if (found === void 0) {
+      found = compute(block);
+      memo.set(block, found);
+    }
+    return found;
+  };
+}
+var NO_WORDS = /* @__PURE__ */ new Set();
+function matchDeletedFiles(touched, deleted, tokensOf) {
+  const result = {
+    moved: /* @__PURE__ */ new Set(),
+    compared: new Set(deleted.files.map((file) => file.path)),
+    pairs: []
+  };
+  if (!deleted.files.some((file) => file.tests.length > 0)) return result;
+  const pool = [];
+  for (const file of touched.added) {
+    for (const block of file.head) {
+      if (block.assertionCount >= 1) pool.push({ fileIndex: 0, path: file.headPath, block, used: false });
+    }
+  }
+  for (const file of touched.pairs) {
+    const known2 = new Set(file.base.map(fullTestName));
+    for (const block of file.head) {
+      if (block.assertionCount >= 1 && !known2.has(fullTestName(block))) {
+        pool.push({ fileIndex: 0, path: file.headPath, block, used: false });
+      }
+    }
+  }
+  if (pool.length === 0) return result;
+  pool.sort((a, b) => byCodeUnit(a.path, b.path) || a.block.line - b.block.line);
+  const leaves = /* @__PURE__ */ new Map();
+  const groups = /* @__PURE__ */ new Set();
+  for (const entry of pool) {
+    push(leaves, leafName(entry.block), entry);
+    for (const group of entry.block.path.slice(0, -1)) groups.add(group);
+  }
+  const list = new FreeList(pool);
+  for (const file of deleted.files) {
+    if (file.tests.length === 0) continue;
+    if (!deleted.stemLinked.has(file.path) && !file.tests.every(
+      (block) => leaves.has(leafName(block)) && block.path.slice(0, -1).every((group) => groups.has(group))
+    )) {
+      continue;
+    }
+    const taken = /* @__PURE__ */ new Set();
+    const found = [];
+    for (const block of file.tests) {
+      let pick = null;
+      const sameLeaf = leaves.get(leafName(block)) ?? [];
+      const scan = Math.min(sameLeaf.length, MAX_SIMILARITY_PROBES);
+      for (let at = 0; at < scan; at++) {
+        const entry = sameLeaf[at];
+        if (!entry.used && !taken.has(entry) && holdsBody(block, entry.block, tokensOf)) {
+          pick = entry;
+          break;
+        }
+      }
+      if (pick === null) {
+        const tokens2 = tokensOf(block);
+        pick = list.walk({ held: taken, test: (entry) => jaccardAtLeast(tokens2, tokensOf(entry.block), FOUR_FIFTHS) });
+      }
+      if (pick === null) break;
+      taken.add(pick);
+      found.push({ basePath: file.path, headPath: pick.path, base: block, head: pick.block });
+    }
+    if (found.length !== file.tests.length) continue;
+    for (const entry of taken) entry.used = true;
+    result.moved.add(file.path);
+    result.pairs.push(...found);
+  }
+  return result;
+}
+function matchTests(touched, deleted) {
   const pairs = [];
   const replaced = [];
   const fresh = [];
@@ -38113,10 +38088,7 @@ function matchTests(touched) {
     const byHash = /* @__PURE__ */ new Map();
     for (let at = 0; at < entries.length; at++) push(byHash, entries[at].block.bodyHash, at);
     const cursor = /* @__PURE__ */ new Map();
-    const similar = candidates.length > 0 && entries.length > 0 ? new SimilarityIndex(
-      entries.map((entry) => tokensOf(entry.block)),
-      candidates.map(tokensOf)
-    ) : null;
+    const own = new FreeList(entries);
     const fileLeft = [];
     for (const block of candidates) {
       let pick = -1;
@@ -38127,20 +38099,17 @@ function matchTests(touched) {
         cursor.set(block.bodyHash, at);
         if (at < bucket.length) pick = bucket[at];
       }
-      if (similar !== null) {
-        const found = similar.find(
-          tokensOf(block),
-          (at) => entries[at].used,
-          pick === -1 ? Number.POSITIVE_INFINITY : pick
-        );
-        if (found.index !== -1) pick = found.index;
-      }
-      if (pick === -1) {
+      const tokens2 = tokensOf(block);
+      const similar = own.walk({
+        ...pick === -1 ? {} : { before: pick },
+        test: (entry) => jaccardAtLeast(tokens2, tokensOf(entry.block), FOUR_FIFTHS)
+      });
+      const chosen = similar ?? (pick === -1 ? null : entries[pick]);
+      if (chosen === null) {
         fileLeft.push({ fileIndex: index, path: file.basePath, block });
       } else {
-        const entry = entries[pick];
-        entry.used = true;
-        pairs.push({ basePath: file.basePath, headPath: file.headPath, base: block, head: entry.block });
+        chosen.used = true;
+        pairs.push({ basePath: file.basePath, headPath: file.headPath, base: block, head: chosen.block });
       }
     }
     const renamed = /* @__PURE__ */ new Set();
@@ -38195,13 +38164,13 @@ function matchTests(touched) {
     push(hashEntries, entry.block.bodyHash, entry);
   }
   const hashLists = /* @__PURE__ */ new Map();
-  const listFor = (lists, entries, key) => {
-    let list = lists.get(key);
+  const hashList = (key) => {
+    let list = hashLists.get(key);
     if (list === void 0) {
-      const found = entries.get(key);
+      const found = hashEntries.get(key);
       if (found === void 0) return null;
-      list = new OtherFileList(found);
-      lists.set(key, list);
+      list = new FreeList(found);
+      hashLists.set(key, list);
     }
     return list;
   };
@@ -38220,7 +38189,11 @@ function matchTests(touched) {
         }
       }
     }
-    const byBody = listFor(hashLists, hashEntries, candidate.block.bodyHash)?.firstOutside(candidate.fileIndex) ?? null;
+    const byBody = hashList(candidate.block.bodyHash)?.walk({
+      own: candidate.fileIndex,
+      limit: Number.POSITIVE_INFINITY,
+      test: () => true
+    }) ?? null;
     const pick = byLeaf !== null && (byBody === null || byLeaf.order < byBody.order) ? byLeaf : byBody;
     if (pick === null) afterNames.push(candidate);
     else {
@@ -38229,49 +38202,36 @@ function matchTests(touched) {
     }
   }
   const afterSimilarity = [];
-  const pool = fresh.filter((entry) => !entry.used);
-  if (afterNames.length > 0 && pool.length > 0) {
-    const poolBodies = pool.map((entry) => tokensOf(entry.block));
-    const poolNames = pool.map((entry) => entry.block.nameDynamic ? /* @__PURE__ */ new Set() : fullNameWords(entry.block));
-    const candidateNames = afterNames.map(
-      (candidate) => candidate.block.nameDynamic ? /* @__PURE__ */ new Set() : fullNameWords(candidate.block)
-    );
-    const candidateBodies = afterNames.map((candidate) => tokensOf(candidate.block));
-    const bodyIndex = new SimilarityIndex(poolBodies, candidateBodies, FOUR_FIFTHS);
-    const nameIndex = new SimilarityIndex(poolNames, candidateNames, HALF);
-    afterNames.forEach((candidate, at) => {
-      const skipped = (index) => {
-        const entry = pool[index];
-        return entry.used || entry.fileIndex === candidate.fileIndex;
-      };
-      const bodies = candidateBodies[at];
-      let found = bodyIndex.find(bodies, skipped).index;
-      const words = candidateNames[at];
-      if (found === -1 && words.size > 0) {
-        const chains = assertionChains(candidate.block);
-        found = nameIndex.find(
-          words,
-          skipped,
-          Number.POSITIVE_INFINITY,
-          (index) => containsAtLeast(bodies, poolBodies[index], FOUR_FIFTHS) && holdsEveryChain(chains, assertionChains(pool[index].block))
-        ).index;
-      }
-      if (found === -1) {
-        afterSimilarity.push(candidate);
-      } else {
-        const pick = pool[found];
-        pick.used = true;
-        moved.push({ basePath: candidate.path, headPath: pick.path, base: candidate.block, head: pick.block });
-      }
+  const wordsOf = memoOf((block) => block.nameDynamic ? NO_WORDS : fullNameWords(block));
+  const chainsOf = memoOf(assertionChains);
+  const all = new FreeList(fresh);
+  for (const candidate of afterNames) {
+    const bodies = tokensOf(candidate.block);
+    let pick = all.walk({
+      own: candidate.fileIndex,
+      test: (entry) => jaccardAtLeast(bodies, tokensOf(entry.block), FOUR_FIFTHS)
     });
-  } else {
-    afterSimilarity.push(...afterNames);
+    const words = wordsOf(candidate.block);
+    if (pick === null && words.size > 0) {
+      const chains = chainsOf(candidate.block);
+      pick = all.walk({
+        own: candidate.fileIndex,
+        test: (entry) => jaccardAtLeast(words, wordsOf(entry.block), HALF) && containsAtLeast(bodies, tokensOf(entry.block), FOUR_FIFTHS) && holdsEveryChain(chains, chainsOf(entry.block))
+      });
+    }
+    if (pick === null) {
+      afterSimilarity.push(candidate);
+    } else {
+      pick.used = true;
+      moved.push({ basePath: candidate.path, headPath: pick.path, base: candidate.block, head: pick.block });
+    }
   }
+  const movedFiles = deleted === void 0 ? { moved: /* @__PURE__ */ new Set(), compared: /* @__PURE__ */ new Set(), pairs: [] } : matchDeletedFiles(touched, deleted, tokensOf);
   const unmatched = afterSimilarity.map((candidate) => ({
     path: candidate.path,
     block: candidate.block
   }));
-  return { unmatched, pairs, moved, replaced };
+  return { unmatched, pairs, moved, replaced, movedFiles };
 }
 
 // ../core/src/binaryDetails.ts
@@ -38283,8 +38243,8 @@ function isBinaryDetail(detail) {
   return BINARY_DETAILS.includes(detail);
 }
 
-// ../core/src/signals/ti01Moved.ts
-var leafOf = (block) => block.path[block.path.length - 1] ?? "";
+// ../core/src/signals/ti01.ts
+var MAX_DETAIL3 = 300;
 function sameStemDeletions(diff) {
   const stems = /* @__PURE__ */ new Map();
   for (const file of diff) {
@@ -38308,22 +38268,16 @@ function sameStemDeletions(diff) {
   }
   return linked;
 }
-function movedTestFiles(diff, sources, python, touched) {
-  const describes = /* @__PURE__ */ new Map();
-  const moved = {
-    files: /* @__PURE__ */ new Set(),
-    compared: /* @__PURE__ */ new Set(),
-    unparsed: /* @__PURE__ */ new Set(),
-    pairs: [],
-    groups: describes
-  };
-  if (touched.notRun !== null || "unavailable" in sources.base) return moved;
+function indexDeletedTestFiles(diff, sources, python) {
+  const indexed = { files: [], unparsed: /* @__PURE__ */ new Set(), stemLinked: /* @__PURE__ */ new Set() };
+  if ("unavailable" in sources.base) return indexed;
   const deleted = diff.filter((file) => file.status === "deleted" && isTestFile(file.path) && file.binary !== true).map((file) => file.path).sort(byCodeUnit);
-  if (deleted.length === 0) return moved;
+  if (deleted.length === 0) return indexed;
   const texts = new Map(sources.base.files.map((file) => [file.path, file.text]));
   const pythonBase = python?.available ? new Map(python.base.map((file) => [file.path, file.result])) : null;
-  const indexed = [];
-  for (const path of [...new Set(deleted)]) {
+  const files = [];
+  const unparsed = /* @__PURE__ */ new Set();
+  for (const path of new Set(deleted)) {
     const language = languageOf(path);
     let result;
     if (language === "py") result = pythonBase?.get(path);
@@ -38333,78 +38287,17 @@ function movedTestFiles(diff, sources, python, touched) {
     }
     if (result === void 0) continue;
     if (!result.parsed) {
-      moved.unparsed.add(path);
+      unparsed.add(path);
       continue;
     }
-    moved.compared.add(path);
-    describes.set(
+    files.push({
       path,
-      result.tests.filter((block) => block.kind === "describe")
-    );
-    const tests = result.tests.filter((block) => block.kind === "test").sort((a, b) => a.line - b.line);
-    if (tests.length > 0) indexed.push({ path, tests });
+      tests: result.tests.filter((block) => block.kind === "test").sort((a, b) => a.line - b.line),
+      groups: result.tests.filter((block) => block.kind === "describe")
+    });
   }
-  const fresh = [];
-  for (const file of touched.added) {
-    for (const block of file.head)
-      if (block.assertionCount >= 1) fresh.push({ path: file.headPath, block, used: false });
-  }
-  for (const file of touched.pairs) {
-    const known2 = new Set(file.base.map(fullTestName));
-    for (const block of file.head) {
-      if (block.assertionCount >= 1 && !known2.has(fullTestName(block))) {
-        fresh.push({ path: file.headPath, block, used: false });
-      }
-    }
-  }
-  if (fresh.length === 0) return moved;
-  fresh.sort((a, b) => byCodeUnit(a.path, b.path) || a.block.line - b.block.line);
-  const leaves = /* @__PURE__ */ new Map();
-  const groups = /* @__PURE__ */ new Set();
-  for (const entry of fresh) {
-    const leaf = leafOf(entry.block);
-    const list = leaves.get(leaf);
-    if (list === void 0) leaves.set(leaf, [entry]);
-    else list.push(entry);
-    for (const group of entry.block.path.slice(0, -1)) groups.add(group);
-  }
-  const stemLinked = sameStemDeletions(diff);
-  const named = indexed.filter(
-    (file) => stemLinked.has(file.path) || file.tests.every(
-      (block) => leaves.has(leafOf(block)) && block.path.slice(0, -1).every((group) => groups.has(group))
-    )
-  );
-  if (named.length === 0) return moved;
-  const tokensOf = tokenSetMemo();
-  const bodies = new SimilarityIndex(
-    fresh.map((entry) => tokensOf(entry.block)),
-    named.flatMap((file) => file.tests.map((block) => tokensOf(block))),
-    FOUR_FIFTHS
-  );
-  for (const file of named) {
-    const taken = /* @__PURE__ */ new Set();
-    const found = [];
-    for (const block of file.tests) {
-      const free = (entry) => !entry.used && !taken.has(entry);
-      let pick = (leaves.get(leafOf(block)) ?? []).slice(0, MAX_SIMILARITY_PROBES).find((entry) => free(entry) && holdsBody(block, entry.block, tokensOf)) ?? null;
-      if (pick === null) {
-        const at = bodies.find(tokensOf(block), (index) => !free(fresh[index])).index;
-        if (at !== -1) pick = fresh[at];
-      }
-      if (pick === null) break;
-      taken.add(pick);
-      found.push({ basePath: file.path, headPath: pick.path, base: block, head: pick.block });
-    }
-    if (found.length !== file.tests.length) continue;
-    for (const entry of taken) entry.used = true;
-    moved.files.add(file.path);
-    moved.pairs.push(...found);
-  }
-  return moved;
+  return { files, unparsed, stemLinked: sameStemDeletions(diff) };
 }
-
-// ../core/src/signals/ti01.ts
-var MAX_DETAIL3 = 300;
 function removedTests(file) {
   if (file.hunks === void 0) return "unknown";
   for (const hunk of file.hunks) {
@@ -43278,14 +43171,15 @@ function check(input) {
   const testPaths = parsedDiff === null ? [] : deletedTestFiles(parsedDiff);
   const testIntegrity2 = resolveTestIntegrityMode(input.testIntegrityMode);
   const touched = parsedDiff !== null && testIntegrity2.mode !== "off" && input.testSources !== void 0 ? indexTouchedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex) : null;
-  const movedTests = touched === null || parsedDiff === null || input.testSources === void 0 ? void 0 : movedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex, touched);
+  const deletedFiles = touched === null || touched.notRun !== null || parsedDiff === null || input.testSources === void 0 ? void 0 : indexDeletedTestFiles(parsedDiff, input.testSources, input.pythonTestIndex);
+  const match = touched === null || touched.notRun !== null ? void 0 : matchTests(touched, deletedFiles);
   const testIntegritySignals = parsedDiff === null || testIntegrity2.mode === "off" ? [] : sortSignals2([
     ...detectTI01(
       parsedDiff,
       testIntegrity2.mode,
-      movedTests?.files,
-      movedTests?.compared,
-      movedTests?.unparsed,
+      match?.movedFiles.moved,
+      match?.movedFiles.compared,
+      deletedFiles?.unparsed,
       input.repoFiles
     ),
     ...detectTI04(parsedDiff, testIntegrity2.mode),
@@ -43322,16 +43216,15 @@ function check(input) {
         unavailable: { notRun: touched.notRun },
         configUnavailable
       };
-    } else {
-      const match = matchTests(touched);
+    } else if (match !== void 0) {
       testChanges = summarizeTestChanges(touched, match) ?? void 0;
       const matchedHeads = new Set([...match.pairs, ...match.moved, ...match.replaced].map((pair) => pair.head));
-      const movedPairs = (movedTests?.pairs ?? []).filter((pair) => !matchedHeads.has(pair.head));
+      const movedPairs = match.movedFiles.pairs.filter((pair) => !matchedHeads.has(pair.head));
       const judged = movedPairs.length === 0 ? match : { ...match, pairs: [...match.pairs, ...movedPairs] };
       ti03Pairs = detectTI03Pairs({
         match: judged,
         touched,
-        ...movedTests?.groups === void 0 ? {} : { movedGroups: movedTests.groups },
+        ...deletedFiles === void 0 ? {} : { movedGroups: new Map(deletedFiles.files.map((file) => [file.path, file.groups])) },
         diff: parsedDiff,
         sources: input.testSources
       });
@@ -43580,21 +43473,21 @@ function check(input) {
   const binaryPaths = binaryCoveredPaths(diff, coverage2);
   let untrackedCoveragePaths = 0;
   if (input.repoFiles.length > 0) {
-    const match = matchCoveragePaths(coverage2, input.repoFiles, coverageRoot);
-    if (match.unmatched.length === match.total) {
+    const match2 = matchCoveragePaths(coverage2, input.repoFiles, coverageRoot);
+    if (match2.unmatched.length === match2.total) {
       return buildReport({
         ...base,
         diffCoverage: null,
         missing: {
           reason: "coverage-paths-unmatched",
-          total: match.total,
-          example: match.unmatched[0] ?? "",
-          suggestedRoot: match.suggestedRoot
+          total: match2.total,
+          example: match2.unmatched[0] ?? "",
+          suggestedRoot: match2.suggestedRoot
         },
         binaryCoveredPaths: binaryPaths
       });
     }
-    untrackedCoveragePaths = match.unmatched.length;
+    untrackedCoveragePaths = match2.unmatched.length;
   }
   return buildReport({
     ...base,

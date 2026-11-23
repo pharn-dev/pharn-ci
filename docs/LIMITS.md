@@ -50,7 +50,10 @@ see [`THREAT-MODEL.md`](./THREAT-MODEL.md).
   group name it held is added, in a test with at least one assertion, in another test file of the change (a test of an
   added file, or a test of a modified file whose full name is not at base), and every test it held is found again in a
   distinct one of those tests by its body: a body-token Jaccard of at least 4/5, or a new body that holds at least 4/5
-  of the old body's distinct tokens and every assertion chain it held. A name alone never qualifies, so a file deleted
+  of the old body's distinct tokens and every assertion chain it held. Each test of the deleted file is compared by body
+  with at most 256 not-yet-paired new tests with an assertion, in head order, after the first 256 of its leaf name; a
+  test whose match lies past that bound keeps the file at the mode's level (`block`, `warn` in mode `warn`). A name
+  alone never qualifies, so a file deleted
   and re-added under the same names with trivial assertions blocks; the moved tests are also judged by TI05, TI06 and
   TI07 as pairs. A test moved and refactored past those thresholds (a new fixture helper, say) keeps the file a
   `block`: a known false block, cleared with the accept label. A name added in a file the change does not touch does
@@ -265,8 +268,11 @@ whether a test is still good.
   alone, because a name is what a change controls most easily: a real test deleted beside a hollow new test with a
   similar name stays a `block`. So a suite rewritten in one describe, whose tests get reworded names and bodies that
   share less than the rename-in-place or cross-file thresholds above, blocks even when nothing was lost (the corpus dry
-  run had one such PR). A person who confirms the rewrite clears it with the accept label. Every probe looks at no more
-  than 256 candidates.
+  run had one such PR). A person who confirms the rewrite clears it with the accept label. Each removed test is compared
+  with at most 256 not-yet-paired new tests per rule, in head order; a test whose match lies past the bound is reported
+  as removed. The bound counts the new tests a rule compares the removed test with: tests already paired, and in the
+  cross-file rules the removed test's own file, are skipped and not counted. A test past it is a TI02 at the mode's
+  level (`block`, `warn` in mode `warn`); when the test was in fact renamed or moved, the accept label clears it.
 - **Two tests merged into one: a known false block.** A change that folds two tests of a file into one test, keeping
   both bodies' assertions, leaves one of the two base tests without a counterpart: the merged test answers at most one
   of them (by name or by body; only an `.each` test answers several), no other new test of the file holds the other
@@ -282,7 +288,8 @@ whether a test is still good.
   compared (`TEST_INTEGRITY_INDEX_UNAVAILABLE`). An added test file the index refuses (or that has no text at HEAD,
   or no Python index) holds no test any signal reads: a test cannot be found to have moved into it, and its own
   tests are not checked. The same message names it in a sentence of its own, as a warning in every mode.
-- **Caps.** At most 20 findings per file; the matching probes at most 256 candidates per test (section 8).
+- **Caps.** At most 20 findings per file; the matching compares each removed test with at most 256 not-yet-paired new
+  tests per rule (section 8).
 - **Order of the rules.** Name pairs and phase 1 (4/5), then the rename in place, the `.each` replacement, the exact
   cross-file body hash or leaf name with a body that holds the old one (body evidence) and, last, the cross-file
   similarity. Every threshold is an integer comparison.
@@ -2072,8 +2079,10 @@ limited by git, Node or GitHub alone.
   deleted one once, so a change that modifies about 100 `.py` test files (fewer when it also adds or deletes some), or
   whose `.py` test files hold 16 MiB across both sides, can have a modified `.py` test file refused at HEAD while its
   base was indexed, even when that file is small. That fails `block` (the accept label lowers it). A body is compared by its first 4000
-  characters. Matching a test with a similar one probes at most 256 candidates per test, so a file of thousands of
-  near-identical bodies can report a renamed test as removed. At most 20 TI02 and 20 TI05 findings are listed per file;
+  characters. Each removed test is compared with at most 256 not-yet-paired new tests per rule, in head order; a test
+  whose match lies past the bound is reported as removed. A file, or the pool of the other touched files, with more than
+  256 new tests ahead of the match can therefore report a renamed or moved test as removed, which the accept label
+  clears. At most 20 TI02 and 20 TI05 findings are listed per file;
   the messages say how many were left out, and the block findings come first. The action and CLI dists carry the
   TypeScript parser for this and are about 11 MB.
 

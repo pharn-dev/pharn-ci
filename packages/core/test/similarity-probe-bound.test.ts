@@ -1,94 +1,76 @@
 import { describe, expect, it } from "vitest";
-import { MAX_SIMILARITY_PROBES, SimilarityIndex } from "../src/signals/bodyTokens.js";
+import { MAX_SIMILARITY_PROBES } from "../src/signals/bodyTokens.js";
+import { matchTests } from "../src/signals/testMatch.js";
+import { indexTestFile } from "../src/testIndex/indexTestFile.js";
+import type { TestBlock } from "../src/testIndex/types.js";
 
-// SimilarityIndex.find looks at no more than MAX_SIMILARITY_PROBES posting entries per lookup, skipped and rejected
-// ones included (bodyTokens.ts). The linear-time tests of TI01/TI02 (ac-ti0102-linear) never reach the bound, so they
-// pass with it removed (CORE-134). Here every head set holds the same tokens as the candidate, the adversarial case:
-// each head is in every posting list the candidate probes, and each is skipped or rejected, so without the bound one
-// lookup visits every head. The callbacks count the probes: `isSkipped` runs once per probed head, and `accept` once
-// per probed head that is not skipped and passes the size and Jaccard checks.
+// matchTests compares a removed test with at most MAX_SIMILARITY_PROBES not-yet-paired new tests per rule, in head order
+// (testMatch.ts, FreeList). The linear-time tests of TI01/TI02 (ac-ti0102-linear) never reach the bound, so they pass
+// with it removed (CORE-134). Here one modified test file loses its one test, which comes back renamed and with one
+// statement added (a different hash and leaf name, a body-token Jaccard of at least 4/5), behind N unrelated new tests
+// that share no word token with it. Rewritten for CORE-145 through the public path: the prefix index this test used to
+// call is gone.
 
-const TOKENS = ["alpha", "beta", "gamma", "delta", "epsilon"];
-const HEADS = 4 * 256;
+const PATH = "src/cart.test.ts";
+const IMPORTS = 'import { assert, expect, it } from "vitest";\nimport { createCart } from "./cart.js";\n\n';
+const OLD_NAME = "adds up the cart total";
+const NEW_NAME = "sums the basket";
 
-function heads(count: number): Set<string>[] {
-  return Array.from({ length: count }, () => new Set(TOKENS));
+const body = (extra: string) =>
+  `  const cart = createCart();\n  cart.add({ sku: "apple", price: 2, quantity: 3 });\n  cart.add({ sku: "pear", price: 5, quantity: 1 });\n${extra}  expect(cart.total()).toBe(11);\n`;
+const OLD = `it("${OLD_NAME}", () => {\n${body("")}});\n`;
+const NEW = `it("${NEW_NAME}", () => {\n${body("  cart.freeze();\n")}});\n`;
+const unrelated = (i: number) => `it("checks widget ${i}", () => {\n  assert.ok(widget${i});\n});\n`;
+
+function testsOf(text: string): TestBlock[] {
+  const result = indexTestFile(PATH, text);
+  if (!result.parsed) throw new Error(`the generated text does not parse: ${JSON.stringify(result)}`);
+  return result.tests.filter((block) => block.kind === "test");
 }
 
-describe("SimilarityIndex: the probe bound", () => {
-  it("the bound is 256 posting entries per lookup", () => {
-    // Raising it raises the cost of every lookup in TI01 and TI02 matching; that is a decision, made here.
+/** The tests matchTests reports as removed, by name, for one file whose base and head text are given. */
+function unmatchedNames(baseText: string, headText: string): string[] {
+  const match = matchTests({
+    pairs: [
+      {
+        basePath: PATH,
+        headPath: PATH,
+        base: testsOf(`${IMPORTS}${baseText}`),
+        head: testsOf(`${IMPORTS}${headText}`),
+        baseMocks: [],
+        headMocks: [],
+      },
+    ],
+    added: [],
+  });
+  return match.unmatched.map((candidate) => candidate.block.name);
+}
+
+const widgets = (count: number) => Array.from({ length: count }, (_, i) => unrelated(i)).join("");
+
+describe("matchTests: the probe bound", () => {
+  it("the bound is 256 not-yet-paired new tests per rule", () => {
+    // Raising it raises the cost of every rule in TI01 and TI02 matching; that is a decision, made here.
     expect(MAX_SIMILARITY_PROBES).toBe(256);
   });
 
-  it("a lookup over 1,024 identical skipped heads probes 256 of them and reports that it stopped at the bound", () => {
-    const candidate = new Set(TOKENS);
-    const index = new SimilarityIndex(heads(HEADS), [candidate]);
-    let probed = 0;
-    const found = index.find(candidate, () => {
-      probed++;
-      return true;
-    });
-    expect(probed, "heads probed").toBe(MAX_SIMILARITY_PROBES);
-    expect(found).toEqual({ index: -1, bounded: true });
+  it("a removed test whose only similar new test is the 257th free one of its file is reported; at the 256th it is paired", () => {
+    expect(unmatchedNames(OLD, `${widgets(MAX_SIMILARITY_PROBES - 1)}${NEW}`), "the match is the 256th").toEqual([]);
+    expect(unmatchedNames(OLD, `${widgets(MAX_SIMILARITY_PROBES)}${NEW}`), "the match is the 257th").toEqual([
+      OLD_NAME,
+    ]);
   });
 
-  it("a lookup over 1,024 identical heads that accept rejects probes 256 of them and reports the bound", () => {
-    const candidate = new Set(TOKENS);
-    const index = new SimilarityIndex(heads(HEADS), [candidate]);
-    let skippedAsked = 0;
-    let accepted = 0;
-    const found = index.find(
-      candidate,
-      () => {
-        skippedAsked++;
-        return false;
-      },
-      Number.POSITIVE_INFINITY,
-      () => {
-        accepted++;
-        return false;
-      },
-    );
-    expect(skippedAsked, "heads probed").toBe(MAX_SIMILARITY_PROBES);
-    expect(accepted, "heads offered to accept").toBe(MAX_SIMILARITY_PROBES);
-    expect(found).toEqual({ index: -1, bounded: true });
+  it("new tests already paired do not count: 256 of them ahead of the match do not hide it", () => {
+    // Each of the 256 base tests keeps its body and loses its name, so phase 1 pairs it with the new test of that body.
+    const paired = (i: number, name: string) => `it("${name} ${i}", () => {\n  assert.ok(gadget${i});\n});\n`;
+    const count = MAX_SIMILARITY_PROBES;
+    const before = Array.from({ length: count }, (_, i) => paired(i, "was")).join("");
+    const after = Array.from({ length: count }, (_, i) => paired(i, "now")).join("");
+    expect(unmatchedNames(`${before}${OLD}`, `${after}${NEW}`), "the removed test is found behind them").toEqual([]);
   });
 
-  it("a head past the bound is not found, and the lookup says a similar head may exist", () => {
-    const candidate = new Set(TOKENS);
-    const index = new SimilarityIndex(heads(HEADS), [candidate]);
-    const found = index.find(
-      candidate,
-      () => false,
-      Number.POSITIVE_INFINITY,
-      (i) => i === MAX_SIMILARITY_PROBES,
-    );
-    expect(found).toEqual({ index: -1, bounded: true });
-    // The last head within the bound is still found.
-    expect(
-      index.find(
-        candidate,
-        () => false,
-        Number.POSITIVE_INFINITY,
-        (i) => i === MAX_SIMILARITY_PROBES - 1,
-      ),
-    ).toEqual({ index: MAX_SIMILARITY_PROBES - 1, bounded: false });
-  });
-
-  it("control: a lookup over exactly 256 skipped heads probes all of them and is not bounded; 257 is", () => {
-    const candidate = new Set(TOKENS);
-    for (const [count, bounded] of [
-      [MAX_SIMILARITY_PROBES, false],
-      [MAX_SIMILARITY_PROBES + 1, true],
-    ] as const) {
-      let probed = 0;
-      const found = new SimilarityIndex(heads(count), [candidate]).find(candidate, () => {
-        probed++;
-        return true;
-      });
-      expect(probed, `${count} heads: heads probed`).toBe(MAX_SIMILARITY_PROBES);
-      expect(found, `${count} heads`).toEqual({ index: -1, bounded });
-    }
+  it("control: the bound is a position, not a size: the removed test is the first of many new tests and is paired", () => {
+    expect(unmatchedNames(OLD, `${NEW}${widgets(4 * MAX_SIMILARITY_PROBES)}`)).toEqual([]);
   });
 });
