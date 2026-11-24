@@ -19,7 +19,7 @@ behave. AI-agnostic, no telemetry, and stateless unless you opt in to the upload
 
 </div>
 
-> **Status:** pre-1.0; the latest release is `v0.11.0` ([changelog](CHANGELOG.md)). Pin the tag's
+> **Status:** pre-1.0; the latest release is `v0.12.0` ([changelog](CHANGELOG.md)). Pin the tag's
 > full commit SHA for integrity. The report schema is stable within a version (v2 from 0.2.0). Before 1.0, inputs, outputs and message
 > codes are never removed, and a renamed input keeps working under its old name, with a warning, for
 > at least one minor release; defaults change only in a minor release and the changelog says so. The
@@ -70,7 +70,7 @@ jobs:
           node-version: 24
       - run: npm ci
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.11.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.12.0 # or, better, the tag's full commit SHA
         timeout-minutes: 5
         with:
           coverage-file: coverage/lcov.info

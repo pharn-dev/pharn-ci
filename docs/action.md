@@ -94,7 +94,7 @@ jobs:
           persist-credentials: false
       # ...set up your toolchain and run tests with lcov or Cobertura output, e.g.:
       - run: npx vitest run --coverage --coverage.reporter=lcov
-      - uses: pharn-dev/pharn-ci@v0.11.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.12.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: coverage/lcov.info
           threshold: 80
@@ -146,7 +146,7 @@ jobs:
         env:
           PR_FILE: ${{ runner.temp }}/pharn-ci-input/pr-number
         run: echo "number=$(tr -dc '0-9' < "$PR_FILE" | head -c 10)" >> "$GITHUB_OUTPUT"
-      - uses: pharn-dev/pharn-ci@v0.11.0 # or, better, the tag's full commit SHA
+      - uses: pharn-dev/pharn-ci@v0.12.0 # or, better, the tag's full commit SHA
         with:
           coverage-file: ${{ runner.temp }}/pharn-ci-input/coverage/lcov.info
           pr-number: ${{ steps.pr.outputs.number }}

@@ -11,6 +11,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+### Security
+
+## [0.12.0] - 2026-11-24
+
+### Added
+
+### Changed
+
 - TI03 reads Python import aliases (`import pytest as pt`) from the Python index (CORE-356); the hand-written column-0
   import reader is gone. Aliased skips in added Python test files, renamed-in files and new tests are resolved the same
   way. A file with more than 1000 pytest or unittest aliases, or an alias name over 500 characters, is refused by the
