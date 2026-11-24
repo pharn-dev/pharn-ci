@@ -13,7 +13,7 @@ be added within v2, so a consumer must tolerate one it does not know, and no cod
 | `DIFF_COVERAGE_BELOW_THRESHOLD` | Diff coverage is below the configured threshold                |
 | `DIFF_COVERAGE_UNGATED`         | Diff coverage was measured but not gated (no threshold, or 0); info |
 | `NO_COVERABLE_CHANGES`          | None of the added lines are tracked by the coverage report     |
-| `COVERAGE_FILE_MISSING`         | The coverage file does not exist                               |
+| `COVERAGE_FILE_MISSING`         | The coverage file does not exist, or no report was found at the auto-discovery paths (`error` with a threshold, else `warn`) |
 | `COVERAGE_FILE_EMPTY`           | The coverage file has no usable records                        |
 | `COVERAGE_FORMAT_UNSUPPORTED`   | The coverage file is not lcov or Cobertura XML (format `auto`) |
 | `DIFF_UNAVAILABLE`              | No diff could be produced, so diff coverage was not computed (`error` with a threshold or in `test-integrity: block`, else `warn`) |
@@ -96,7 +96,7 @@ be added within v2, so a consumer must tolerate one it does not know, and no cod
 | `DEPENDENCY_D04` | Lockfile drift: a manifest's dependencies changed and the lockfile that governs it did not change or does not record them, or a lockfile gives the same version a different integrity hash (`error`) |
 | `DEPENDENCY_D05` | An added or changed dependency (a `package.json` override included) or lockfile entry comes from a git repository, a URL outside the allowed registries or a local file, or a requirements file or `pyproject.toml` adds a package index outside them (`error`) |
 | `DEPENDENCY_LOOKUP_UNAVAILABLE` | Registry lookups did not complete for some added packages (no usable answer, or over the limit of 50 lookups per run), so D01 to D03 were not checked for them (`warn`) |
-| `DEPENDENCY_CHECK_INCOMPLETE` | A manifest or lockfile the change touches could not be read or parsed, so dependency safety did not check it; the files are in `dependencies.unread` (`warn`) |
+| `DEPENDENCY_CHECK_INCOMPLETE` | A manifest or lockfile the change touches could not be read or parsed, so dependency safety did not check it; the files are in `dependencies.unread` (`error` when the pull request can be the cause: a file that is not valid, over a cap, binary, missing at its revision or at an unsafe path; `warn` only when git could not read that side at all). The text names each file, its reason and the cap it went past |
 | `FLAKY_QUARANTINED_FAILURES` | Failed tests of the JUnit results are on the org's quarantine list ([Flaky tests and JUnit results](checks/flaky-tests.md)) (`info`). The text gives the counts, never a test name; the ids are in `flaky.quarantined` |
 | `JUNIT_INVALID` | A JUnit XML file was refused whole: a DOCTYPE or other `<!` declaration (`doctype`), broken nesting (`malformed`), no `testsuites` or `testsuite` root (`not-junit`) or nesting deeper than 256 (`too-deep`) (`warn`). The text names up to 10 paths with the reason |
 | `JUNIT_NOT_FOUND` | JUnit paths were set and no file matched them (`warn`) |

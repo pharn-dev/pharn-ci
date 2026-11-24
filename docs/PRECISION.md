@@ -286,8 +286,8 @@ all PRs in the CSV, PRs that errored included. A signal whose rate is below 1 % 
 reviewed ships as block; otherwise it demotes to warn. Exactly 1 % demotes. The script exits 1 while a
 `block` row has no verdict, and 2 on a missing file, a wrong header or an unknown verdict.
 
-Named exception (decision 2026-11-18): on the Python corpus, TI02 measured exactly 1 % and stays block until the
-rename-in-place fix of epic R3 (CORE-8) lands and the corpus is re-measured. See "What this means" under "Python
+Named exception (decision 2026-11-18): on the Python corpus, TI02 measured exactly 1 % and stays block until a
+rename-in-place fix lands and the corpus is re-measured; that fix is not built yet. See "What this means" under "Python
 corpus".
 
 The reviewed CSV of the official `v0.3.0` run is `fixtures/corpus/review.csv`; its rates are under Official results
@@ -514,7 +514,7 @@ TI02's decision cell replaced by the decision taken on it (the script prints "de
 | Signal | Block rows | Block PRs | TP | FP | Unclear | False-block rate | Decision |
 |---|---:|---:|---:|---:|---:|---:|---|
 | TI01 | 8 | 6 | 2 | 6 | 0 | 0.7 % | ships as block |
-| TI02 | 107 | 11 | 97 | 10 | 0 | 1.0 % | at the bar: stays block until the rename-in-place fix (decision 2026-11-18, CORE-8) |
+| TI02 | 107 | 11 | 97 | 10 | 0 | 1.0 % | at the bar: stays block until a rename-in-place fix (decision 2026-11-18; not built yet) |
 | TI03 | 3 | 1 | 0 | 3 | 0 | 0.2 % | ships as block |
 | TI11 | 2 | 2 | 1 | 1 | 0 | 0.2 % | ships as block |
 | TI13 | 11 | 2 | 10 | 1 | 0 | 0.2 % | ships as block |
@@ -571,7 +571,7 @@ Each with its one-line reason; the same reason is in the CSV's `note` column.
 
 - **TI02 is at the bar on Python (6 false-block PRs of 600, 1.0 %) and stays block (decision 2026-11-18).** Every
   false block comes from one pattern, a test renamed in place and rewritten, and demoting the whole signal would also
-  hide the 6 PRs that really delete tests (one of them, `pydantic/pydantic#14158`, also holds the false row); so the pattern is fixed in epic R3 (CORE-8) and the Python corpus is
+  hide the 6 PRs that really delete tests (one of them, `pydantic/pydantic#14158`, also holds the false row); so the pattern is to be fixed (not built yet) and the Python corpus
   re-measured after that fix lands. The two options weighed were to clear a test whose name changed at the same place
   in the same file when its body still calls the same code under test (the fix chosen), or to lower TI02 to `warn` for
   Python test files. This is a named exception to the rule in "How the run works".

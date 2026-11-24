@@ -58,4 +58,5 @@ P07 takes only the package managers (`npm`, `pnpm`, `yarn`, `bun`) and the test 
 inline code span or a shell block, and reports when two files of one directory name different ones. Nothing it reads is
 uploaded or printed: the report holds the rule id, the path, the line number and the tools as fixed words. P07 is a
 heuristic at `warn`: prose is never read, and what it misses is in [`docs/LIMITS.md`](LIMITS.md). The Action reads
-the files only when the diff came from the local checkout.
+the files only when its checkout is the head under review: a diff from the local checkout, or a run with no diff to
+measure because the base is `HEAD` or there is none. PR-number mode and a compare-API diff read nothing.

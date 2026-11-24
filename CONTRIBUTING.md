@@ -36,7 +36,7 @@ These are required status checks on `main`:
 
 | Check                                | What it runs                                                                                                       |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `ci`                                 | `pnpm lint`, `pnpm test:coverage`, `pnpm build`, a check that `packages/action/dist` is current, then pharn-ci on its own PR (threshold 80%) |
+| `ci`                                 | `pnpm audit --prod`, `pnpm lint`, `pnpm test:coverage`, `pnpm build`, a check that `packages/action/dist` is current, then pharn-ci on its own PR (threshold 80%) |
 | `Action pins`                        | `node scripts/check-action-pins.mjs`: every third-party action is pinned to a commit SHA                           |
 | `gitleaks`                           | Secret scan of the full git history, with a pinned and checksum-verified gitleaks binary                           |
 | `Analyze (javascript-typescript)`    | CodeQL                                                                                                             |
@@ -95,8 +95,8 @@ the package's `tsconfig.json`. Core's extends `tsconfig.base.json` instead, sinc
 
 ## Agent skills
 
-The `pharn-ci` plugin in [pharn-dev/skills](https://github.com/pharn-dev/skills) branches on Report
-v1 message codes, and its evals replay reports, comments and CLI output generated with a built
+The `pharn-ci` plugin in [pharn-dev/skills](https://github.com/pharn-dev/skills) branches on message
+codes and, from Report v2, on fix kinds, and its evals replay reports, comments and CLI output generated with a built
 pharn-ci checkout. A change to message codes, the comment layout, coverage discovery or path mapping
 can make those skills stale: say so in the PR description so the plugin can be updated. From the
 skills repo, `node plugins/pharn-ci/evals/fixtures/regen.mjs --check --pharn-ci <this checkout>`

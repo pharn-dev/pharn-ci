@@ -6,7 +6,7 @@ How to get a coverage report pharn-ci can read from your test run, and how to ma
 
 Diff coverage counts only the files your coverage report lists. With the default settings of vitest, jest and
 pytest-cov, a new source file that no test imports is not in the report, so it does not lower diff coverage, even at
-`threshold: 100`; pharn-ci only warns about it (`TESTS_NOT_EXERCISING_CHANGES`, for JavaScript and TypeScript). Tell
+`threshold: 100`; pharn-ci only warns about it (`TESTS_NOT_EXERCISING_CHANGES`, for JavaScript, TypeScript and Python). Tell
 the runner which files are your source, and an untested file is listed at 0%:
 
 | Runner     | Setting                                                         | Where                                   | Checked on                          |

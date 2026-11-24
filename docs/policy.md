@@ -59,8 +59,8 @@ app keeps sending them). A `file:` policy is not lenient: an unknown key there f
 
 **`policy: file:<path>`.** A policy document read from the workspace (in the CLI, `--policy-file <path>`). The pull
 request carries the file, so it can only tighten: a higher threshold, `setup.require: true`, a stricter mode, more
-`setup.expect` tools and higher signal severities. Exclusions, a root, an accept label and `policy.required` are not
-allowed from a file, and a value lower than the workflow inputs give is ignored; both are named in
+`setup.expect` tools and higher signal severities. Exclusions, a root, an accept label, `policy.required`, `dependencies.registries`, a non-empty
+`dependencies.allowed_hosts` and `injection.exempt` are not allowed from a file, and a value lower than the workflow inputs give is ignored; both are named in
 `POLICY_OVERRIDE_IGNORED`. Nothing is fetched. The path is relative, stays inside the repository, goes through no
 symbolic link and names a regular file of at most 1 MiB; anything else fails the step (the CLI exits `2`) with a fixed
 message that never names the path. What the policy does not cover is in [`docs/LIMITS.md`](LIMITS.md).

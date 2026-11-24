@@ -12,6 +12,8 @@ pharn-ci runs in your CI on every pull request and reports:
   Cline, Aider, Continue, Roo Code, Amazon Q Developer, Junie, Zed, Augment, Kiro, Goose, OpenCode
   and Gemini CLI; see the table below), with a summary of how many there are and which tools they
   configure.
+- **Test integrity, secrets, stale instructions, prompt injection, dependencies and org policy**: see the
+  [Checks](README.md#checks) pages.
 
 | Kind                          | Matches                                                                                        | Tools                                             |
 | ----------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------- |
@@ -91,7 +93,7 @@ flowchart LR
 
 | Step     | What happens                                                                                                                                 |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gather   | The Action or CLI reads the coverage file, the diff against the base, the tracked file list and the config. All I/O happens here.          |
+| Gather   | The Action or CLI reads the coverage file, the diff against the base, the tracked file list, the config, and the committed text of the files the checks need (test, config, manifest and agent files, at the merge base and `HEAD`). All I/O happens here. |
 | Measure  | `packages/core` matches added lines against the lines the coverage report knows, and classifies agent setup files. Pure functions only.     |
 | Report   | Core builds a Report v2 object. Every report produced in tests is validated against `schema/report.v2.json`.                                |
 | Render   | The comment, job summary and CLI text are renderings of that report, never a separate source of truth.                                     |

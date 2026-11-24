@@ -11,8 +11,10 @@ Add a workflow that runs your tests with lcov or Cobertura XML output, then phar
 @vitest/coverage-v8`); without it `vitest run --coverage` aborts and writes no report.
 
 `fetch-depth: 0` lets pharn-ci diff against the PR base locally, and it is required for TI02, TI05, TI06, TI07, TI09,
-TI12, A7 and P02–P07, which read the text of the change. Without it the diff comes from the GitHub compare API and
-that text cannot be read: this is a warning in `test-integrity: warn`, and a failed check in `test-integrity: block`
+TI12, P13, dependency safety, the stale-instruction check (SI01–SI03) and the base copy of a `file:` policy, which read
+the text of the change. A7 and P02–P07 read the committed files at `HEAD`, so they need the checkout to be the pull
+request head. Without `fetch-depth: 0` the diff comes from the GitHub compare API and none of that text is read: this is
+a warning in `test-integrity: warn`, and a failed check in `test-integrity: block`
 when the change modifies a test file or a test-runner config. A local `git diff` that fails against a base that is in
 the checkout fails the step in every mode. Without a threshold, pharn-ci never fails the step on coverage alone, but
 `test-integrity: block` can fail it. With a merge queue, add `merge_group` to `on:`; pharn-ci diffs

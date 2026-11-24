@@ -55,7 +55,8 @@ pharn-ci test [--junit <file|glob>]... [--quarantine-file <path>] [--dry-run] --
 - `--policy-file <path>` applies an [org policy](policy.md) document, relative to the repo root, over the flags and
   the config. It can only tighten them; a path that is empty, absolute, outside the repo, through a symbolic link,
   missing, over 1 MiB or not a valid policy exits `2`. `--no-policy` applies none and is the same as no flag; giving
-  both exits `2`. The CLI never fetches a policy.
+  both exits `2`. When the change edits the file, the CLI also reads it at the base commit and applies the stricter of
+  the two copies, key by key ([Changing a `file:` policy](policy.md#org-policy)). The CLI never fetches a policy.
 - `--junit <file|glob>` is repeatable and reads JUnit XML relative to the current directory into the report's `flaky`
   object and the Flaky section; `--quarantine-file <path>` names a JSON array of test ids treated as quarantined. A
   pattern outside the current directory, or a quarantine file that is missing, over 1 MiB or not such an array, exits

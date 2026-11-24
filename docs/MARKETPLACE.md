@@ -1,6 +1,6 @@
 # GitHub Marketplace listing
 
-The text for the GitHub Marketplace listing of the pharn-ci Action. A test checks it against `action.yml`. The Action is listed at <https://github.com/marketplace/actions/pharn-ci> since v0.9.1. Each release is listed by hand: the release workflow creates a draft, and the maintainer publishes it with **Publish this Action to the GitHub Marketplace** ticked (step 4 of [`docs/RELEASING.md`](./RELEASING.md)). A release published without that box can never be listed later, which is why v0.9.0 is not on the Marketplace.
+The text for the GitHub Marketplace listing of the pharn-ci Action. The docs-contract test checks only its version pin. The Action is listed at <https://github.com/marketplace/actions/pharn-ci> since v0.9.1. Each release is listed by hand: the release workflow creates a draft, and the maintainer publishes it with **Publish this Action to the GitHub Marketplace** ticked (step 4 of [`docs/RELEASING.md`](./RELEASING.md)). A release published without that box can never be listed later, which is why v0.9.0 is not on the Marketplace.
 
 ## Name
 
@@ -15,6 +15,8 @@ Check whether AI coding agents can safely work in your repo — diff coverage, t
 pharn-ci measures diff coverage: the share of the lines added in a pull request that your own test run covered. It reads the lcov or Cobertura XML file your tests already write, detects the format automatically by default, and can fail the step below an optional, inclusive threshold. Files you list as exclusions are left out of the measurement.
 
 pharn-ci also keeps an inventory of the agent setup files tracked in your repository: the instruction, settings, rules and MCP configuration files of Claude Code, Cursor, GitHub Copilot, Codex, Gemini, Windsurf, Cline and MCP, with a summary of the tools involved. It lists these files by kind.
+
+It also flags a change that weakens the tests, committed secrets in agent configs, stale agent instructions, hidden prompt injections and risky dependencies, and applies an optional org policy.
 
 The result is one sticky comment on the pull request, the job summary, a pass, warn or fail verdict and a Report v2 JSON file. pharn-ci is stateless: it has no telemetry, and it makes no network calls except to the GitHub API and, when the job grants `id-token: write`, one read of the org policy from pharn.dev (`policy: never` turns that off) and the redacted report and run metadata, uploaded to pharn.dev (`upload: never` turns that off). With `dependencies: lookup` (the input, `dependencies.lookup: true` in `.pharn/ci.yml`, or an org policy), it also sends one GET per added unscoped package to `registry.npmjs.org/<name>`, `api.npmjs.org/downloads/point/last-week/<name>` or `pypi.org/pypi/<name>/json`, with the package name in the path and nothing else: no token, no repository name. No other host is called.
 

@@ -123,7 +123,7 @@ missing from most coverage reports unless the runner is told where the source is
 
 ### Test integrity
 
-Did the change make the tests weaker? Signals TI01 to TI17 report a deleted test file, a removed or skipped test, a
+Did the change make the tests weaker? Signals TI01 to TI17 (TI15 is not emitted) report a deleted test file, a removed or skipped test, a
 `.only`, emptied assertions, a loosened test-runner setting, a weakened test script, CI that stopped running tests, a
 coverage-ignore comment and more. The `test-integrity` input is `warn` by default; `block` fails the check on a
 block-level finding, and a reviewer who is not the author can sign one off with the accept label.

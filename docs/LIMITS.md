@@ -287,7 +287,9 @@ whether a test is still good.
   `it`, a parametrized Python test) is one block or none. A syntax-error-heavy, oversized or deeply nested file is not
   compared (`TEST_INTEGRITY_INDEX_UNAVAILABLE`). An added test file the index refuses (or that has no text at HEAD,
   or no Python index) holds no test any signal reads: a test cannot be found to have moved into it, and its own
-  tests are not checked. The same message names it in a sentence of its own, as a warning in every mode.
+  tests are not checked. The same message names it in a sentence of its own. That is a warning, except for an added `.py` test file
+  whose text was read but that the Python index did not read (no run, or a refusal of the file): in mode `block` that
+  is an error, which the accept label lowers (section 2).
 - **Caps.** At most 20 findings per file; the matching compares each removed test with at most 256 not-yet-paired new
   tests per rule (section 8).
 - **Order of the rules.** Name pairs and phase 1 (4/5), then the rename in place, the `.each` replacement, the exact
@@ -1084,11 +1086,15 @@ run), an error the accept label never lowers. A head the index read, with a base
   reassignment after the import (`pt = pytest`) is not followed, and a later top-level import of the same name replaces
   the earlier binding, so `import os as pt` after `import pytest as pt` hides pytest. TI03 resolves no aliased spelling
   on a side the index did not index.
+- An alias name or target longer than 500 characters, or more than 1000 aliases into pytest or unittest in one file, is
+  not cut: the Python index refuses the file as `too-large`, so padding a file with aliases cannot hide one (a refused
+  head is an error in mode `block`).
 - `[tool.pytest]` and `[tool.pytest.ini_options]` in one `pyproject.toml` are merged into one table in which the native
   value wins, which is not necessarily what pytest does.
 - Results depend on the runner's Python. Test files are parsed by the runner's own `python3` (or `python`), so a file
   that uses syntax newer than that interpreter (for example a `match` statement on Python 3.8 or 3.9) may not parse
-  there; it is then named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` (`warn`) and not compared. Pin the Python version
+  there; it is then named in `TEST_INTEGRITY_INDEX_UNAVAILABLE` and not compared: when its head side does not parse,
+  an error in mode `block` (the accept label lowers it), else a warning. Pin the Python version
   in the workflow to get the same result on every runner.
 
 ## 2. When an input is missing
@@ -1148,7 +1154,7 @@ run), an error the accept label never lowers. A head the index read, with a base
   the accept label is applied. A file renamed from a path that is not a test file into a test path (`tests/helper.py`
   to `tests/test_helper.py`) is read at HEAD only and counts as an added test file everywhere (its tests count as
   added in the tests-changed summary, and a test removed elsewhere that it holds reads as moved), while TI03's line
-  pass still reads its diff lines as before. A7 and P02–P07 need a local diff (`fetch-depth: 0`). Their "did not run" message is
+  pass still reads its diff lines as before. A7 and P02–P07 read the checkout's `HEAD`, so they run with a local diff (`fetch-depth: 0`) or with no diff to measure, and not in PR-number mode, with a compare-API diff or on a `pull_request_target` checkout of the base. Their "did not run" message is
   a warning, except that `POLICY_SETTINGS_INVALID` for unread settings is an error under a required
   app policy or a policy that sets one of the lists `forbidden_permissions`, `required_permissions_deny`,
   `allowed_mcp_servers`, `forbidden_mcp_servers` or `required_hooks` with its rule (P02 to P06) at
@@ -2119,7 +2125,8 @@ limited by git, Node or GitHub alone.
   more than 524288 UTF-16 code units of text (`too-large`), more than ten syntax errors (`syntax-error-heavy`) and a
   syntax tree deeper than 1000 nodes (`too-deep`); the Python index adds the 30 s interpreter timeout, 64 MiB of
   output and its own caps of 200 files, 512 KiB per file and 16 MiB in all, shared by the base and head files of one
-  run, so a large change can have its later Python files refused as `too-large`. The Python index takes the base side's
+  run, so a large change can have its later Python files refused as `too-large`. It also refuses a file with more than
+  1000 pytest or unittest aliases, or an alias name or target over 500 characters, as `too-large`. The Python index takes the base side's
   `.py` test files first and then the head side's, each in path order, and the modified-first order above does not apply
   to its caps: added, modified and deleted `.py` test files all count, a modified one once on each side and an added or
   deleted one once, so a change that modifies about 100 `.py` test files (fewer when it also adds or deletes some), or

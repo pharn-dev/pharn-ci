@@ -66,7 +66,7 @@ packages, re-exports through another source file and per-test coverage are not f
 [docs/LIMITS.md](../LIMITS.md#what-the-tests-exercise-check-misses).
 
 Python test files are parsed with the runner's own `python3` (or `python`), 3.8 or newer, and only when the change
-modifies one. When neither `python3` nor `python` is found on the runner, TI02 and TI05 do not run for that change
+touches one. When neither `python3` nor `python` is found on the runner, TI02 and TI05 do not run for that change
 (`TEST_INTEGRITY_INDEX_UNAVAILABLE`), and the diff-only signals still run; an added `.py` test file alone is named
 (an error in `block`, since no signal read its tests). A Python older than 3.8, a Python run that fails, times out or
 gives output pharn-ci cannot read, and a `.py` test file whose head the parser refuses (a syntax error, nested too
