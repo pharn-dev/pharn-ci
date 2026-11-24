@@ -39,5 +39,5 @@ jobs:
       # A module no test imports is left out of the report unless pyproject.toml sets
       # [tool.coverage.run] source = ["mypackage"] (or .coveragerc does); then it counts at 0%.
       - run: pytest --cov --cov-report=xml
-      - uses: pharn-dev/pharn-ci@bd7b36ea07588884418f5002ae74afc35135c400 # v0.11.0
+      - uses: pharn-dev/pharn-ci@a370515e32f8040771ccf4b6f737d3d25f62749f # v0.12.0
         timeout-minutes: 5
