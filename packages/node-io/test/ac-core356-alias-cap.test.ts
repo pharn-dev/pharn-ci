@@ -44,7 +44,11 @@ function diffOf(base: string, head: string): string {
   writeFileSync(join(dir, "b"), head);
   let out = "";
   try {
-    out = execFileSync("git", ["diff", "--no-index", "-U0", join(dir, "a"), join(dir, "b")], { encoding: "utf8" });
+    out = execFileSync(
+      "git",
+      ["diff", "--no-index", "--no-color", "--no-ext-diff", "-U0", join(dir, "a"), join(dir, "b")],
+      { encoding: "utf8" },
+    );
   } catch (error) {
     out = (error as { stdout: string }).stdout;
   }
