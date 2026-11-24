@@ -72,7 +72,11 @@ modifies one. When neither `python3` nor `python` is found on the runner, TI02 a
 gives output pharn-ci cannot read, and a `.py` test file whose head the parser refuses (a syntax error, nested too
 deeply, too large) do not stop the other files: the modified and added `.py` test files are named in that message and the
 signals that compare test text skip them, and in `block` that message is an error, so the check fails closed (the
-accept label lowers it to a warning). A `.py` test file whose merge-base side alone the parser refuses stays a warning.
+accept label lowers it to a warning). A `.py` test file whose merge-base side alone the parser refuses stays a warning,
+and so does one whose merge-base side the sources dropped as missing; TI03 compares the skips of such a file's head
+against a base with no skip (see [docs/LIMITS.md](../LIMITS.md#what-ti03-misses)). TI03 resolves aliased skip spellings
+(`import pytest as pt`) from the parser's own reading of a file's top-level imports, so on a side the parser did not
+read, aliased spellings are not read there; only the literal ones are.
 The JS/TS test files of the same change are still compared. When TI02 and TI05, or TI09, did
 not run at all because the test text could not be read (a shallow checkout, or `pr-number` mode), or because no
 Python was found, that message is an error in `test-integrity: block`, so the check fails closed. A test file the

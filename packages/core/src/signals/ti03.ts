@@ -1,10 +1,8 @@
 import type { DiffFile, DiffHunk } from "../diff/unified.js";
 import type { TestIntegritySignal } from "../report.js";
 import { isTestFile } from "../testFiles.js";
-import type { TestSourceSide, TestSources } from "../testSources.js";
 import { byCodeUnit } from "../text.js";
 import { capFindings, MAX_FINDINGS_PER_FILE } from "./findingCap.js";
-import { pythonImportAliases } from "./pythonAliases.js";
 import {
   type JsTestLine,
   opensPythonTest,
@@ -14,9 +12,13 @@ import {
   type TestLanguage,
   testLanguage,
 } from "./testLines.js";
+import type { Ti03Aliases } from "./ti03Aliases.js";
 import type { Ti03Category, Ti03Finding } from "./ti03Pairs.js";
 
 type Category = Ti03Category;
+
+/** A Python test file's alias bindings, from the Python test index. */
+type AliasMap = ReadonlyMap<string, string>;
 
 /** One fixed sentence per category. None holds test text, a reason or a condition. */
 const DETAILS: Readonly<Record<Category, string>> = {
@@ -81,16 +83,13 @@ function jsSkip(parsed: JsTestLine): SkipLine | null {
 }
 
 /**
- * The skip a Python line makes. The literal spelling is tried first; the file's aliases are asked for (and read from the
- * text, once) only when the line has the shape of a decorator or a call and the literal spelling is not a skip.
+ * The skip a Python line makes. The literal spelling is tried first; the file's alias map is used only when the line has
+ * the shape of a decorator or a call and the literal spelling is not a skip.
  */
-function pythonSkip(text: string, aliases: AliasSource | undefined): SkipLine | null {
+function pythonSkip(text: string, aliases: AliasMap | undefined): SkipLine | null {
   let parsed = parsePythonSkip(text);
   const shaped = text.includes("@") || text.includes("(") || text.trimStart().startsWith("pytestmark");
-  if (parsed === null && aliases !== undefined && shaped) {
-    const map = aliases();
-    if (map !== undefined) parsed = parsePythonSkip(text, map);
-  }
+  if (parsed === null && aliases !== undefined && shaped) parsed = parsePythonSkip(text, aliases);
   if (parsed === null) return null;
   if (parsed.kind === "call") return { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
   if (parsed.kind === "mark") {
@@ -107,7 +106,7 @@ function goSkip(text: string): SkipLine | null {
   return parsed === null ? null : { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
 }
 
-function readSkip(language: TestLanguage, text: string, aliases?: AliasSource): SkipLine | null {
+function readSkip(language: TestLanguage, text: string, aliases?: AliasMap): SkipLine | null {
   if (language === "python") return pythonSkip(text, aliases);
   if (language === "go") return goSkip(text);
   const parsed = parseJsTestCall(text);
@@ -127,7 +126,7 @@ function removedOpenings(hunks: readonly DiffHunk[]): Set<string> {
 }
 
 /** The skip lines the file's removed lines held, as keys (read with the base side's aliases). */
-function removedSkips(hunks: readonly DiffHunk[], language: TestLanguage, aliases?: AliasSource): Set<string> {
+function removedSkips(hunks: readonly DiffHunk[], language: TestLanguage, aliases?: AliasMap): Set<string> {
   const keys = new Set<string>();
   for (const hunk of hunks) {
     for (const entry of hunk.removed) {
@@ -171,45 +170,11 @@ interface Found {
   category: Category;
 }
 
-/** The alias map of a Python test file, read from its text on the first call and kept; undefined with no text. */
-type AliasSource = () => ReadonlyMap<string, string> | undefined;
-
-/** The text of each file one side of the test sources holds, by path; empty when the side is unavailable or absent. */
-function textsOf(side: TestSourceSide | undefined): ReadonlyMap<string, string> {
-  const texts = new Map<string, string>();
-  if (side !== undefined && "files" in side) for (const file of side.files) texts.set(file.path, file.text);
-  return texts;
-}
-
-/** An alias source that reads `text` the first time it is asked, and never when it is not. */
-function sourceOf(text: string | undefined): AliasSource {
-  let map: ReadonlyMap<string, string> | undefined;
-  return () => {
-    if (map === undefined && text !== undefined) map = pythonImportAliases(text);
-    return map;
-  };
-}
-
-/**
- * The alias sources of a Python test file: the base one reads the base text of its old path, the head one the head text
- * of its path. A side without text takes the other side's map; with neither, there is no map.
- */
-function aliasesOf(
-  file: DiffFile,
-  language: TestLanguage,
-  texts: { base: ReadonlyMap<string, string>; head: ReadonlyMap<string, string> },
-): { base?: AliasSource; head?: AliasSource } {
-  if (language !== "python") return {};
-  const base = sourceOf(texts.base.get(file.oldPath));
-  const head = sourceOf(texts.head.get(file.path));
-  return { base: () => base() ?? head(), head: () => head() ?? base() };
-}
-
 function findingsOf(
   file: DiffFile,
   hunks: readonly DiffHunk[],
   language: TestLanguage,
-  aliases: { base?: AliasSource; head?: AliasSource },
+  aliases: { base?: AliasMap; head?: AliasMap },
 ): Found[] {
   const before = removedSkips(hunks, language, aliases.base);
   const openings = language === "jsts" ? removedOpenings(hunks) : new Set<string>();
@@ -251,15 +216,17 @@ function findingsOf(
  * fixed sentence per category; no test text reaches a signal.
  *
  * A Python line is also read through the aliases the test file binds with its own top-level `import` / `from` lines
- * (`import pytest as pt`, `from pytest import mark as m`, `from unittest import skipIf as si`), taken from `sources`:
- * removed lines with the base text of the file's old path, added lines with the head text of its path; with only one
- * side's text that map serves both, and with neither (no `sources`, a side unavailable or without the file) only the
- * literal spellings are read, as before. The literal spelling is always tried first, so an alias can only add a match.
+ * (`import pytest as pt`, `from pytest import mark as m`, `from unittest import skipIf as si`). The bindings come from
+ * the Python test index (`Ti03Aliases`, its `aliases` field); this module reads no import statement. Removed lines use
+ * the base side's map of the file's old path, added lines the head side's map of its path. A side with no text at all (a
+ * drop such as `missing`) borrows the other side's map; a side whose text was held but that the index did not index (no
+ * Python index, or a refusal of the file) resolves no aliased spelling, and only the literal ones are read there. The
+ * literal spelling is always tried first, so an alias can only add a match.
  */
 export function detectTI03(
   diff: readonly DiffFile[],
   mode: "block" | "warn",
-  sources?: TestSources,
+  aliases?: Ti03Aliases,
   pairs: readonly Ti03Finding[] = [],
 ): TestIntegritySignal[] {
   const byPath = new Map<string, Map<number, Category>>();
@@ -272,12 +239,12 @@ export function detectTI03(
     const held = lines.get(line);
     if (held === undefined || STRENGTH[category] > STRENGTH[held]) lines.set(line, category);
   };
-  const texts = { base: textsOf(sources?.base), head: textsOf(sources?.head) };
   for (const file of diff) {
     if (file.hunks === undefined || file.binary === true || !isTestFile(file.path)) continue;
     const language = testLanguage(file.path);
     if (language === null) continue;
-    for (const { line, category } of findingsOf(file, file.hunks, language, aliasesOf(file, language, texts))) {
+    const maps = language === "python" ? (aliases?.forFile(file) ?? {}) : {};
+    for (const { line, category } of findingsOf(file, file.hunks, language, maps)) {
       note(file.path, line, category);
     }
   }

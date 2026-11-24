@@ -22,8 +22,8 @@ const BLOCK_KINDS: readonly string[] = ["describe", "test", "hook"];
 const REFUSAL_REASONS: readonly string[] = ["syntax-error", "too-deep", "too-large", "parser-threw"];
 const REFUSED_KEYS: readonly string[] = ["id", "parsed", "reason"];
 const PARSED_KEYS: readonly string[] = ["id", "parsed", "normalized", "tests", "mocks"];
-/** The key a parsed entry may carry besides `PARSED_KEYS`, only when the file imports something (CORE-104). */
-const OPTIONAL_PARSED_KEYS: readonly string[] = ["imports"];
+/** The keys a parsed entry may carry besides `PARSED_KEYS`, each only when it holds (`imports` CORE-104, `aliases` CORE-356). */
+const OPTIONAL_PARSED_KEYS: readonly string[] = ["imports", "aliases"];
 const BLOCK_KEYS: readonly string[] = [
   "kind",
   "name",
@@ -188,7 +188,32 @@ function mapImports(raw: Raw, where: string): string[] | undefined {
   });
 }
 
-function mapEntry(value: unknown, index: number): { result: TestIndexResult; imports: string[] | undefined } {
+type AliasPairs = [local: string, target: string][];
+
+/**
+ * The optional alias pairs of a parsed entry, checked: at most `MAX_TEST_IMPORTS` pairs, each an array of exactly two
+ * non-empty strings of at most `MAX_TEST_NAME_CHARS`. The detail names the entry and the field, never the value.
+ */
+function mapAliases(raw: Raw, where: string): AliasPairs | undefined {
+  if (!Object.hasOwn(raw, "aliases")) return undefined;
+  const list = checkArray(raw.aliases, where, "aliases");
+  if (list.length > MAX_TEST_IMPORTS) return bad(where, `aliases is longer than ${MAX_TEST_IMPORTS}`);
+  return list.map((pair): [string, string] => {
+    if (!Array.isArray(pair) || pair.length !== 2) return bad(where, "an alias is not a pair");
+    const local = checkString(pair[0], where, "alias name");
+    const target = checkString(pair[1], where, "alias target");
+    if (local === "" || target === "") return bad(where, "an alias is empty");
+    if (local.length > MAX_TEST_NAME_CHARS || target.length > MAX_TEST_NAME_CHARS) {
+      return bad(where, `an alias is longer than ${MAX_TEST_NAME_CHARS}`);
+    }
+    return [local, target];
+  });
+}
+
+function mapEntry(
+  value: unknown,
+  index: number,
+): { result: TestIndexResult; imports: string[] | undefined; aliases: AliasPairs | undefined } {
   const where = `entry ${index}`;
   if (!isObject(value)) return bad(where, "is not an object");
   if (value.parsed === false) {
@@ -196,7 +221,11 @@ function mapEntry(value: unknown, index: number): { result: TestIndexResult; imp
     if (raw.id !== index) return bad(where, "id is not its position");
     const reason = checkString(raw.reason, where, "refusal reason");
     if (!REFUSAL_REASONS.includes(reason)) return bad(where, "refusal reason is unknown");
-    return { result: { parsed: false, reason: reason as TestIndexRefusalReason }, imports: undefined };
+    return {
+      result: { parsed: false, reason: reason as TestIndexRefusalReason },
+      imports: undefined,
+      aliases: undefined,
+    };
   }
   const raw = checkKeys(value, PARSED_KEYS, where, "a parsed entry", OPTIONAL_PARSED_KEYS);
   if (raw.id !== index) return bad(where, "id is not its position");
@@ -206,7 +235,11 @@ function mapEntry(value: unknown, index: number): { result: TestIndexResult; imp
     mapBlock(block, normalized, `${where} test ${i}`),
   );
   const mocks = checkArray(raw.mocks, where, "mocks").map((mock, i) => mapMock(mock, `${where} mock ${i}`));
-  return { result: { parsed: true, syntaxErrors: 0, tests, mocks }, imports: mapImports(raw, where) };
+  return {
+    result: { parsed: true, syntaxErrors: 0, tests, mocks },
+    imports: mapImports(raw, where),
+    aliases: mapAliases(raw, where),
+  };
 }
 
 /**
@@ -214,13 +247,19 @@ function mapEntry(value: unknown, index: number): { result: TestIndexResult; imp
  * breaks the format (non-JSON, a wrong type, an extra or missing key, an out-of-range number, an unknown enum value,
  * ids that are not 0..count-1 in order, an array over 524,288 entries) gives `bad-output` with a fixed one-line detail.
  * Only a format break is `bad-output`: an exception from the mapping itself (a bug of ours) escapes. `imports` holds,
- * at each entry's position, the module names a parsed file imports (the optional field), or undefined.
+ * at each entry's position, the module names a parsed file imports (the optional field), or undefined; `aliases` the
+ * same for the top-level import bindings (`[local, target]` pairs).
  */
 export function pythonIndexFromRaw(
   stdout: string,
   count: number,
 ):
-  | { available: true; results: TestIndexResult[]; imports: (string[] | undefined)[] }
+  | {
+      available: true;
+      results: TestIndexResult[];
+      imports: (string[] | undefined)[];
+      aliases: (AliasPairs | undefined)[];
+    }
   | { available: false; reason: "bad-output"; detail: string } {
   try {
     let parsed: unknown;
@@ -236,6 +275,7 @@ export function pythonIndexFromRaw(
       available: true,
       results: mapped.map((entry) => entry.result),
       imports: mapped.map((entry) => entry.imports),
+      aliases: mapped.map((entry) => entry.aliases),
     };
   } catch (error) {
     if (!(error instanceof BadOutput)) throw error;

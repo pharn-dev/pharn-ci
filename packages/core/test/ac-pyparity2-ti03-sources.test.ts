@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { TestIntegritySignal as Signal } from "../src/report.js";
 import type { TestSourceFile as SourceFile, TestSourceDrop } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
+import { type AliasPairsByPath, stubPythonIndex } from "./python-index-stub.js";
 import { expectValidReport } from "./schema.js";
 
 // check() is loaded inside the test body: the AC test is written before TI03 reads aliases, so nothing the build adds
@@ -75,10 +76,15 @@ function added(diff: string): { line: number; text: string }[] {
   return out;
 }
 
+/**
+ * Runs check() with the sources and, for given sources, a stubbed Python index (CORE-356: TI03 takes its alias maps from
+ * the index only): one entry per `.py` test file a side holds, carrying the alias pairs the table gives for that side.
+ */
 async function run(
   diff: string,
   testSources: { base: Side; head: Side } | undefined,
   paths: string[],
+  pairs: { base?: AliasPairsByPath; head?: AliasPairsByPath } = {},
 ): Promise<Signal[]> {
   const { check } = await import("./text-coverage.js");
   const report = check({
@@ -89,7 +95,9 @@ async function run(
     threshold: 80,
     repoFiles: [...new Set([...paths, "src/cart.ts"])].sort(),
     testIntegrityMode: { input: "block" },
-    ...(testSources === undefined ? {} : { testSources }),
+    ...(testSources === undefined
+      ? {}
+      : { testSources, pythonTestIndex: stubPythonIndex(testSources, pairs.base ?? {}, pairs.head ?? {}) }),
   });
   expectValidReport(report);
   return report.testIntegrity.signals
@@ -97,14 +105,45 @@ async function run(
     .map((s) => ({ id: String(s.id), severity: s.severity, path: s.path, line: s.line, detail: s.detail }));
 }
 
-/** The AC-1 cases: directory, alias prefix of the decorator it adds, and the severity it gives on an existing test. */
-const CASES: { name: string; prefix: string; severity: "block" | "warn" }[] = [
-  { name: "block-pytest-alias-pt-skip", prefix: "@pt.mark.skip", severity: "block" },
-  { name: "warn-pytest-alias-pt-skipif", prefix: "@pt.mark.skipif(", severity: "warn" },
-  { name: "warn-pytest-alias-mark-skipif", prefix: "@mark.skipif(", severity: "warn" },
-  { name: "warn-pytest-alias-m-xfail", prefix: "@m.xfail(", severity: "warn" },
-  { name: "block-pytest-alias-group-skip", prefix: "@m.skip", severity: "block" },
+/**
+ * The AC-1 cases: directory, alias prefix of the decorator it adds, the severity it gives on an existing test, and the
+ * pairs the Python index reports for the imports the case's head text binds (written as data: the real index's output
+ * for these imports is pinned by ac-core356-index-aliases.test.ts).
+ */
+const CASES: {
+  name: string;
+  prefix: string;
+  severity: "block" | "warn";
+  pairs: readonly (readonly [string, string])[];
+}[] = [
+  { name: "block-pytest-alias-pt-skip", prefix: "@pt.mark.skip", severity: "block", pairs: [["pt", "pytest"]] },
+  { name: "warn-pytest-alias-pt-skipif", prefix: "@pt.mark.skipif(", severity: "warn", pairs: [["pt", "pytest"]] },
+  {
+    name: "warn-pytest-alias-mark-skipif",
+    prefix: "@mark.skipif(",
+    severity: "warn",
+    pairs: [["mark", "pytest.mark"]],
+  },
+  { name: "warn-pytest-alias-m-xfail", prefix: "@m.xfail(", severity: "warn", pairs: [["m", "pytest.mark"]] },
+  {
+    name: "block-pytest-alias-group-skip",
+    prefix: "@m.skip",
+    severity: "block",
+    pairs: [
+      ["m", "pytest.mark"],
+      ["skip", "pytest.skip"],
+    ],
+  },
 ];
+
+/** The pairs the index reports for the other file, which binds pt, mark and m itself. */
+const OTHER_PAIRS: AliasPairsByPath = {
+  [OTHER.path]: [
+    ["pt", "pytest"],
+    ["mark", "pytest.mark"],
+    ["m", "pytest.mark"],
+  ],
+};
 
 const side = (files: SourceFile[]): Side => ({ files, dropped: [] });
 
@@ -132,26 +171,34 @@ describe("TI03 with no text, the wrong text, or one side's text of the test file
       expect(await run(alias.diff, undefined, paths), `${spec.name}, no testSources: no TI03`).toEqual([]);
       expect(await run(literal.diff, undefined, paths), `${spec.name}-literal, no testSources: as today`).toEqual(twin);
 
-      // 2. testSources whose sides hold only another file, one that binds pt, mark and m itself.
+      // 2. testSources whose sides hold only another file, one that binds pt, mark and m itself (its index entries
+      // carry those pairs, which must not serve this file).
       const elsewhere = { base: side([OTHER]), head: side([OTHER]) };
       expect(
-        await run(alias.diff, elsewhere, [...paths, OTHER.path]),
+        await run(alias.diff, elsewhere, [...paths, OTHER.path], { base: OTHER_PAIRS, head: OTHER_PAIRS }),
         `${spec.name}, the file on neither side: no TI03`,
       ).toEqual([]);
       expect(
-        await run(literal.diff, elsewhere, [...paths, OTHER.path]),
+        await run(literal.diff, elsewhere, [...paths, OTHER.path], { base: OTHER_PAIRS, head: OTHER_PAIRS }),
         `${spec.name}-literal, the file on neither side: as today`,
       ).toEqual(twin);
 
-      // 3. Only the head side holds the file: the head's aliases serve the added line.
+      // 3. Only the head side holds the file: the head's index entry serves the added line.
+      const headPairs = { head: { [PATH]: spec.pairs } };
       expect(
-        await run(alias.diff, { base: side([]), head: side(alias.head) }, paths),
+        await run(alias.diff, { base: side([]), head: side(alias.head) }, paths, headPairs),
         `${spec.name}, only the head text: the TI03 of its literal twin`,
       ).toEqual(twin);
       expect(
         await run(literal.diff, { base: side([]), head: side(literal.head) }, paths),
         `${spec.name}-literal, only the head text: as today`,
       ).toEqual(twin);
+
+      // 4. The head text is held but the index has no entry for it (a refusal or a file it was not given): no alias.
+      expect(
+        await run(alias.diff, { base: side([]), head: side(alias.head) }, paths, { head: {} }),
+        `${spec.name}, the head text indexed with no alias pairs: no TI03`,
+      ).toEqual([]);
     }
   });
 });

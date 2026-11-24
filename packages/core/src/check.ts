@@ -65,6 +65,7 @@ import { binaryTouchedTestFiles, indexTouchedTestFiles, withBinaryTestFiles } fr
 import { detectTI01, indexDeletedTestFiles } from "./signals/ti01.js";
 import { detectTI02 } from "./signals/ti02.js";
 import { detectTI03 } from "./signals/ti03.js";
+import { ti03Aliases } from "./signals/ti03Aliases.js";
 import { detectTI03Pairs, type Ti03Finding } from "./signals/ti03Pairs.js";
 import { detectTI04 } from "./signals/ti04.js";
 import { detectTI05 } from "./signals/ti05.js";
@@ -168,9 +169,10 @@ export interface CheckInput {
    * TI01's moved-test check. TI02, TI05, TI06, TI07 and TI12 compare the JS/TS (and, with `pythonTestIndex`, Python)
    * test files the diff modifies, and the report's `testChanges` summarizes that comparison; TI09 compares the touched
    * test-runner config files. TI01 indexes the base text of a deleted test file to find its tests again in a new test
-   * of this change (`indexDeletedTestFiles` and `matchTests`), which makes the deletion `info`. TI03 judges the compared test pairs, and reads the top-level imports of
-   * the Python test files in it to resolve `import pytest as pt` style aliases; without them it reads the literal
-   * spellings only. The tests-exercise check reads the imports of the added and modified JS/TS test files at HEAD
+   * of this change (`indexDeletedTestFiles` and `matchTests`), which makes the deletion `info`. TI03 judges the compared test pairs and resolves
+   * `import pytest as pt` style aliases of the Python test files in it from the Python index's report of their
+   * top-level imports (`pythonTestIndex`); a side the index did not read resolves no aliased spelling, only the
+   * literal ones. The tests-exercise check reads the imports of the added and modified JS/TS test files at HEAD
    * (`detectUnexercisedChanges`) and adds one `TESTS_NOT_EXERCISING_CHANGES` warn message for the changed source files
    * none of them imports. Without it, or in mode off,
    * nothing is compared and the report is the one it was before: no signal, no message, no language. With a side
@@ -197,7 +199,8 @@ export interface CheckInput {
    * `python-failed`, `timeout`, `output-too-large`, `bad-output`), and a per-file refusal of the index (`syntax-error`,
    * `too-deep`, `too-large`, `parser-threw`) for the head of a modified or added `.py` test file whose text was read,
    * name the file and are an error in mode `block` too. A head the index read, with a base only it refused, stays a
-   * warning.
+   * warning; TI03 then (and for a base the sources dropped as `missing`) compares the head's skips against a base with
+   * no skip.
    */
   pythonTestIndex?: PythonTestIndex | undefined;
   /**
@@ -391,6 +394,8 @@ export function check(input: CheckInput): Report {
   const comparedMode = testIntegrity.mode;
   let testChanges: ReportTestChanges | undefined;
   let ti03Pairs: Ti03Finding[] = [];
+  // TI03's alias maps, built once: the Python index's import bindings per side, never read from the test text here.
+  const ti03AliasMaps = comparedMode === "off" ? undefined : ti03Aliases(input.testSources, input.pythonTestIndex);
   if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== undefined && touched !== null) {
     const configs = detectTI09(parsedDiff, input.testSources, comparedMode);
     const configUnavailable: TestConfigUnavailable | undefined =
@@ -423,6 +428,7 @@ export function check(input: CheckInput): Report {
           : { movedGroups: new Map(deletedFiles.files.map((file) => [file.path, file.groups])) }),
         diff: parsedDiff,
         sources: input.testSources,
+        ...(ti03AliasMaps === undefined ? {} : { aliases: ti03AliasMaps }),
       });
       const capped = capFindings([
         ...detectTI02(match, comparedMode),
@@ -454,7 +460,7 @@ export function check(input: CheckInput): Report {
   // TI03 runs after the comparison: its line pass and, when the test files were compared, its pair pass give one
   // finding per line.
   if (parsedDiff !== null && testIntegrity.mode !== "off") {
-    testIntegritySignals.push(...detectTI03(parsedDiff, testIntegrity.mode, input.testSources, ti03Pairs));
+    testIntegritySignals.push(...detectTI03(parsedDiff, testIntegrity.mode, ti03AliasMaps, ti03Pairs));
     sortSignals(testIntegritySignals);
   }
   // The tests-exercise check (A8 step 1) reads the imports of the touched test files: only when they were indexed, so

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { TestIntegritySignal as Signal } from "../src/report.js";
 import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
+import { stubPythonIndex } from "./python-index-stub.js";
 import { expectValidReport } from "./schema.js";
 
 // check() is loaded inside the test body: the AC test is written before TI03 reads aliases, so nothing the build adds
@@ -83,8 +84,14 @@ function changes(diff: string): { added: { line: number; text: string }[]; remov
 const diffShape = (diff: string) =>
   linesOf(diff).map((line) => (line.startsWith("@@") ? line.slice(0, line.indexOf("@@", 2) + 2) : line));
 
-async function run(c: Case): Promise<Signal[]> {
+/**
+ * Runs check() with a stubbed Python index (CORE-356: TI03 takes its alias maps from the index only) whose entry for the
+ * case file carries `pairs`, the bindings the case's import lines make; the real index's output for them is pinned by
+ * ac-core356-index-aliases.test.ts.
+ */
+async function run(c: Case, pairs: readonly (readonly [string, string])[]): Promise<Signal[]> {
   const { check } = await import("./text-coverage.js");
+  const testSources = { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } };
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -93,7 +100,8 @@ async function run(c: Case): Promise<Signal[]> {
     threshold: 80,
     repoFiles: [...new Set([...c.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testIntegrityMode: { input: "block" },
-    testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
+    testSources,
+    pythonTestIndex: stubPythonIndex(testSources, { [PATH]: pairs }),
   });
   expectValidReport(report);
   return report.testIntegrity.signals
@@ -102,10 +110,19 @@ async function run(c: Case): Promise<Signal[]> {
 }
 
 /** Each AC-1 case: its directory, the import lines its head text holds, the alias prefix, the marker, the severity. */
-const CASES: { name: string; imports: string[]; prefix: string; marker: string; severity: "block" | "warn" }[] = [
+const CASES: {
+  name: string;
+  imports: string[];
+  /** The pairs the Python index reports for the head's import lines. */
+  pairs: readonly (readonly [string, string])[];
+  prefix: string;
+  marker: string;
+  severity: "block" | "warn";
+}[] = [
   {
     name: "block-pytest-alias-pt-skip",
     imports: ["import pytest as pt"],
+    pairs: [["pt", "pytest"]],
     prefix: "@pt.mark.",
     marker: "skip",
     severity: "block",
@@ -113,6 +130,7 @@ const CASES: { name: string; imports: string[]; prefix: string; marker: string; 
   {
     name: "warn-pytest-alias-pt-skipif",
     imports: ["import pytest as pt"],
+    pairs: [["pt", "pytest"]],
     prefix: "@pt.mark.",
     marker: "skipif",
     severity: "warn",
@@ -120,6 +138,7 @@ const CASES: { name: string; imports: string[]; prefix: string; marker: string; 
   {
     name: "warn-pytest-alias-mark-skipif",
     imports: ["from pytest import mark"],
+    pairs: [["mark", "pytest.mark"]],
     prefix: "@mark.",
     marker: "skipif",
     severity: "warn",
@@ -127,6 +146,7 @@ const CASES: { name: string; imports: string[]; prefix: string; marker: string; 
   {
     name: "warn-pytest-alias-m-xfail",
     imports: ["from pytest import mark as m"],
+    pairs: [["m", "pytest.mark"]],
     prefix: "@m.",
     marker: "xfail",
     severity: "warn",
@@ -134,6 +154,10 @@ const CASES: { name: string; imports: string[]; prefix: string; marker: string; 
   {
     name: "block-pytest-alias-group-skip",
     imports: ["from pytest import (", "    mark as m,", "    skip,", ")"],
+    pairs: [
+      ["m", "pytest.mark"],
+      ["skip", "pytest.skip"],
+    ],
     prefix: "@m.",
     marker: "skip",
     severity: "block",
@@ -200,12 +224,12 @@ describe("TI03: pytest marker aliases from the test file's own top-level imports
       }
 
       const expected = [{ id: "TI03", severity: spec.severity, path: PATH, line: decorator.line }];
-      const twin = await run(literal);
+      const twin = await run(literal, []);
       expect(
         twin.map(({ detail: _, ...rest }) => rest),
         `${spec.name}-literal: one ${spec.severity} TI03 at the decorator`,
       ).toEqual(expected);
-      const aliased = await run(alias);
+      const aliased = await run(alias, spec.pairs);
       expect(aliased, `${spec.name}: the TI03 signals of its literal twin`).toEqual(twin);
     }
   });

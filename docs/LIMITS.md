@@ -358,16 +358,19 @@ Both readings give one finding per line, the stronger one kept.
 - **Go receivers other than `t`.** Only `t.Skip(`, `t.Skipf(` and `t.SkipNow(` are read; a receiver named `tb`, `b` or
   anything else is missed.
 - **Python aliases from top-level imports only.** A Python skip is also read through the names the test file binds with
-  its own `import` and `from … import` statements that start at column 0 (`import pytest as pt`, `from pytest import mark
-  as m`, `from unittest import skipIf as si`, the parenthesized multi-line form included), so `@pt.mark.skip`,
-  `@m.skipif(…)`, `@si(…)` and `sk("r")` are read as the `pytest.mark.skip`, `pytest.mark.skipif`, `unittest.skipIf` and
-  `pytest.skip` they name. An alias bound anywhere else is not read: inside an `if`, a `try` or a function, in a
-  module docstring, by `from pytest import *`, by an assignment (`pt = pytest`) or after a backslash continuation. A
-  name bound twice keeps its last binding, and `import os as pt` after `import pytest as pt` hides the pytest one.
-  The text read is the test file's own text in the test sources; `conftest.py` is not followed, and without the text
-  (no test sources, or a side that cannot be read) only the literal spellings are read. The literal spelling is always
-  tried first, so `@pytest.mark.skip` under `import foo as pytest` still counts; a binding the reader gets wrong can
-  only add a match, never take one away.
+  its own top-level `import` and `from … import` statements (`import pytest as pt`, `from pytest import mark as m`,
+  `from unittest import skipIf as si`, the parenthesized multi-line form included), so `@pt.mark.skip`, `@m.skipif(…)`,
+  `@si(…)` and `sk("r")` are read as the `pytest.mark.skip`, `pytest.mark.skipif`, `unittest.skipIf` and `pytest.skip`
+  they name. The bindings come from the Python index, which reads the module's own statements with Python's `ast`: a
+  backslash continuation, a statement after `;` and a parenthesized group are read, and a docstring is never read as an
+  import. An alias bound anywhere else is not read: inside an `if`, a `try` or a function, by `from pytest import *`, or
+  by an assignment (`pt = pytest`). A name bound twice keeps its last binding, and `import os as pt` after `import
+  pytest as pt` hides the pytest one. `conftest.py` is not followed. A side whose text was held but that the Python
+  index did not index (no index because Python did not run, a run that gave none, or a refusal of the file) resolves no
+  aliased spelling: it is not resolved there and only the literal spellings are read, while the per-file
+  `TEST_INTEGRITY_INDEX_UNAVAILABLE` message names the file. A side with no text at all (dropped as `missing`) uses the
+  other side's index entry. The literal spelling is always tried first, so `@pytest.mark.skip` under `import foo as
+  pytest` still counts; an alias can only add a match, never take one away.
 - **Python forms.** `@unittest.expectedFailure` (and its aliases) is an unconditional skip like `@unittest.skip`, and
   `pytest.xfail(` in a body is read like `pytest.skip(`: a skip inside a body, `warn` unless the Python index ran
   (see "No context lines" above). A skip written through
@@ -392,18 +395,25 @@ Both readings give one finding per line, the stronger one kept.
   name is the one pytest never collects, but tests of one name are paired in line order, so it is reported as a skip of
   the existing test, at the added `def`. Without the Python index, the line reading reads `pytest.importorskip(` and
   `raise unittest.SkipTest(` at the start of a line as a skip inside a body (`warn`), and none of the other forms.
-- **Decided only by the line pass today.** In these inputs only TI03's line pass, with its import-alias reader
-  (`pythonAliases.ts`, which resolves `import pytest as pt` and the like from the file's own column-0 imports), decides
-  the outcome; nothing the Python index returns does. Each was measured by running `check()` with a real index, with
-  the reader and with it stubbed out (CORE-351). Block-level: a `.py` test file whose merge-base text the index refuses
-  while its head indexes (the base-only refusal stays a warning); a modified test file dropped as `missing` on one side
-  while the other side has text; an alias skip decorator above a `def` the index does not collect as a test (custom
-  pytest collection such as `def check_*`, a method of a class not named `Test*`, a helper, a function nested in a
-  test); an alias `@pt.mark.xfail` added to a test the base already skipped; an alias `pytestmark = pt.mark.skip` in a
-  file with no tests. Warning-level: an alias skip call inside a helper or hook body (cannot be placed); an alias
-  conditional skip added to a test that already had one; an alias decorator above a shown `def` that is not a test;
-  and the warning-level versions of the base-only refusal and the one-sided `missing` drop. Reading these from the
-  index and deleting the alias reader is [CORE-356](https://linear.app/pharn-dev/issue/CORE-356).
+- **A base the Python index did not give.** When the Python index refuses the merge-base text of a modified `.py` test
+  file (a Python 2 file, `syntax-error`, for instance) while its head indexes, or the sources dropped the base side as
+  `missing` while the head has text, no base test can be paired. TI03 then compares every skip or xfail the head index
+  finds on a test against a base with no skip, at the normal levels: an unconditional skip is an existing-test skip (the
+  mode's level), a conditional one a `warn`, a module-level skip a `warn`, each placed at the added line that brings it
+  in, else at the test's `def` line. This accepts false positives: a Python 2 to 3 migration shows every existing skip
+  of the file as a finding, and so does a runner fetch that lost the base side (the accept label lowers them). A base
+  the index refused also gives the line reading no aliases for the removed lines, so an aliased skip the change only
+  moves or respells counts as added: extra findings, never fewer. The `TEST_INTEGRITY_INDEX_UNAVAILABLE` warning for
+  the file stays. The opposite case, the head side dropped as `missing`
+  while the base side has text, is not compared: only the line pass reads it, with the base's index aliases serving the
+  added lines.
+- **Still decided only by the line pass.** Some inputs are judged by TI03's line pass alone, with the Python index's
+  aliases, because nothing the index returns for them is a test. Block-level: an alias skip decorator above a `def` the
+  index does not collect as a test (custom pytest collection such as `def check_*`, a method of a class not named
+  `Test*`, a helper, a function nested in a test); an alias `@pt.mark.xfail` added to a test the base already skipped;
+  an alias `pytestmark = pt.mark.skip` in a file with no tests. Warning-level: an alias skip call inside a helper or
+  hook body (cannot be placed); an alias conditional skip added to a test that already had one; an alias decorator
+  above a shown `def` that is not a test.
 - **A skip moved to another file** reads as added without the test index, because the removed line is looked for in
   the same file only. A rename that edits the skip is judged against the old file's lines. With the index, a test the
   match finds again in another file is judged by its pair.
@@ -1068,11 +1078,12 @@ run), an error the accept label never lowers. A head the index read, with a base
   "What TI03 misses" (Python switch-off forms).
 - A `def` or class name longer than 500 characters is cut to 500 in the index, as the JS/TS index cuts names, so two
   tests whose names differ only after that are one name.
-- An alias is read only when it is bound by a top-level `import` or `from … import` statement at column 0. One bound
-  inside an `if`, a `try` or a function, in a docstring, by a backslash continuation, or by `from pytest import *`
-  (`import *` binds nothing) is not. A reassignment after the import (`pt = pytest`) is not followed, and a later
-  top-level import of the same name replaces the earlier binding, so `import os as pt` after `import pytest as pt` hides
-  pytest.
+- An alias is read only when it is bound by a top-level `import` or `from … import` statement of the module, as the
+  Python index reads it with `ast` (a backslash continuation and a statement after `;` count; a docstring never does).
+  One bound inside an `if`, a `try` or a function, or by `from pytest import *` (`import *` binds nothing) is not. A
+  reassignment after the import (`pt = pytest`) is not followed, and a later top-level import of the same name replaces
+  the earlier binding, so `import os as pt` after `import pytest as pt` hides pytest. TI03 resolves no aliased spelling
+  on a side the index did not index.
 - `[tool.pytest]` and `[tool.pytest.ini_options]` in one `pyproject.toml` are merged into one table in which the native
   value wins, which is not necessarily what pytest does.
 - Results depend on the runner's Python. Test files are parsed by the runner's own `python3` (or `python`), so a file

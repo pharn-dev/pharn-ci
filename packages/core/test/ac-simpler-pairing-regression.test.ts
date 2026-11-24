@@ -34,9 +34,12 @@ const NEVER = "../src/signals/noSuchPairingModule.js";
 
 /**
  * sha256 of the JSON list of { fixture, mode, signals, messages } over the cases below, in directory then name order,
- * mode block then warn, as check() gave them at cd16f787 (signals: TI01, TI02, TI05, TI06; messages: TEST_INTEGRITY_*).
+ * mode block then warn, as check() gave them at cd16f787 (signals: TI01, TI02, TI05, TI06; messages: TEST_INTEGRITY_*),
+ * except CORE-356: the two records of TI05/pass-pytest-alias-emptied-skipped (no Python index, so its aliased skip is no
+ * longer resolved) lost their TEST_INTEGRITY_TI03 message. The old digest was d80a3ed005c02ae0…; EXPECTED below changed
+ * in exactly those two lines.
  */
-const DIGEST = "d80a3ed005c02ae0eeba9abf73a4ffe8877018e4b8fecf82273cd3bf865a136e";
+const DIGEST = "74ee661481e00094246528efe82c5ce2ad9c5dedd658f52e709947556e49f31f";
 
 /** `<fixture> <mode>: <signals then messages>`, as check() gave them at cd16f787. */
 const EXPECTED: readonly string[] = [
@@ -184,8 +187,12 @@ const EXPECTED: readonly string[] = [
   "TI05/pass-fewer-rewritten warn: none",
   "TI05/pass-none-at-base block: none",
   "TI05/pass-none-at-base warn: none",
-  "TI05/pass-pytest-alias-emptied-skipped block: TEST_INTEGRITY_TI03 error; TEST_INTEGRITY_INDEX_UNAVAILABLE warn",
-  "TI05/pass-pytest-alias-emptied-skipped warn: TEST_INTEGRITY_TI03 warn; TEST_INTEGRITY_INDEX_UNAVAILABLE warn",
+  // CORE-356: this case runs with no Python index, so the aliased `@pt.mark.skip` is no longer resolved (aliases come from
+  // the index only) and its TI03 is gone in both modes; the `-literal` twin below keeps it. The same fixture through the
+  // real index still gives the TI03 (packages/node-io/test/ac-pyparity2-index-signals.test.ts, and the AC-1 test of
+  // packages/node-io/test/ac-core356-audit-parity.test.ts).
+  "TI05/pass-pytest-alias-emptied-skipped block: TEST_INTEGRITY_INDEX_UNAVAILABLE warn",
+  "TI05/pass-pytest-alias-emptied-skipped warn: TEST_INTEGRITY_INDEX_UNAVAILABLE warn",
   "TI05/pass-pytest-alias-emptied-skipped-literal block: TEST_INTEGRITY_TI03 error; TEST_INTEGRITY_INDEX_UNAVAILABLE warn",
   "TI05/pass-pytest-alias-emptied-skipped-literal warn: TEST_INTEGRITY_TI03 warn; TEST_INTEGRITY_INDEX_UNAVAILABLE warn",
   "TI05/pass-pytest-skip-emptied block: TEST_INTEGRITY_TI03 error; TEST_INTEGRITY_INDEX_UNAVAILABLE warn",

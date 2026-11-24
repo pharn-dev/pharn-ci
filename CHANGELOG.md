@@ -11,6 +11,14 @@ Releases are cut by a maintainer; see [`docs/RELEASING.md`](./docs/RELEASING.md)
 
 ### Changed
 
+- TI03 reads Python import aliases (`import pytest as pt`) from the Python index (CORE-356); the hand-written column-0
+  import reader is gone. Aliased skips in added Python test files, renamed-in files and new tests are resolved the same
+  way. A file with more than 1000 pytest or unittest aliases, or an alias name over 500 characters, is refused by the
+  index as `too-large` (an error in mode block) instead of being cut. A `.py` test file whose merge-base text the
+  index refuses, or the sources dropped as missing,
+  while its head indexes now gets TI03 findings for the skips of its head (compared against a base with no skip, at the
+  normal TI03 levels; the index-unavailable warning stays). A side the index did not read resolves no aliased spelling,
+  only the literal ones.
 - The TI01 and TI02 test pairing is one bounded loop (CORE-145): the prefix index, the moved-test-file matcher and the
   first-unused-entry list are replaced by one walk over the new-at-head tests, and each rule compares a removed test
   with at most 256 not-yet-paired new tests, in head order. Below 256 new tests the pairs are the same as before. A test

@@ -180,13 +180,18 @@ export async function indexPythonTests(
   if (!outcome.available) return outcome;
   const results: readonly TestIndexResult[] = outcome.results;
   const imports = outcome.imports;
+  const aliases = outcome.aliases;
   return {
     available: true,
     files: plan.entries.map((entry): PythonIndexFile => {
       if ("refused" in entry) return { path: entry.path, result: { parsed: false, reason: entry.refused } };
       const result = results[entry.id] as TestIndexResult;
       const names = imports[entry.id];
-      return names === undefined ? { path: entry.path, result } : { path: entry.path, result, imports: names };
+      const pairs = aliases[entry.id];
+      const file: PythonIndexFile = { path: entry.path, result };
+      if (names !== undefined) file.imports = names;
+      if (pairs !== undefined) file.aliases = pairs;
+      return file;
     }),
   };
 }

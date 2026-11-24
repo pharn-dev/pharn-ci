@@ -1,0 +1,8 @@
+import pytest
+
+from cart import total
+
+
+@pytest.mark.skip
+def check_empty():
+    assert total([]) == 0

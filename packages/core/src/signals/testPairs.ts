@@ -85,6 +85,13 @@ export interface TouchedTests {
   /** Sorted by path. */
   unavailable: UncomparedTestFile[];
   /**
+   * CORE-356: the compared `.py` files in `unavailable` whose head side indexed while the base side could not be read as
+   * a base: the base text was held and the Python index refused it (`PYTHON_FILE_REFUSAL_REASONS`), or the sources
+   * dropped the base as `missing`. Sorted by head path, each with the head's tests, mocks and describe blocks. Only
+   * TI03's pair pass reads it, judging every head test against a base with no skip. Absent when empty.
+   */
+  headOnly?: AddedTestFile[];
+  /**
    * The added test files whose head side could not be indexed (dropped, missing, refused by the test index, or no
    * Python index), sorted by path. They are in no other list, so nothing that reads `added` checks their tests; the
    * report names them. Empty when `notRun` is set, and when the head side of the sources is unavailable: then no file
@@ -287,7 +294,9 @@ export function pythonNotFoundStopsComparison(diff: readonly DiffFile[], python:
  * head side is unavailable and no compared file exists, nothing is indexed or named. A compared file whose head side
  * fails for a reason of `HEAD_UNREADABLE_ERROR_REASONS` while its base side indexed (or was dropped as `over-file-cap`)
  * carries `changeMadeUnreadable` in `unavailable`. A `renamed` entry whose new path is a test file and whose old path is
- * not one is an added file: it is indexed at HEAD only. A file that is not compared carries `failsClosed` when
+ * not one is an added file: it is indexed at HEAD only. A compared `.py` file whose head indexed while its base was
+ * refused by the Python index (text held) or dropped as `missing` is also listed in `headOnly` (CORE-356), for TI03's
+ * pair pass to judge against a base with no skip. A file that is not compared carries `failsClosed` when
  * `sourcesDropFailsClosed` holds (every language) or, for a `.py` file, when `pythonHeadFailsClosed` holds; an added `.py`
  * file in `unreadAdded` carries it when `pythonHeadFailsClosed` holds (`testIntegrityUnreadable.ts`).
  */
@@ -347,6 +356,7 @@ export function indexTouchedTestFiles(
 
   const pairs: ComparedTestFile[] = [];
   const unavailable: UncomparedTestFile[] = [];
+  const headOnly: AddedTestFile[] = [];
   const compared = [...comparedPaths.values()].sort(
     (a, b) => byCodeUnit(a.basePath, b.basePath) || byCodeUnit(a.headPath, b.headPath),
   );
@@ -377,9 +387,23 @@ export function indexTouchedTestFiles(
         ...(unreadable ? { changeMadeUnreadable: true as const } : {}),
         ...(closed ? { failsClosed: true as const } : {}),
       });
+      // CORE-356: a head that indexed against a base only the index refused (text held) or the sources dropped as
+      // `missing` is judged by TI03's pair pass against a base with no skip. The `unavailable` entry stays as it is.
+      if (file.language === "py" && head.ok && !base.ok) {
+        const refused = base.hadText && PYTHON_FILE_REFUSAL_REASONS.includes(base.reason);
+        if (refused || (!base.hadText && base.reason === "missing")) {
+          headOnly.push({
+            headPath: file.headPath,
+            head: head.tests,
+            headMocks: head.mocks,
+            headGroups: head.groups,
+          });
+        }
+      }
     }
   }
   unavailable.sort((a, b) => byCodeUnit(a.path, b.path));
+  headOnly.sort((a, b) => byCodeUnit(a.headPath, b.headPath));
 
   const added: AddedTestFile[] = [];
   const unreadAdded: UncomparedTestFile[] = [];
@@ -402,6 +426,7 @@ export function indexTouchedTestFiles(
     pairs,
     added,
     unavailable,
+    ...(headOnly.length > 0 ? { headOnly } : {}),
     unreadAdded,
     notRun: null,
     languages: [...languages].sort(byCodeUnit),

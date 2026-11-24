@@ -36,6 +36,16 @@ export interface PythonIndexFile {
    * import keeps its dots (`.c`). Present only for a parsed file that imports something.
    */
   imports?: string[];
+  /**
+   * The file's top-level import bindings as `[local, target]` pairs (the local name and the dotted name it stands
+   * for), in the order the interpreter read them, a later binding of a name replacing an earlier one. Only the
+   * module's own `import` and `from ... import` statements count (not inside `if`, `try` or a function), and only a
+   * binding into `pytest` or `unittest` whose local name differs from its target (`import pytest` and `from m import *`
+   * add nothing). A file with more than `MAX_TEST_IMPORTS` such pairs, or one whose name or target is over 500
+   * characters, is refused as `too-large` by the interpreter instead (never cut). TI03 resolves aliased skip spellings
+   * with it. Present only for a parsed file with at least one such pair.
+   */
+  aliases?: [local: string, target: string][];
 }
 
 /** A run that gave no index: the reason, and a one-line detail of at most 300 characters. */

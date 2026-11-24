@@ -6,7 +6,6 @@
  */
 
 import { sourceLanguage } from "../sourceLanguage.js";
-import { resolvePythonName } from "./pythonAliases.js";
 
 /** The language a test file's one-line forms are read in. */
 export type TestLanguage = "jsts" | "python" | "go";
@@ -226,8 +225,20 @@ const PYTEST_MARKS: ReadonlySet<string> = new Set(["pytest.mark.skip", "pytest.m
 const PYTESTMARK = "pytestmark";
 
 /**
+ * Replaces the first dotted segment of `name` with the name it is bound to (`pt.mark.skip` becomes `pytest.mark.skip`
+ * under `import pytest as pt`); null when that segment is not bound.
+ */
+function resolvePythonName(name: string, aliases: ReadonlyMap<string, string>): string | null {
+  const dot = name.indexOf(".");
+  const head = dot < 0 ? name : name.slice(0, dot);
+  const target = aliases.get(head);
+  if (target === undefined) return null;
+  return dot < 0 ? target : target + name.slice(dot);
+}
+
+/**
  * The name `written` is in `table`: literally first (so `@pytest.mark.skip` matches whatever `pytest` is bound to), then,
- * when the file's top-level imports are known, by replacing its first segment with the name it is bound to. The table's
+ * when the file's import bindings are known, by replacing its first segment with the name it is bound to. The table's
  * own name is returned, so a respelled line keeps the key of the line it replaces.
  */
 function canonicalPython(
@@ -294,7 +305,7 @@ function parsePytestmark(line: string, aliases: ReadonlyMap<string, string> | un
 /**
  * Reads a Python skip decorator, a `pytestmark = …` line, `pytest.skip(` / `pytest.xfail(` / `pytest.importorskip(`, or
  * `raise unittest.SkipTest(`, at the start of a line; null for anything else.
- * With `aliases` (the file's top-level imports, see `pythonImportAliases`) a name that is not in the tables as written
+ * With `aliases` (the file's top-level import bindings, as the Python index reports them) a name that is not in the tables as written
  * is also tried with its first segment replaced (`@pt.mark.skip` under `import pytest as pt`, `sk("r")` under `from
  * pytest import skip as sk`). The `token` returned is the table's name, whatever the spelling.
  */

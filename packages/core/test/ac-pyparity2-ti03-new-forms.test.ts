@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { TestIntegritySignal as Signal } from "../src/report.js";
 import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
+import { stubPythonIndex } from "./python-index-stub.js";
 import { expectValidReport } from "./schema.js";
 
 // check() is loaded inside the test body: the AC test is written before TI03 reads @unittest.expectedFailure and
@@ -95,8 +96,14 @@ function respell(c: Case, from: string, to: string): Case {
   };
 }
 
-async function run(c: Case): Promise<Signal[]> {
+/**
+ * Runs check() with a stubbed Python index (CORE-356: TI03 takes its alias maps from the index only) whose entry for the
+ * case file carries `pairs`, the bindings the case's import lines make (none for a case with no renamed import); the
+ * real index's output for imports is pinned by ac-core356-index-aliases.test.ts.
+ */
+async function run(c: Case, pairs: readonly (readonly [string, string])[] = []): Promise<Signal[]> {
   const { check } = await import("./text-coverage.js");
+  const testSources = { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } };
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -105,7 +112,8 @@ async function run(c: Case): Promise<Signal[]> {
     threshold: 80,
     repoFiles: [...new Set([...c.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testIntegrityMode: { input: "block" },
-    testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
+    testSources,
+    pythonTestIndex: stubPythonIndex(testSources, { [PATH]: pairs }),
   });
   expectValidReport(report);
   return report.testIntegrity.signals
@@ -197,10 +205,15 @@ describe("TI03: @unittest.expectedFailure and pytest.xfail( are read, literal an
       for (const test of tests) expect(linesOf(textAt(c.base, PATH)), "the test exists at base").toContain(test);
 
       const literal = respell(respell(c, 'sk("r")', 'pytest.skip("r")'), 'xfail("r")', 'pytest.skip("r")');
-      const asSkip = await run(literal);
+      // The pairs the Python index reports for `from pytest import skip as sk, xfail`.
+      const pairs = [
+        ["sk", "pytest.skip"],
+        ["xfail", "pytest.xfail"],
+      ] as const;
+      const asSkip = await run(literal, pairs);
       expect(asSkip, "pytest.skip on both lines: two warn TI03").toHaveLength(2);
       for (const s of asSkip) expect(s.severity).toBe("warn");
-      const signals = await run(c);
+      const signals = await run(c, pairs);
       expect(signals, "two warn TI03 with pytest.skip's in-body detail").toEqual(asSkip);
       expect(signals.map((s) => s.line)).toEqual(added.map((a) => a.line));
     }

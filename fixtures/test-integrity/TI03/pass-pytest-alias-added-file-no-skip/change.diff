@@ -1,0 +1,17 @@
+diff --git a/py/test_cart.py b/py/test_cart.py
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/py/test_cart.py
+@@ -0,0 +1,11 @@
++import pytest as pt
++
++from cart import total
++
++
++def test_total():
++    assert total([2, 3]) == 5
++
++
++def test_empty():
++    assert total([]) == 0

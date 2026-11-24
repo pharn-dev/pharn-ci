@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { TestIntegritySignal as Signal } from "../src/report.js";
 import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
+import { stubPythonIndex } from "./python-index-stub.js";
 import { expectValidReport } from "./schema.js";
 
 // check() is loaded inside the test body: the AC test is written before TI03 reads aliases, so nothing the build adds
@@ -89,8 +90,14 @@ function replaceLines(c: Case, map: Record<string, string>): Case {
   };
 }
 
-async function run(c: Case): Promise<Signal[]> {
+/**
+ * Runs check() with a stubbed Python index (CORE-356: TI03 takes its alias maps from the index only) whose entry for the
+ * case file carries `pairs`, the bindings the case's import lines make; the real index's output for imports is pinned
+ * by ac-core356-index-aliases.test.ts.
+ */
+async function run(c: Case, pairs: readonly (readonly [string, string])[]): Promise<Signal[]> {
   const { check } = await import("./text-coverage.js");
+  const testSources = { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } };
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -99,7 +106,8 @@ async function run(c: Case): Promise<Signal[]> {
     threshold: 80,
     repoFiles: [...new Set([...c.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testIntegrityMode: { input: "block" },
-    testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
+    testSources,
+    pythonTestIndex: stubPythonIndex(testSources, { [PATH]: pairs }),
   });
   expectValidReport(report);
   return report.testIntegrity.signals
@@ -108,17 +116,30 @@ async function run(c: Case): Promise<Signal[]> {
 }
 
 /** Each AC-4 case: its binding that hides nothing, and a respelling of binding and decorator that resolves to pytest. */
-const CASES: { name: string; binding: string; resolving: string; decorator: string }[] = [
+const CASES: {
+  name: string;
+  binding: string;
+  /** The pairs the Python index reports for `binding`. */
+  pairs: readonly (readonly [string, string])[];
+  resolving: string;
+  /** The pairs the Python index reports for `resolving`. */
+  resolvingPairs: readonly (readonly [string, string])[];
+  decorator: string;
+}[] = [
   {
     name: "block-pytest-shadow-module",
     binding: "import foo as pytest",
+    pairs: [["pytest", "foo"]],
     resolving: "import pytest as pt",
+    resolvingPairs: [["pt", "pytest"]],
     decorator: "@pt.mark.skip",
   },
   {
     name: "block-pytest-shadow-mark",
     binding: "from foo import mark",
+    pairs: [["mark", "foo.mark"]],
     resolving: "from pytest import mark as mk",
+    resolvingPairs: [["mk", "pytest.mark"]],
     decorator: "@mk.skip",
   },
 ];
@@ -142,17 +163,18 @@ describe("TI03: a binding that hides nothing never removes a literal match", () 
       expect(linesOf(textAt(c.base, PATH)), `${spec.name}: the test exists at base`).toContain(head[line]);
 
       const expected = [{ id: "TI03", severity: "block", path: PATH, line }];
-      const withBinding = await run(c);
+      const withBinding = await run(c, spec.pairs);
       expect(
         withBinding.map(({ detail: _, ...rest }) => rest),
         `${spec.name}: one block TI03`,
       ).toEqual(expected);
-      const blanked = await run(replaceLines(c, { [spec.binding]: "" }));
+      const blanked = await run(replaceLines(c, { [spec.binding]: "" }), []);
       expect(withBinding, `${spec.name}: the TI03 of the same diff with the import line blanked`).toEqual(blanked);
 
       // The same case with a binding that does resolve to pytest and the decorator spelled through it.
       const resolving = await run(
         replaceLines(c, { [spec.binding]: spec.resolving, "@pytest.mark.skip": spec.decorator }),
+        spec.resolvingPairs,
       );
       expect(resolving, `${spec.name}: ${spec.resolving} and ${spec.decorator} give the same block TI03`).toEqual(
         withBinding,

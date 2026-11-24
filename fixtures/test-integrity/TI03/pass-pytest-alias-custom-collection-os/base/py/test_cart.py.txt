@@ -1,0 +1,7 @@
+import os as pt
+
+from cart import total
+
+
+def check_empty():
+    assert total([]) == 0

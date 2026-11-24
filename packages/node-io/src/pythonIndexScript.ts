@@ -17,7 +17,10 @@ exec(compile(sys.argv[1], "<pharn-ci-python-index>", "exec"), {"__name__": "__ph
  * The main script, Python 3.8 and later, standard library only (ast, json, sys, warnings). It reads
  * [{"id": n, "text": ...}] from stdin and writes one JSON array to stdout: per file either a refusal or the
  * normalized text with its test blocks and mock calls, and, when the file has any, the module names it imports
- * (`imports`, at most 1000). It only parses (ast.parse); nothing in a file is run.
+ * (`imports`, at most 1000) and the top-level import bindings into pytest or unittest whose local name differs from the
+ * target (`aliases`, [local, target] pairs; TI03 resolves aliased skip spellings with them). A file with more than 1000
+ * such bindings, or one whose name or target is longer than 500, is refused as too-large rather than cut. It only
+ * parses (ast.parse); nothing in a file is run.
  */
 export const PYTHON_INDEX_SCRIPT = `import ast
 import json
@@ -128,6 +131,30 @@ def import_aliases(tree):
                     target = node.module + "." + item.name
                 aliases[item.asname or item.name] = target
     return aliases
+
+
+def in_skip_namespace(target):
+    """Whether a dotted target is pytest or unittest, or a name under one of them: only these can resolve to a skip form."""
+    for root in ("pytest", "unittest"):
+        if target == root or target.startswith(root + "."):
+            return True
+    return False
+
+
+def alias_pairs(aliases):
+    """The import_aliases entries TI03 can use, as [local, target] pairs in the dict's order: the target is pytest or
+    unittest or a name under one, and the local name differs from it (an identity binding such as import pytest adds
+    nothing: TI03 tries the literal spelling first). None when more than MAX_IMPORTS such pairs remain or a kept name
+    or target is longer than MAX_NAME UTF-16 code units: the caller refuses the file as too-large, so no binding is ever
+    dropped silently (CORE-356)."""
+    pairs = []
+    for local, target in aliases.items():
+        if local == target or not in_skip_namespace(target):
+            continue
+        if utf16_length(local) > MAX_NAME or utf16_length(target) > MAX_NAME or len(pairs) >= MAX_IMPORTS:
+            return None
+        pairs.append([local, target])
+    return pairs
 
 
 def module_imports(tree):
@@ -509,6 +536,9 @@ def build(text):
         return {"parsed": False, "reason": "too-deep"}
     source = Source(text)
     aliases = import_aliases(tree)
+    pairs = alias_pairs(aliases)
+    if pairs is None:
+        return {"parsed": False, "reason": "too-large"}
     module_marks = pytestmark_modifiers(tree.body, aliases)
 
     blocks = []
@@ -693,6 +723,8 @@ def build(text):
     imports = module_imports(tree)
     if imports:
         out["imports"] = imports
+    if pairs:
+        out["aliases"] = pairs
     return out
 
 

@@ -1,10 +1,10 @@
 import type { DiffFile } from "../diff/unified.js";
 import type { TestBlock } from "../testIndex/types.js";
 import type { TestSourceSide, TestSources } from "../testSources.js";
-import { pythonImportAliases } from "./pythonAliases.js";
 import { type PythonSkipLine, parseJsTestCall, parsePythonSkip } from "./testLines.js";
 import type { TestMatch } from "./testMatch.js";
 import { languageOf, type TouchedTests } from "./testPairs.js";
+import type { Ti03Aliases } from "./ti03Aliases.js";
 
 /**
  * A TI03 category: `existing` takes the mode as its severity; `conditional`, `module` (a Python module-level skip,
@@ -151,11 +151,13 @@ export interface Ti03PairInput {
   /** The judged pairs, as TI05 reads them: the match's pairs (with TI01's moved-file pairs), moves and replacements. */
   match: Pick<TestMatch, "pairs" | "moved" | "replaced">;
   /** The touched test files, whose describe blocks each side keeps. */
-  touched: Pick<TouchedTests, "pairs" | "added">;
+  touched: Pick<TouchedTests, "pairs" | "added" | "headOnly">;
   /** The describe blocks of each deleted test file TI01 indexed, by path: the base side of its moved-file pairs. */
   movedGroups?: ReadonlyMap<string, readonly TestBlock[]>;
   diff: readonly DiffFile[];
   sources: TestSources;
+  /** The index-backed alias maps; a Python skip line is read through the head file's map after its literal spelling. */
+  aliases?: Ti03Aliases;
 }
 
 /**
@@ -173,6 +175,11 @@ export interface Ti03PairInput {
  * statement that takes a Python block out of collection), trying the
  * test and then each group around it, innermost first; then an added column-0 `pytestmark` line of a Python file; else
  * the head test's own line. Each carrier's site and each file's module mark are worked out once.
+ *
+ * CORE-356: a compared Python file whose base the index could not give (refused, or dropped as `missing`) while its head
+ * indexed is in `touched.headOnly`; every head test of it is judged as a pair whose base had no skip, so an
+ * unconditional skip is `existing`, a conditional one `conditional`, and a module-level skip `module`, each placed as
+ * above. Python skip decorators and calls are read through `aliases`, the Python index's import bindings of the head file.
  */
 export function detectTI03Pairs(input: Ti03PairInput): Ti03Finding[] {
   const groups = { base: new Map<string, readonly TestBlock[]>(), head: new Map<string, readonly TestBlock[]>() };
@@ -181,6 +188,7 @@ export function detectTI03Pairs(input: Ti03PairInput): Ti03Finding[] {
     groups.head.set(file.headPath, file.headGroups ?? []);
   }
   for (const file of input.touched.added) groups.head.set(file.headPath, file.headGroups ?? []);
+  for (const file of input.touched.headOnly ?? []) groups.head.set(file.headPath, file.headGroups ?? []);
   for (const [path, list] of input.movedGroups ?? []) if (!groups.base.has(path)) groups.base.set(path, list);
   const texts = { base: textsOf(input.sources.base), head: textsOf(input.sources.head) };
   const added = new Map<string, readonly number[]>();
@@ -195,20 +203,12 @@ export function detectTI03Pairs(input: Ti03PairInput): Ti03Finding[] {
     }
     return found;
   };
-  const aliasMaps = new Map<string, ReadonlyMap<string, string> | undefined>();
-  const aliasesOf = (path: string) => {
-    if (!aliasMaps.has(path)) {
-      const text = texts.head.get(path);
-      aliasMaps.set(path, text === undefined ? undefined : pythonImportAliases(text));
-    }
-    return aliasMaps.get(path);
-  };
-  /** A Python line as the line reader reads it: the literal spelling first, then through the head file's aliases. */
+  /** A Python line as the line reader reads it: the literal spelling first, then through the head file's index aliases. */
   const readPython = (path: string, text: string): PythonSkipLine | null => {
     const literal = parsePythonSkip(text);
     if (literal !== null) return literal;
-    const aliases = aliasesOf(path);
-    return aliases === undefined ? null : parsePythonSkip(text, aliases);
+    const map = input.aliases?.head(path);
+    return map === undefined ? null : parsePythonSkip(text, map);
   };
 
   const carrierSite = (headView: FileView, path: string, carrier: TestBlock, target: SkipState): number | null => {
@@ -292,6 +292,19 @@ export function detectTI03Pairs(input: Ti03PairInput): Ti03Finding[] {
   };
 
   const findings: Ti03Finding[] = [];
+  // CORE-356: a file whose base the index refused or the sources dropped as `missing` has no base test to pair with, so
+  // each of its head tests is judged as a pair whose base had no skip.
+  for (const file of input.touched.headOnly ?? []) {
+    const headView = view("head", file.headPath);
+    for (const test of file.head) {
+      if (test.moduleSkip !== undefined)
+        findings.push({ path: file.headPath, line: test.moduleSkip, category: "module" });
+      const now = effective(headView, test);
+      if (now === NONE) continue;
+      const category: Ti03Category = now === UNCONDITIONAL ? "existing" : "conditional";
+      findings.push({ path: file.headPath, line: siteOf(headView, file.headPath, test, now), category });
+    }
+  }
   for (const pair of [...input.match.pairs, ...input.match.moved, ...input.match.replaced]) {
     // CORE-53: a Python module-level skip the head test gained is a warn finding at the skip's line, in every mode.
     if (pair.head.moduleSkip !== undefined && pair.base.moduleSkip === undefined) {

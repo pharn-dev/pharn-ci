@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { TestIntegritySignal as Signal } from "../src/report.js";
 import type { TestSourceFile as SourceFile } from "../src/testSources.js";
 import { FIXTURES, fixture } from "./helpers.js";
+import { stubPythonIndex } from "./python-index-stub.js";
 import { expectValidReport } from "./schema.js";
 
 // check() is loaded inside the test body: the AC test is written before TI03 reads aliases, so nothing the build adds
@@ -79,8 +80,17 @@ function changes(diff: string): { added: { line: number; text: string }[]; remov
   return { added, removed };
 }
 
-async function run(c: Case): Promise<Signal[]> {
+type Pairs = readonly (readonly [string, string])[];
+
+/**
+ * Runs check() with a stubbed Python index (CORE-356: TI03 takes its alias maps from the index only) whose entries for
+ * the case file carry `head` and `base` pairs: what the Python index reports for the top-level imports of each text
+ * (the real index's output is pinned by ac-core356-index-aliases.test.ts). An import inside if / try / a function, `from
+ * m import *`, an assignment and a docstring give the index no pair.
+ */
+async function run(c: Case, head: Pairs, base: Pairs = head): Promise<Signal[]> {
   const { check } = await import("./text-coverage.js");
+  const testSources = { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } };
   const report = check({
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" },
@@ -89,7 +99,8 @@ async function run(c: Case): Promise<Signal[]> {
     threshold: 80,
     repoFiles: [...new Set([...c.head.map((f) => f.path), "src/cart.ts"])].sort(),
     testIntegrityMode: { input: "block" },
-    testSources: { base: { files: c.base, dropped: [] }, head: { files: c.head, dropped: [] } },
+    testSources,
+    pythonTestIndex: stubPythonIndex(testSources, { [PATH]: base }, { [PATH]: head }),
   });
   expectValidReport(report);
   return report.testIntegrity.signals
@@ -105,9 +116,10 @@ const columnZeroPtImports = (lines: string[]) =>
 const at = (lines: string[], line: string) => lines.indexOf(line);
 
 /** Each must-not-trigger case and the check, on its head text, that it holds the form AC-5 names. */
-const UNRESOLVED: { name: string; form: (head: string[]) => void }[] = [
+const UNRESOLVED: { name: string; pairs: Pairs; form: (head: string[]) => void }[] = [
   {
     name: "pass-pytest-alias-in-if",
+    pairs: [],
     form: (head) => {
       const i = head.findIndex((l) => /^\s+import pytest as pt$/.test(l));
       expect(i, "an indented import pytest as pt").toBeGreaterThan(0);
@@ -123,6 +135,7 @@ const UNRESOLVED: { name: string; form: (head: string[]) => void }[] = [
   },
   {
     name: "pass-pytest-alias-in-try",
+    pairs: [],
     form: (head) => {
       const i = head.findIndex((l) => /^\s+import pytest as pt$/.test(l));
       expect(i, "an indented import pytest as pt").toBeGreaterThan(0);
@@ -138,6 +151,7 @@ const UNRESOLVED: { name: string; form: (head: string[]) => void }[] = [
   },
   {
     name: "pass-pytest-alias-in-function",
+    pairs: [],
     form: (head) => {
       const i = head.findIndex((l) => /^\s+import pytest as pt$/.test(l));
       expect(i, "an indented import pytest as pt").toBeGreaterThan(0);
@@ -153,6 +167,7 @@ const UNRESOLVED: { name: string; form: (head: string[]) => void }[] = [
   },
   {
     name: "pass-pytest-alias-star",
+    pairs: [],
     form: (head) => {
       expect(head, "from pytest import *").toContain("from pytest import *");
       expect(columnZeroPtImports(head), "no column-0 binding of pt").toEqual([]);
@@ -160,6 +175,7 @@ const UNRESOLVED: { name: string; form: (head: string[]) => void }[] = [
   },
   {
     name: "pass-pytest-alias-assignment",
+    pairs: [],
     form: (head) => {
       expect(head, "import pytest").toContain("import pytest");
       expect(head, "pt = pytest").toContain("pt = pytest");
@@ -168,12 +184,14 @@ const UNRESOLVED: { name: string; form: (head: string[]) => void }[] = [
   },
   {
     name: "pass-pytest-alias-other-module",
+    pairs: [["pt", "foo"]],
     form: (head) => {
       expect(columnZeroPtImports(head), "only import foo as pt binds pt").toEqual(["import foo as pt"]);
     },
   },
   {
     name: "pass-pytest-alias-docstring",
+    pairs: [],
     form: (head) => {
       expect(head[0] ?? "", "a module docstring opens the file").toMatch(/^"""/);
       const close = head.findIndex((l, i) => i > 0 && l.includes('"""'));
@@ -185,6 +203,7 @@ const UNRESOLVED: { name: string; form: (head: string[]) => void }[] = [
   },
   {
     name: "pass-pytest-alias-replaced",
+    pairs: [["pt", "os"]],
     form: (head) => {
       expect(columnZeroPtImports(head), "import pytest as pt, then import os as pt").toEqual([
         "import pytest as pt",
@@ -214,7 +233,8 @@ describe("TI03: aliases it does not resolve, a respelling, and the last binding 
         added.filter((a) => a.text.startsWith("@")).map((a) => a.text),
         "one decorator added",
       ).toEqual(["@pt.mark.skip"]);
-      expect(await run(c), "pass-pytest-alias-respelled: no TI03").toEqual([]);
+      // The head's `import pytest as pt` gives the pair; the base's `import pytest` gives none (an identity binding).
+      expect(await run(c, [["pt", "pytest"]], []), "pass-pytest-alias-respelled: no TI03").toEqual([]);
     }
 
     // The unresolved forms: each adds @pt.mark.skip above an existing test and gives no TI03.
@@ -232,7 +252,7 @@ describe("TI03: aliases it does not resolve, a respelling, and the last binding 
       const def = head[(added[0] as { line: number }).line] ?? "";
       expect(def, `${spec.name}: above a def test_`).toMatch(/^def test_\w*\(/);
       expect(linesOf(textAt(c.base, PATH)), `${spec.name}: the test exists at base`).toContain(def);
-      expect(await run(c), `${spec.name}: no TI03`).toEqual([]);
+      expect(await run(c, spec.pairs), `${spec.name}: no TI03`).toEqual([]);
     }
 
     // The reverse order: import os as pt, then import pytest as pt — the later binding is pytest's.
@@ -247,7 +267,8 @@ describe("TI03: aliases it does not resolve, a respelling, and the last binding 
       expect(added.map((a) => a.text)).toEqual(["@pt.mark.skip"]);
       const line = (added[0] as { line: number }).line;
       expect(head[line] ?? "", "above a def test_").toMatch(/^def test_\w*\(/);
-      const signals = await run(c);
+      // `import os as pt` then `import pytest as pt`: the later binding replaces the earlier one.
+      const signals = await run(c, [["pt", "pytest"]]);
       expect(
         signals.map(({ detail: _, ...rest }) => rest),
         "block-pytest-alias-rebound: one block TI03",

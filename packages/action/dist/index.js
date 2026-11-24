@@ -33605,182 +33605,6 @@ function sourceLanguage(path) {
   return EXTENSION_LANGUAGE.get(basename.slice(dot + 1)) ?? null;
 }
 
-// ../core/src/signals/pythonAliases.ts
-var isIdentStart = (code2) => code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95;
-var isIdentChar = (code2) => isIdentStart(code2) || code2 >= 48 && code2 <= 57;
-function identEnd(text, start) {
-  if (start >= text.length || !isIdentStart(text.charCodeAt(start))) return start;
-  let i = start + 1;
-  while (i < text.length && isIdentChar(text.charCodeAt(i))) i++;
-  return i;
-}
-var isBlank2 = (c) => c === " " || c === "	";
-function skipBlanks(text, start) {
-  let i = start;
-  while (i < text.length && isBlank2(text.charAt(i))) i++;
-  return i;
-}
-function closeTriple(line, from, quote) {
-  for (let i = from; i < line.length; i++) {
-    const c = line.charAt(i);
-    if (c === "\\") i++;
-    else if (c === quote && line.charAt(i + 1) === quote && line.charAt(i + 2) === quote) return i;
-  }
-  return -1;
-}
-function scanCode(line, from) {
-  for (let i = from; i < line.length; i++) {
-    const c = line.charAt(i);
-    if (c === "#") return "";
-    if (c !== '"' && c !== "'") continue;
-    if (line.charAt(i + 1) === c && line.charAt(i + 2) === c) {
-      const end = closeTriple(line, i + 3, c);
-      if (end < 0) return c + c + c;
-      i = end + 2;
-      continue;
-    }
-    let j = i + 1;
-    while (j < line.length && line.charAt(j) !== c) j += line.charAt(j) === "\\" ? 2 : 1;
-    i = j;
-  }
-  return "";
-}
-var isStatementEnd = (code2) => code2 === 59 || code2 === 35 || code2 === 34 || code2 === 39;
-function startsStatement(line) {
-  if (line.startsWith("import") && isBlank2(line.charAt(6))) return true;
-  return line.startsWith("from") && isBlank2(line.charAt(4));
-}
-function fromItem(piece) {
-  const nameEnd = identEnd(piece, 0);
-  if (nameEnd === 0) return null;
-  const name = piece.slice(0, nameEnd);
-  if (nameEnd === piece.length) return [name, name];
-  const asAt = skipBlanks(piece, nameEnd);
-  if (asAt === nameEnd || !piece.startsWith("as", asAt)) return null;
-  const localAt = skipBlanks(piece, asAt + 2);
-  if (localAt === asAt + 2) return null;
-  const localEnd = identEnd(piece, localAt);
-  if (localEnd === localAt || localEnd !== piece.length) return null;
-  return [name, piece.slice(localAt, localEnd)];
-}
-function importItem(piece) {
-  let end = identEnd(piece, 0);
-  if (end === 0) return null;
-  const first = piece.slice(0, end);
-  while (piece.charAt(end) === ".") {
-    const next = identEnd(piece, end + 1);
-    if (next === end + 1) return null;
-    end = next;
-  }
-  const dotted = piece.slice(0, end);
-  if (end === piece.length) return [first, first];
-  const asAt = skipBlanks(piece, end);
-  if (asAt === end || !piece.startsWith("as", asAt)) return null;
-  const localAt = skipBlanks(piece, asAt + 2);
-  if (localAt === asAt + 2) return null;
-  const localEnd = identEnd(piece, localAt);
-  if (localEnd === localAt || localEnd !== piece.length) return null;
-  return [piece.slice(localAt, localEnd), dotted];
-}
-function pieces(segment) {
-  const out = [];
-  for (const piece of segment.split(",")) {
-    const trimmed = piece.trim();
-    if (trimmed !== "") out.push(trimmed);
-  }
-  return out;
-}
-var fromTarget = (module, name) => `${module}.${name}`;
-function pythonImportAliases(text) {
-  const aliases = /* @__PURE__ */ new Map();
-  const lines = text.split("\n");
-  const state = { triple: "", group: null };
-  const readGroup = (line, from) => {
-    const open3 = state.group;
-    let stop = from;
-    while (stop < line.length) {
-      const code2 = line.charCodeAt(stop);
-      if (code2 === 41 || isStatementEnd(code2)) break;
-      stop++;
-    }
-    for (const piece of pieces(line.slice(from, stop))) {
-      const item = fromItem(piece);
-      if (item !== null) open3.pending.push([item[1], fromTarget(open3.module, item[0])]);
-    }
-    const c = line.charAt(stop);
-    if (c === ")") {
-      for (const [local, target] of open3.pending) aliases.set(local, target);
-      state.group = null;
-      state.triple = scanCode(line, stop + 1);
-    } else if (c === "#" || stop >= line.length) {
-    } else {
-      state.group = null;
-      state.triple = scanCode(line, stop);
-    }
-  };
-  const readStatement = (line) => {
-    let end = 0;
-    while (end < line.length && !isStatementEnd(line.charCodeAt(end))) end++;
-    const body = end === line.length ? line : line.slice(0, end);
-    if (body.startsWith("import")) {
-      for (const piece of pieces(body.slice(6))) {
-        const item = importItem(piece);
-        if (item !== null) aliases.set(item[0], item[1]);
-      }
-    } else {
-      const moduleAt = skipBlanks(body, 4);
-      let moduleEnd = moduleAt;
-      while (moduleEnd < body.length && (body.charAt(moduleEnd) === "." || isIdentChar(body.charCodeAt(moduleEnd)))) {
-        moduleEnd++;
-      }
-      const module = body.slice(moduleAt, moduleEnd);
-      const importAt = skipBlanks(body, moduleEnd);
-      const listAt = importAt + 6;
-      if (module !== "" && importAt > moduleEnd && body.startsWith("import", importAt) && isBlank2(body.charAt(listAt))) {
-        const rest = skipBlanks(body, listAt);
-        if (body.charAt(rest) === "(") {
-          state.group = { module, pending: [] };
-          readGroup(line, rest + 1);
-          return;
-        }
-        for (const piece of pieces(body.slice(rest))) {
-          const item = fromItem(piece);
-          if (item !== null) aliases.set(item[1], fromTarget(module, item[0]));
-        }
-      }
-    }
-    state.triple = line.charAt(end) === ";" ? scanCode(line, end + 1) : scanCode(line, end);
-  };
-  for (let n = 0; n < lines.length; n++) {
-    let line = lines[n];
-    if (n === 0 && line.charCodeAt(0) === 65279) line = line.slice(1);
-    if (line.endsWith("\r")) line = line.slice(0, -1);
-    if (state.triple !== "") {
-      const close = closeTriple(line, 0, state.triple.charAt(0));
-      if (close < 0) continue;
-      state.triple = scanCode(line, close + 3);
-      continue;
-    }
-    if (state.group !== null) {
-      if (!startsStatement(line)) {
-        readGroup(line, 0);
-        continue;
-      }
-      state.group = null;
-    }
-    if (startsStatement(line)) readStatement(line);
-    else state.triple = scanCode(line, 0);
-  }
-  return aliases;
-}
-function resolvePythonName(name, aliases) {
-  const dot = name.indexOf(".");
-  const head = dot < 0 ? name : name.slice(0, dot);
-  const target = aliases.get(head);
-  if (target === void 0) return null;
-  return dot < 0 ? target : target + name.slice(dot);
-}
-
 // ../core/src/signals/testLines.ts
 function testLanguage(path) {
   if (path.endsWith("_test.go")) return "go";
@@ -33914,6 +33738,13 @@ var PYTHON_RAISES = /* @__PURE__ */ new Set(["unittest.SkipTest", "unittest.case
 var RAISE = "raise ";
 var PYTEST_MARKS = /* @__PURE__ */ new Set(["pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail"]);
 var PYTESTMARK = "pytestmark";
+function resolvePythonName(name, aliases) {
+  const dot = name.indexOf(".");
+  const head = dot < 0 ? name : name.slice(0, dot);
+  const target = aliases.get(head);
+  if (target === void 0) return null;
+  return dot < 0 ? target : target + name.slice(dot);
+}
 function canonicalPython(written, table, aliases) {
   if (table.has(written)) return written;
   if (aliases === void 0) return null;
@@ -34842,7 +34673,7 @@ function shannonEntropy(text) {
   return bits;
 }
 var isKeyChar = (c) => c !== void 0 && (isUpper2(c) || isLower2(c) || isDigit2(c) || c === "_" || c === "." || c === "-");
-var isBlank3 = (c) => c === " " || c === "	";
+var isBlank2 = (c) => c === " " || c === "	";
 var isQuote = (c) => c === '"' || c === "'";
 var isLineBreak = (c) => c === "\n" || c === "\r";
 var BARE_STOPS = /* @__PURE__ */ new Set([" ", "	", ",", ";", "#", "}", '"', "'"]);
@@ -34873,10 +34704,10 @@ function readValue(text, from) {
   if (end === from) return null;
   return { value: text.slice(from, end), start: from, end, quoted: false };
 }
-function skipBlanks2(text, from) {
+function skipBlanks(text, from) {
   let i = from;
   const limit = Math.min(text.length, from + MAX_GAP_CHARS);
-  while (i < limit && isBlank3(text[i])) i++;
+  while (i < limit && isBlank2(text[i])) i++;
   return i;
 }
 var isKeyCode = (c) => c >= 97 && c <= 122 || c >= 65 && c <= 90 || c >= 48 && c <= 57 || c === 95 || c === 46 || c === 45;
@@ -34909,7 +34740,7 @@ function secretKeyValues(text) {
     if (code2 !== 45) {
       const key = readKeyBefore(text, i);
       if (key === null || !isSecretKey(key.key)) continue;
-      const value = readValue(text, skipBlanks2(text, i + 1));
+      const value = readValue(text, skipBlanks(text, i + 1));
       if (value === null) continue;
       found.push({
         key: key.key,
@@ -34935,7 +34766,7 @@ function secretKeyValues(text) {
         separated = true;
         p++;
       }
-      const afterBlanks = skipBlanks2(text, p);
+      const afterBlanks = skipBlanks(text, p);
       if (afterBlanks > p) separated = true;
       p = afterBlanks;
       if (!separated || text[p] === "=" || text[p] === ":") continue;
@@ -35366,7 +35197,7 @@ function keyText(segments) {
   }
   return cutCodeUnits(replaceUnsafe(out), MAX_KEY_CHARS2);
 }
-var isIdentChar2 = (ch) => ch !== void 0 && (/[\w$]/.test(ch) || ch.charCodeAt(0) > 127);
+var isIdentChar = (ch) => ch !== void 0 && (/[\w$]/.test(ch) || ch.charCodeAt(0) > 127);
 function normalizeOpaque(source) {
   let out = "";
   let pendingSpace = false;
@@ -35397,7 +35228,7 @@ function normalizeOpaque(source) {
       i++;
       continue;
     }
-    if (pendingSpace && isIdentChar2(out[out.length - 1]) && isIdentChar2(ch)) out += " ";
+    if (pendingSpace && isIdentChar(out[out.length - 1]) && isIdentChar(ch)) out += " ";
     pendingSpace = false;
     out += ch;
     i++;
@@ -37399,6 +37230,7 @@ function indexTouchedTestFiles(diff, sources, python) {
   };
   const pairs = [];
   const unavailable2 = [];
+  const headOnly = [];
   const compared2 = [...comparedPaths.values()].sort(
     (a, b) => byCodeUnit(a.basePath, b.basePath) || byCodeUnit(a.headPath, b.headPath)
   );
@@ -37428,9 +37260,21 @@ function indexTouchedTestFiles(diff, sources, python) {
         ...unreadable ? { changeMadeUnreadable: true } : {},
         ...closed ? { failsClosed: true } : {}
       });
+      if (file.language === "py" && head.ok && !base.ok) {
+        const refused = base.hadText && PYTHON_FILE_REFUSAL_REASONS.includes(base.reason);
+        if (refused || !base.hadText && base.reason === "missing") {
+          headOnly.push({
+            headPath: file.headPath,
+            head: head.tests,
+            headMocks: head.mocks,
+            headGroups: head.groups
+          });
+        }
+      }
     }
   }
   unavailable2.sort((a, b) => byCodeUnit(a.path, b.path));
+  headOnly.sort((a, b) => byCodeUnit(a.headPath, b.headPath));
   const added = [];
   const unreadAdded = [];
   for (const [headPath, language] of [...addedPaths].sort((a, b) => byCodeUnit(a[0], b[0]))) {
@@ -37452,6 +37296,7 @@ function indexTouchedTestFiles(diff, sources, python) {
     pairs,
     added,
     unavailable: unavailable2,
+    ...headOnly.length > 0 ? { headOnly } : {},
     unreadAdded,
     notRun: null,
     languages: [...languages].sort(byCodeUnit)
@@ -38451,10 +38296,7 @@ function jsSkip(parsed) {
 function pythonSkip(text, aliases) {
   let parsed = parsePythonSkip(text);
   const shaped = text.includes("@") || text.includes("(") || text.trimStart().startsWith("pytestmark");
-  if (parsed === null && aliases !== void 0 && shaped) {
-    const map = aliases();
-    if (map !== void 0) parsed = parsePythonSkip(text, map);
-  }
+  if (parsed === null && aliases !== void 0 && shaped) parsed = parsePythonSkip(text, aliases);
   if (parsed === null) return null;
   if (parsed.kind === "call") return { key: keyOf(parsed.token, parsed.name), shape: "in-body", name: parsed.name };
   if (parsed.kind === "mark") {
@@ -38512,24 +38354,6 @@ function decoratedTest(hunk, index) {
   }
   return "existing";
 }
-function textsOf2(side) {
-  const texts = /* @__PURE__ */ new Map();
-  if (side !== void 0 && "files" in side) for (const file of side.files) texts.set(file.path, file.text);
-  return texts;
-}
-function sourceOf2(text) {
-  let map;
-  return () => {
-    if (map === void 0 && text !== void 0) map = pythonImportAliases(text);
-    return map;
-  };
-}
-function aliasesOf(file, language, texts) {
-  if (language !== "python") return {};
-  const base = sourceOf2(texts.base.get(file.oldPath));
-  const head = sourceOf2(texts.head.get(file.path));
-  return { base: () => base() ?? head(), head: () => head() ?? base() };
-}
 function findingsOf(file, hunks, language, aliases) {
   const before = removedSkips(hunks, language, aliases.base);
   const openings = language === "jsts" ? removedOpenings(hunks) : /* @__PURE__ */ new Set();
@@ -38550,7 +38374,7 @@ function findingsOf(file, hunks, language, aliases) {
   }
   return found;
 }
-function detectTI03(diff, mode, sources, pairs = []) {
+function detectTI03(diff, mode, aliases, pairs = []) {
   const byPath = /* @__PURE__ */ new Map();
   const note = (path, line, category) => {
     let lines = byPath.get(path);
@@ -38561,12 +38385,12 @@ function detectTI03(diff, mode, sources, pairs = []) {
     const held = lines.get(line);
     if (held === void 0 || STRENGTH[category] > STRENGTH[held]) lines.set(line, category);
   };
-  const texts = { base: textsOf2(sources?.base), head: textsOf2(sources?.head) };
   for (const file of diff) {
     if (file.hunks === void 0 || file.binary === true || !isTestFile(file.path)) continue;
     const language = testLanguage(file.path);
     if (language === null) continue;
-    for (const { line, category } of findingsOf(file, file.hunks, language, aliasesOf(file, language, texts))) {
+    const maps = language === "python" ? aliases?.forFile(file) ?? {} : {};
+    for (const { line, category } of findingsOf(file, file.hunks, language, maps)) {
       note(file.path, line, category);
     }
   }
@@ -38587,6 +38411,60 @@ function detectTI03(diff, mode, sources, pairs = []) {
   return capFindings(signals, MAX_FINDINGS_PER_FILE, existingFirst).kept.sort(
     (a, b) => byCodeUnit(a.path, b.path) || (a.line ?? 0) - (b.line ?? 0)
   );
+}
+
+// ../core/src/signals/ti03Aliases.ts
+var NO_TEXT = { text: false };
+function heldPaths(side) {
+  if (side === void 0 || !("files" in side)) return /* @__PURE__ */ new Set();
+  return new Set(side.files.map((file) => file.path));
+}
+function mapOrBorrowed(self, other) {
+  if (self.text) return self.map;
+  return other.text ? other.map : void 0;
+}
+function pairsOf(file) {
+  const map = /* @__PURE__ */ new Map();
+  for (const [local, target] of file.aliases ?? []) map.set(local, target);
+  return map;
+}
+function ti03Aliases(sources, python) {
+  const held = { base: heldPaths(sources?.base), head: heldPaths(sources?.head) };
+  const index = { base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
+  if (python !== void 0 && python.available) {
+    for (const file of python.base) index.base.set(file.path, file);
+    for (const file of python.head) index.head.set(file.path, file);
+  }
+  const states = { base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
+  const stateOf = (side, path) => {
+    if (!path.endsWith(".py") || !held[side].has(path)) return NO_TEXT;
+    let state = states[side].get(path);
+    if (state === void 0) {
+      const entry = index[side].get(path);
+      state = { text: true, map: entry !== void 0 && entry.result.parsed ? pairsOf(entry) : void 0 };
+      states[side].set(path, state);
+    }
+    return state;
+  };
+  const own = (side, path) => {
+    const state = stateOf(side, path);
+    return state.text ? state.map : void 0;
+  };
+  return {
+    base: (path) => own("base", path),
+    head: (path) => own("head", path),
+    forFile(file) {
+      if (!file.path.endsWith(".py")) return {};
+      const base = stateOf("base", file.oldPath);
+      const head = stateOf("head", file.path);
+      const baseMap = mapOrBorrowed(base, head);
+      const headMap = mapOrBorrowed(head, base);
+      return {
+        ...baseMap === void 0 ? {} : { base: baseMap },
+        ...headMap === void 0 ? {} : { head: headMap }
+      };
+    }
+  };
 }
 
 // ../core/src/signals/ti03Pairs.ts
@@ -38654,7 +38532,7 @@ function effective(view, block) {
   const at = innermost(view, block);
   return stronger(ownState(block, view), at === -1 ? NONE : view.groupState[at]);
 }
-function textsOf3(side) {
+function textsOf2(side) {
   const texts = /* @__PURE__ */ new Map();
   if ("files" in side) for (const file of side.files) texts.set(file.path, file.text);
   return texts;
@@ -38678,8 +38556,9 @@ function detectTI03Pairs(input) {
     groups.head.set(file.headPath, file.headGroups ?? []);
   }
   for (const file of input.touched.added) groups.head.set(file.headPath, file.headGroups ?? []);
+  for (const file of input.touched.headOnly ?? []) groups.head.set(file.headPath, file.headGroups ?? []);
   for (const [path, list] of input.movedGroups ?? []) if (!groups.base.has(path)) groups.base.set(path, list);
-  const texts = { base: textsOf3(input.sources.base), head: textsOf3(input.sources.head) };
+  const texts = { base: textsOf2(input.sources.base), head: textsOf2(input.sources.head) };
   const added = /* @__PURE__ */ new Map();
   for (const file of input.diff) if (file.status !== "deleted") added.set(file.path, file.addedLines);
   const views = { base: /* @__PURE__ */ new Map(), head: /* @__PURE__ */ new Map() };
@@ -38691,19 +38570,11 @@ function detectTI03Pairs(input) {
     }
     return found;
   };
-  const aliasMaps = /* @__PURE__ */ new Map();
-  const aliasesOf2 = (path) => {
-    if (!aliasMaps.has(path)) {
-      const text = texts.head.get(path);
-      aliasMaps.set(path, text === void 0 ? void 0 : pythonImportAliases(text));
-    }
-    return aliasMaps.get(path);
-  };
   const readPython = (path, text) => {
     const literal2 = parsePythonSkip(text);
     if (literal2 !== null) return literal2;
-    const aliases = aliasesOf2(path);
-    return aliases === void 0 ? null : parsePythonSkip(text, aliases);
+    const map = input.aliases?.head(path);
+    return map === void 0 ? null : parsePythonSkip(text, map);
   };
   const carrierSite = (headView, path, carrier, target) => {
     const lines = added.get(path) ?? [];
@@ -38778,6 +38649,17 @@ function detectTI03Pairs(input) {
     return mark ?? test2.line;
   };
   const findings = [];
+  for (const file of input.touched.headOnly ?? []) {
+    const headView = view("head", file.headPath);
+    for (const test2 of file.head) {
+      if (test2.moduleSkip !== void 0)
+        findings.push({ path: file.headPath, line: test2.moduleSkip, category: "module" });
+      const now = effective(headView, test2);
+      if (now === NONE) continue;
+      const category = now === UNCONDITIONAL ? "existing" : "conditional";
+      findings.push({ path: file.headPath, line: siteOf(headView, file.headPath, test2, now), category });
+    }
+  }
   for (const pair of [...input.match.pairs, ...input.match.moved, ...input.match.replaced]) {
     if (pair.head.moduleSkip !== void 0 && pair.base.moduleSkip === void 0) {
       findings.push({ path: pair.headPath, line: pair.head.moduleSkip, category: "module" });
@@ -38998,7 +38880,7 @@ var ARGUMENT_CHARS = 200;
 var MAX_TRIM = 64;
 var CLOSERS2 = { ")": "(", "]": "[", "}": "{" };
 var isIdentifierChar = (code2) => code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 90 || code2 >= 97 && code2 <= 122 || code2 === 95 || code2 === 36;
-var isBlank4 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
+var isBlank3 = (code2) => code2 === 32 || code2 === 9 || code2 === 10 || code2 === 13;
 function wordBefore(body, at, word) {
   const start = at - word.length;
   if (start < 0 || !body.startsWith(word, start)) return false;
@@ -39036,9 +38918,9 @@ function argumentText(body, start, end) {
 }
 function subjectOf(body, start, end) {
   let from = start;
-  while (from < end && from - start < MAX_TRIM && isBlank4(body.charCodeAt(from))) from++;
+  while (from < end && from - start < MAX_TRIM && isBlank3(body.charCodeAt(from))) from++;
   let to = end;
-  while (to > from && end - to < MAX_TRIM && isBlank4(body.charCodeAt(to - 1))) to--;
+  while (to > from && end - to < MAX_TRIM && isBlank3(body.charCodeAt(to - 1))) to--;
   return {
     head: body.slice(from, Math.min(to, from + SUBJECT_HEAD_CHARS)).trim(),
     tail: body.slice(Math.max(from, to - SUBJECT_TAIL_CHARS), to).trim()
@@ -40177,7 +40059,7 @@ var DETAILS2 = {
   "ignore-filter": "A test script now makes the run skip the test files matching a pattern, so those tests do not run.",
   "hook-removed": "A script that ran before or after the tests was removed, so its checks no longer run with them."
 };
-var isBlank5 = (c) => c === " " || c === "	";
+var isBlank4 = (c) => c === " " || c === "	";
 function readString(text, start) {
   let value = "";
   let i = start + 1;
@@ -40199,7 +40081,7 @@ function readString(text, start) {
 function parseScriptLine(text) {
   let i = 0;
   const skip = () => {
-    while (isBlank5(text[i])) i++;
+    while (isBlank4(text[i])) i++;
   };
   skip();
   if (text[i] !== '"') return null;
@@ -40291,7 +40173,7 @@ function scanKinds(value) {
         endCommand(";");
         operator = ";";
       }
-    } else if (isBlank5(c) || c === "(" || c === ")") {
+    } else if (isBlank4(c) || c === "(" || c === ")") {
       endWord();
     } else {
       word += c;
@@ -42301,20 +42183,20 @@ var SPACES = String.raw`[ \t]*`;
 var WORD_END = "(?![A-Za-z0-9_])";
 var JS_MARKER = new RegExp(`${BLOCK_OR_LINE_START}${SPACES}(istanbul|v8|c8)[ \\t]+ignore${WORD_END}`, "i");
 var PY_MARKER = new RegExp(`#${SPACES}pragma:?${SPACES}no${SPACES}cover${WORD_END}`, "i");
-function skipBlanks3(text, from) {
+function skipBlanks2(text, from) {
   let i = from;
   while (text[i] === " " || text[i] === "	") i++;
   return i;
 }
 function lineLevelJs(text, end) {
-  const start = skipBlanks3(text, end);
+  const start = skipBlanks2(text, end);
   if (start === end) return false;
   let stop = start;
   while (stop < text.length && /[A-Za-z]/.test(text[stop])) stop++;
   if (stop === start || /[0-9_]/.test(text[stop] ?? "")) return false;
   const word = text.slice(start, stop).toLowerCase();
   if (word === "next") {
-    const after = skipBlanks3(text, stop);
+    const after = skipBlanks2(text, stop);
     return !(after > stop && /[0-9]/.test(text[after] ?? ""));
   }
   return word === "if" || word === "else";
@@ -42535,14 +42417,14 @@ var PYLINT_WORD = ["py", "lint:"].join("");
 var DISABLE_WORD = ["dis", "able"].join("");
 var PYRIGHT_WORD = ["py", "right:"].join("");
 var MAX_LINE2 = 400;
-var isBlank6 = (c) => c === " " || c === "	";
+var isBlank5 = (c) => c === " " || c === "	";
 var isWordChar = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
 var isTokenChar = (c) => isWordChar(c) || c === "@" || c === "-";
 var endsWord = (text, at) => at >= text.length || !isWordChar(text.charAt(at));
 var normalize2 = (text) => text.replace(/\s+/g, " ").trim();
-function skipBlanks4(text, from) {
+function skipBlanks3(text, from) {
   let i = from;
-  while (i < text.length && isBlank6(text.charAt(i))) i++;
+  while (i < text.length && isBlank5(text.charAt(i))) i++;
   return i;
 }
 function jsMarker(text) {
@@ -42550,7 +42432,7 @@ function jsMarker(text) {
     if (text.charAt(i) !== SLASH) continue;
     const opener = text.slice(i, i + 2);
     if (opener !== LINE_OPENER && opener !== BLOCK_OPENER) continue;
-    const start = skipBlanks4(text, i + 2);
+    const start = skipBlanks3(text, i + 2);
     let end = start;
     while (end < text.length && isTokenChar(text.charAt(end))) end++;
     if (!JS_MARKERS.has(text.slice(start, end))) continue;
@@ -42565,7 +42447,7 @@ function jsMarker(text) {
 }
 function startsPythonMarker(text, at) {
   if (text.startsWith(TYPE_WORD, at)) {
-    const word = skipBlanks4(text, at + TYPE_WORD.length);
+    const word = skipBlanks3(text, at + TYPE_WORD.length);
     return text.startsWith(IGNORE_WORD, word) && endsWord(text, word + IGNORE_WORD.length);
   }
   if (text.slice(at, at + NOQA_WORD.length).toLowerCase() === NOQA_WORD) {
@@ -42573,7 +42455,7 @@ function startsPythonMarker(text, at) {
     return next >= text.length || text.charAt(next) === ":" || !isWordChar(text.charAt(next));
   }
   if (text.startsWith(PYLINT_WORD, at)) {
-    const word = skipBlanks4(text, at + PYLINT_WORD.length);
+    const word = skipBlanks3(text, at + PYLINT_WORD.length);
     for (const name of [`${DISABLE_WORD}-next`, DISABLE_WORD]) {
       if (!text.startsWith(name, word)) continue;
       const next = word + name.length;
@@ -42582,14 +42464,14 @@ function startsPythonMarker(text, at) {
     return false;
   }
   if (text.startsWith(PYRIGHT_WORD, at)) {
-    const word = skipBlanks4(text, at + PYRIGHT_WORD.length);
+    const word = skipBlanks3(text, at + PYRIGHT_WORD.length);
     return text.startsWith(IGNORE_WORD, word) && endsWord(text, word + IGNORE_WORD.length);
   }
   return false;
 }
 function pythonMarker(text) {
   for (let i = text.indexOf(HASH); i !== -1; i = text.indexOf(HASH, i + 1)) {
-    const start = skipBlanks4(text, i + 1);
+    const start = skipBlanks3(text, i + 1);
     if (startsPythonMarker(text, start)) return normalize2(text.slice(start));
   }
   return null;
@@ -42640,12 +42522,12 @@ function detectTI16(diff) {
 
 // ../core/src/signals/alwaysTrue.ts
 var MAX_ALWAYS_TRUE_NAMES = 50;
-var isBlank7 = (c) => c === " " || c === "	";
+var isBlank6 = (c) => c === " " || c === "	";
 var isWordChar2 = (c) => c >= "0" && c <= "9" || c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_" || c === "$";
 var isWordStart = (c) => isWordChar2(c) && !(c >= "0" && c <= "9");
-function skipBlanks5(text, from) {
+function skipBlanks4(text, from) {
   let i = from;
-  while (i < text.length && isBlank7(text.charAt(i))) i++;
+  while (i < text.length && isBlank6(text.charAt(i))) i++;
   return i;
 }
 function wordEnd2(text, from) {
@@ -42683,7 +42565,7 @@ function isTrueValue(text, at) {
   if (!text.startsWith("true", at)) return false;
   const after = at + 4;
   if (after < text.length && isWordChar2(text.charAt(after))) return false;
-  const next = skipBlanks5(text, after);
+  const next = skipBlanks4(text, after);
   if (next >= text.length) return true;
   const c = text.charAt(next);
   return c === "," || c === "}" || c === ")" || c === "]" || c === ";" || c === "/";
@@ -42719,7 +42601,7 @@ function readLine(text, from, state, found) {
       i++;
       continue;
     }
-    if (isBlank7(c)) {
+    if (isBlank6(c)) {
       i++;
       continue;
     }
@@ -42731,14 +42613,14 @@ function readLine(text, from, state, found) {
       if (state.inObject && state.depth === 1 && state.expectKey && isWordStart(c)) {
         let name = word;
         if (word === "async") {
-          const next = skipBlanks5(text, i);
+          const next = skipBlanks4(text, i);
           if (next < text.length && isWordStart(text.charAt(next))) {
             const nextEnd = wordEnd2(text, next);
             name = text.slice(next, nextEnd);
             i = nextEnd;
           }
         }
-        const after = skipBlanks5(text, i);
+        const after = skipBlanks4(text, i);
         state.expectKey = false;
         const sep2 = text.charAt(after);
         state.current = null;
@@ -42752,9 +42634,9 @@ function readLine(text, from, state, found) {
       }
       if (state.current !== null && word === "pass" && !afterDot) {
         state.current.passes++;
-        const colon = skipBlanks5(text, i);
+        const colon = skipBlanks4(text, i);
         if (text.charAt(colon) === ":" && text.charAt(colon + 1) !== ":") {
-          if (isTrueValue(text, skipBlanks5(text, colon + 1))) state.current.trues++;
+          if (isTrueValue(text, skipBlanks4(text, colon + 1))) state.current.trues++;
         }
       }
       continue;
@@ -42856,7 +42738,7 @@ function callsAnyOf(text, names) {
     if (start >= text.length || !isWordStart(text.charAt(start))) continue;
     const end = wordEnd2(text, start);
     if (names.get(text.slice(start, end)) !== true) continue;
-    if (text.charAt(skipBlanks5(text, end)) === "(") return true;
+    if (text.charAt(skipBlanks4(text, end)) === "(") return true;
   }
   return false;
 }
@@ -42886,7 +42768,7 @@ function indentOf3(text) {
   }
   return width;
 }
-var isEmptyLine = (text) => skipBlanks5(text, 0) >= text.length;
+var isEmptyLine = (text) => skipBlanks4(text, 0) >= text.length;
 function hasWord(text, word) {
   for (let i = text.indexOf(word); i !== -1; i = text.indexOf(word, i + 1)) {
     const before = i === 0 ? "" : text.charAt(i - 1);
@@ -42896,7 +42778,7 @@ function hasWord(text, word) {
   return false;
 }
 function afterKeyword(text, word) {
-  const start = skipBlanks5(text, 0);
+  const start = skipBlanks4(text, 0);
   if (!text.startsWith(word, start)) return -1;
   const end = start + word.length;
   if (end < text.length && isWordChar2(text.charAt(end))) return -1;
@@ -42904,11 +42786,11 @@ function afterKeyword(text, word) {
 }
 function defName(text) {
   const end = afterKeyword(text, "def");
-  if (end === -1 || end >= text.length || !isBlank7(text.charAt(end))) return null;
-  const start = skipBlanks5(text, end);
+  if (end === -1 || end >= text.length || !isBlank6(text.charAt(end))) return null;
+  const start = skipBlanks4(text, end);
   const nameEnd = wordEnd2(text, start);
   if (nameEnd === start || !isWordStart(text.charAt(start))) return null;
-  return text.charAt(skipBlanks5(text, nameEnd)) === "(" ? text.slice(start, nameEnd) : null;
+  return text.charAt(skipBlanks4(text, nameEnd)) === "(" ? text.slice(start, nameEnd) : null;
 }
 function bodyIsAlwaysTrue(body) {
   let returns = 0;
@@ -42957,17 +42839,17 @@ function scanHelpers(lines) {
   return out;
 }
 function endsCondition(rest) {
-  const next = skipBlanks5(rest, 0);
+  const next = skipBlanks4(rest, 0);
   if (next >= rest.length) return true;
   const c = rest.charAt(next);
   return c === "," || c === "#";
 }
 function helperCall(text, at, helpers) {
-  const start = skipBlanks5(text, at);
+  const start = skipBlanks4(text, at);
   if (start >= text.length || !isWordStart(text.charAt(start))) return -1;
   const end = wordEnd2(text, start);
   if (!helpers.has(text.slice(start, end))) return -1;
-  const open3 = skipBlanks5(text, end);
+  const open3 = skipBlanks4(text, end);
   if (text.charAt(open3) !== "(") return -1;
   return matchingClose(text, open3);
 }
@@ -42979,17 +42861,17 @@ function alwaysTrueHelperLines(file) {
   for (const entry of lines) {
     const text = entry.text;
     const assertEnd = afterKeyword(text, "assert");
-    if (assertEnd !== -1 && assertEnd < text.length && isBlank7(text.charAt(assertEnd))) {
+    if (assertEnd !== -1 && assertEnd < text.length && isBlank6(text.charAt(assertEnd))) {
       const closed2 = helperCall(text, assertEnd, helpers);
       if (closed2 !== -1 && endsCondition(text.slice(closed2))) out.push(entry.line);
       continue;
     }
-    const start = skipBlanks5(text, 0);
+    const start = skipBlanks4(text, 0);
     const form = "self.assertTrue(";
     if (!text.startsWith(form, start)) continue;
     const closed = helperCall(text, start + form.length, helpers);
     if (closed === -1) continue;
-    const next = skipBlanks5(text, closed);
+    const next = skipBlanks4(text, closed);
     const c = text.charAt(next);
     if (c === ")" || c === ",") out.push(entry.line);
   }
@@ -43012,9 +42894,9 @@ function jsEquality(text) {
     }
   }
   if (at === -1) return null;
-  let i = skipBlanks5(text, at + width);
+  let i = skipBlanks4(text, at + width);
   if (!text.startsWith(JS_WILDCARD, i)) return { wildcard: false };
-  i = skipBlanks5(text, i + JS_WILDCARD.length);
+  i = skipBlanks4(text, i + JS_WILDCARD.length);
   return { wildcard: text.charAt(i) === ")" };
 }
 function operandFrom(text, from, closeStops) {
@@ -43085,8 +42967,8 @@ function secondArgument(text, open3) {
   return -1;
 }
 function pyEquality(text) {
-  const start = skipBlanks5(text, 0);
-  if (text.startsWith("assert", start) && isBlank7(text.charAt(start + 6))) {
+  const start = skipBlanks4(text, 0);
+  if (text.startsWith("assert", start) && isBlank6(text.charAt(start + 6))) {
     const equals = topLevelEquals(text, start + 6);
     if (equals === -1) return null;
     return { wildcard: PY_WILDCARDS.has(operandFrom(text, equals + 2, false)) };
@@ -43233,6 +43115,7 @@ function check(input) {
   const comparedMode = testIntegrity2.mode;
   let testChanges;
   let ti03Pairs = [];
+  const ti03AliasMaps = comparedMode === "off" ? void 0 : ti03Aliases(input.testSources, input.pythonTestIndex);
   if (parsedDiff !== null && comparedMode !== "off" && input.testSources !== void 0 && touched !== null) {
     const configs = detectTI09(parsedDiff, input.testSources, comparedMode);
     const configUnavailable = configs.notRun !== null ? { notRun: configs.notRun } : configs.unavailable.length > 0 ? { files: configs.unavailable } : void 0;
@@ -43255,7 +43138,8 @@ function check(input) {
         touched,
         ...deletedFiles === void 0 ? {} : { movedGroups: new Map(deletedFiles.files.map((file) => [file.path, file.groups])) },
         diff: parsedDiff,
-        sources: input.testSources
+        sources: input.testSources,
+        ...ti03AliasMaps === void 0 ? {} : { aliases: ti03AliasMaps }
       });
       const capped = capFindings([
         ...detectTI02(match, comparedMode),
@@ -43282,7 +43166,7 @@ function check(input) {
     sortSignals2(testIntegritySignals);
   }
   if (parsedDiff !== null && testIntegrity2.mode !== "off") {
-    testIntegritySignals.push(...detectTI03(parsedDiff, testIntegrity2.mode, input.testSources, ti03Pairs));
+    testIntegritySignals.push(...detectTI03(parsedDiff, testIntegrity2.mode, ti03AliasMaps, ti03Pairs));
     sortSignals2(testIntegritySignals);
   }
   const pythonIndex = input.pythonTestIndex;
@@ -46122,7 +46006,7 @@ var BLOCK_KINDS = ["describe", "test", "hook"];
 var REFUSAL_REASONS = ["syntax-error", "too-deep", "too-large", "parser-threw"];
 var REFUSED_KEYS = ["id", "parsed", "reason"];
 var PARSED_KEYS = ["id", "parsed", "normalized", "tests", "mocks"];
-var OPTIONAL_PARSED_KEYS = ["imports"];
+var OPTIONAL_PARSED_KEYS = ["imports", "aliases"];
 var BLOCK_KEYS = [
   "kind",
   "name",
@@ -46258,6 +46142,21 @@ function mapImports(raw, where) {
     return text;
   });
 }
+function mapAliases(raw, where) {
+  if (!Object.hasOwn(raw, "aliases")) return void 0;
+  const list = checkArray(raw.aliases, where, "aliases");
+  if (list.length > MAX_TEST_IMPORTS) return bad(where, `aliases is longer than ${MAX_TEST_IMPORTS}`);
+  return list.map((pair) => {
+    if (!Array.isArray(pair) || pair.length !== 2) return bad(where, "an alias is not a pair");
+    const local = checkString(pair[0], where, "alias name");
+    const target = checkString(pair[1], where, "alias target");
+    if (local === "" || target === "") return bad(where, "an alias is empty");
+    if (local.length > MAX_TEST_NAME_CHARS || target.length > MAX_TEST_NAME_CHARS) {
+      return bad(where, `an alias is longer than ${MAX_TEST_NAME_CHARS}`);
+    }
+    return [local, target];
+  });
+}
 function mapEntry(value, index) {
   const where = `entry ${index}`;
   if (!isObject2(value)) return bad(where, "is not an object");
@@ -46266,7 +46165,11 @@ function mapEntry(value, index) {
     if (raw2.id !== index) return bad(where, "id is not its position");
     const reason = checkString(raw2.reason, where, "refusal reason");
     if (!REFUSAL_REASONS.includes(reason)) return bad(where, "refusal reason is unknown");
-    return { result: { parsed: false, reason }, imports: void 0 };
+    return {
+      result: { parsed: false, reason },
+      imports: void 0,
+      aliases: void 0
+    };
   }
   const raw = checkKeys(value, PARSED_KEYS, where, "a parsed entry", OPTIONAL_PARSED_KEYS);
   if (raw.id !== index) return bad(where, "id is not its position");
@@ -46276,7 +46179,11 @@ function mapEntry(value, index) {
     (block, i) => mapBlock(block, normalized, `${where} test ${i}`)
   );
   const mocks = checkArray(raw.mocks, where, "mocks").map((mock, i) => mapMock(mock, `${where} mock ${i}`));
-  return { result: { parsed: true, syntaxErrors: 0, tests, mocks }, imports: mapImports(raw, where) };
+  return {
+    result: { parsed: true, syntaxErrors: 0, tests, mocks },
+    imports: mapImports(raw, where),
+    aliases: mapAliases(raw, where)
+  };
 }
 function pythonIndexFromRaw(stdout, count2) {
   try {
@@ -46292,7 +46199,8 @@ function pythonIndexFromRaw(stdout, count2) {
     return {
       available: true,
       results: mapped.map((entry) => entry.result),
-      imports: mapped.map((entry) => entry.imports)
+      imports: mapped.map((entry) => entry.imports),
+      aliases: mapped.map((entry) => entry.aliases)
     };
   } catch (error2) {
     if (!(error2 instanceof BadOutput)) throw error2;
@@ -47236,6 +47144,30 @@ def import_aliases(tree):
     return aliases
 
 
+def in_skip_namespace(target):
+    """Whether a dotted target is pytest or unittest, or a name under one of them: only these can resolve to a skip form."""
+    for root in ("pytest", "unittest"):
+        if target == root or target.startswith(root + "."):
+            return True
+    return False
+
+
+def alias_pairs(aliases):
+    """The import_aliases entries TI03 can use, as [local, target] pairs in the dict's order: the target is pytest or
+    unittest or a name under one, and the local name differs from it (an identity binding such as import pytest adds
+    nothing: TI03 tries the literal spelling first). None when more than MAX_IMPORTS such pairs remain or a kept name
+    or target is longer than MAX_NAME UTF-16 code units: the caller refuses the file as too-large, so no binding is ever
+    dropped silently (CORE-356)."""
+    pairs = []
+    for local, target in aliases.items():
+        if local == target or not in_skip_namespace(target):
+            continue
+        if utf16_length(local) > MAX_NAME or utf16_length(target) > MAX_NAME or len(pairs) >= MAX_IMPORTS:
+            return None
+        pairs.append([local, target])
+    return pairs
+
+
 def module_imports(tree):
     """The module names of every import and from-import statement anywhere in the module (ast.walk order), each once,
     at most MAX_IMPORTS; a name longer than MAX_NAME UTF-16 code units is left out. import a.b gives a.b; from a.b
@@ -47615,6 +47547,9 @@ def build(text):
         return {"parsed": False, "reason": "too-deep"}
     source = Source(text)
     aliases = import_aliases(tree)
+    pairs = alias_pairs(aliases)
+    if pairs is None:
+        return {"parsed": False, "reason": "too-large"}
     module_marks = pytestmark_modifiers(tree.body, aliases)
 
     blocks = []
@@ -47799,6 +47734,8 @@ def build(text):
     imports = module_imports(tree)
     if imports:
         out["imports"] = imports
+    if pairs:
+        out["aliases"] = pairs
     return out
 
 
@@ -47996,13 +47933,18 @@ async function indexPythonTests(files, deps = {}) {
   if (!outcome.available) return outcome;
   const results = outcome.results;
   const imports = outcome.imports;
+  const aliases = outcome.aliases;
   return {
     available: true,
     files: plan.entries.map((entry) => {
       if ("refused" in entry) return { path: entry.path, result: { parsed: false, reason: entry.refused } };
       const result = results[entry.id];
       const names = imports[entry.id];
-      return names === void 0 ? { path: entry.path, result } : { path: entry.path, result, imports: names };
+      const pairs = aliases[entry.id];
+      const file = { path: entry.path, result };
+      if (names !== void 0) file.imports = names;
+      if (pairs !== void 0) file.aliases = pairs;
+      return file;
     })
   };
 }

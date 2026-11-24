@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import type { Report, TestIntegritySignal } from "../src/report.js";
 import { measureGrowth } from "./growth.js";
 import { fixture } from "./helpers.js";
+import { stubPythonIndex } from "./python-index-stub.js";
 import { expectValidReport } from "./schema.js";
 
-// check() and the size cap are loaded inside the test body: the AC test is written before TI03 reads aliases, so
-// nothing the build adds may run while the file loads. The hostile text is generated here. Its first line binds `pt`
-// to pytest, so the added `@pt.mark.skip` must give one block TI03, which only the build makes true; the hostile part
-// below it binds nothing to `pt`. Each size is run once to warm up, then measured on this thread's CPU time with
-// measureGrowth (growth.ts).
+// check() and the size cap are loaded inside the test body, so nothing the build changes runs while the file loads. The
+// hostile text is generated here; since CORE-356 TI03 takes its aliases from the Python index, which this test stubs
+// (python-index-stub.ts) with the pairs `pt` and 999 more, so what is measured is TI03's line pass near the size cap.
+// The first line binds `pt` to pytest, so the added `@pt.mark.skip` must give one block TI03; the hostile part below it
+// binds nothing to `pt`. Each size is run once to warm up, then measured on this thread's CPU time with measureGrowth
+// (growth.ts).
 
 const REPO_ROOT = "/home/runner/work/demo/demo";
 const PATH = "py/test_cart.py";
@@ -66,8 +68,21 @@ const DIFF = `${[
   "+@pt.mark.skip",
 ].join("\n")}\n`;
 
+/**
+ * The pairs the Python index reports for the hostile text, at its cap of 1000: `pt` and then `p0`, `p1`, …. (The real
+ * index's `aliases` for imports is pinned by ac-core356-index-aliases.test.ts; core no longer reads the text for them.)
+ */
+const PAIRS: [string, string][] = [
+  ["pt", "pytest"],
+  ...Array.from({ length: 999 }, (_, n): [string, string] => [`p${n}`, "pytest"]),
+];
+
 /** The check() input for one head and base text, built before any timing so the timed span is check() alone. */
 function inputOf(head: string, base: string) {
+  const testSources = {
+    base: { files: [{ path: PATH, text: base }], dropped: [] },
+    head: { files: [{ path: PATH, text: head }], dropped: [] },
+  };
   return {
     version: "0.1.0",
     coverage: { text: fixture("test-files-deleted/coverage.info"), format: "lcov" as const },
@@ -76,10 +91,8 @@ function inputOf(head: string, base: string) {
     threshold: 80,
     repoFiles: [PATH, "src/cart.ts"],
     testIntegrityMode: { input: "block" as const },
-    testSources: {
-      base: { files: [{ path: PATH, text: base }], dropped: [] },
-      head: { files: [{ path: PATH, text: head }], dropped: [] },
-    },
+    testSources,
+    pythonTestIndex: stubPythonIndex(testSources, { [PATH]: PAIRS }),
   };
 }
 
@@ -93,7 +106,7 @@ function ti03Of(report: unknown): Signal[] {
     .map((s) => ({ id: String(s.id), severity: s.severity, path: s.path, line: s.line }));
 }
 
-describe("TI03's alias reader on hostile text near the test-source size cap", () => {
+describe("TI03's line pass on hostile text near the test-source size cap", () => {
   it(
     "AC-7: a hostile Python test file just under MAX_TEST_SOURCE_FILE_BYTES returns without throwing, validates, gives the block TI03 of its resolvable alias, and takes less than 8 times a quarter-size one (median of three)",
     async () => {
