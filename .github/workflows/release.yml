@@ -100,7 +100,7 @@ jobs:
 
       - run: pnpm lint
 
-      # version.test.ts also keeps packages/core/src/version.ts equal to every package.json version.
+      # version.test.ts also keeps the core, cli, action and node-io package.json versions equal to the root one.
       - run: pnpm test
 
       - run: pnpm build
