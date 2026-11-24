@@ -26,7 +26,8 @@ where PI01 also accepts the directional marks and the soft hyphen. An app policy
 (`injection.exempt`), add phrases (`injection.phrases`, reported as `PX01`, `PX02`, ...) and set each signal's
 severity (`injection.signals`, `off` included). A `file:` policy is carried by the pull request, so it can only
 tighten: its phrases apply, its severities only raise, and its exemptions are never applied (`POLICY_OVERRIDE_IGNORED`
-says so). When the pull request edits the policy file, the copy at the base commit also counts: its phrases are
+says so). When the pull request edits the policy file and its copy at the base commit can be read (a local diff; not with a
+compare-API diff or in PR-number mode), that copy also counts: its phrases are
 scanned first, so added phrases cannot push them past the 100-phrase cap, and its raised severities still apply. No workflow input and no `.pharn/ci.yml` key changes the scan.
 
 **How a block fails the check.** Each signal adds one `INJECTION_PI01` to `INJECTION_PI05` message whose level follows

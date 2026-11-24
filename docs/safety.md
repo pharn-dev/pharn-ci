@@ -4,7 +4,7 @@ pharn-ci runs inside other people's CI, on untrusted changes, with their token. 
 that:
 
 - **Stateless.** No backend of its own, no telemetry, and no network calls except these, all made by the Action (the
-  CLI makes none): the GitHub API; only with `policy` set to `auto` or `required` and an OIDC token granted, one `GET`
+  CLI makes none of its own; on a partial clone its git calls may fetch, as below): the GitHub API; only with `policy` set to `auto` or `required` and an OIDC token granted, one `GET`
   of the pharn.dev policy endpoint that sends the OIDC token and the repository name ([Org policy](policy.md)); with
   `upload` not set to `never` and an OIDC token granted, the redacted `report.json` and `meta.json` of the run to
   pharn.dev ([Upload](upload.md)); and only with the `dependencies` mode `lookup` (the input,

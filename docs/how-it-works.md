@@ -93,7 +93,7 @@ flowchart LR
 
 | Step     | What happens                                                                                                                                 |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gather   | The Action or CLI reads the coverage file, the diff against the base, the tracked file list, the config, and the committed text of the files the checks need (test, config, manifest and agent files, at the merge base and `HEAD`). All I/O happens here. |
+| Gather   | The Action or CLI reads the coverage file, the diff against the base, the tracked file list, the config, and the committed text of the files the checks need (test, config, manifest and agent files, at the merge base and `HEAD` when the diff is local). All I/O happens here. |
 | Measure  | `packages/core` matches added lines against the lines the coverage report knows, and classifies agent setup files. Pure functions only.     |
 | Report   | Core builds a Report v2 object. Every report produced in tests is validated against `schema/report.v2.json`.                                |
 | Render   | The comment, job summary and CLI text are renderings of that report, never a separate source of truth.                                     |
