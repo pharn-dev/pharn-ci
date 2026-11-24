@@ -5,19 +5,24 @@ Instructions for AI coding agents (and humans) working in this repo. They govern
 ## What this is
 
 pharn-ci is a GitHub Action + CLI that checks whether AI coding agents can safely work in a
-repo: diff coverage of the change under review, and an inventory of agent setup files. It is
+repo: diff coverage of the change under review, whether the change weakened the tests, committed secrets in
+agent configs, hidden prompt injections, risky dependencies, and an inventory of agent setup files. It is
 AI-agnostic, with no telemetry. It keeps no state of its own; with `id-token: write` the action fetches an org
 policy from pharn.dev and uploads the redacted report there (rule 5).
 
 ## Layout
 
-- `packages/core` — pure functions: lcov, Cobertura and unified-diff parsing, diff coverage, agent
-  setup scan, test-integrity signals, org policy rules, Report v2 builder, markdown renderer, config parser. Entry point: `check()` in `src/check.ts`.
-- `packages/cli` — `pharn-ci check`: reads files, runs git, calls core, prints output.
+- `packages/core` — pure functions: lcov, Cobertura, JUnit and unified-diff parsing, diff coverage, agent
+  setup scan, test-integrity signals, secret, prompt-injection and dependency checks, org policy rules, Report v2
+  builder, markdown renderer, config parser. Entry point: `check()` in `src/check.ts`. The test-integrity signals
+  are listed once, in `src/signals/registry.ts`: a new signal adds one entry there.
+- `packages/cli` — `pharn-ci check` and `pharn-ci test`: reads files, runs git and `python3`, calls core, prints
+  output.
 - `packages/action` — thin GitHub Action wrapper: inputs, PR diff, sticky comment, job summary, exit code.
 - `packages/node-io` — private shared Node I/O for cli and action: git, file reads, directory listing, the
   coverage-file reading loop, the `python3` subprocess that indexes Python test files, and the spawn of the command
-  `pharn-ci test` wraps (`runCommand`); bundled into their dists.
+  `pharn-ci test` wraps (`runCommand`); `gatherSources()` decides once what the checks read from git (the test,
+  config, manifest and agent files at the merge base and `HEAD`); bundled into their dists.
 - `schema/` — JSON Schemas: `report.v2.json` (the report the tools write; `report.v1.json` is the earlier version),
   `policy.v1.json` (the org policy) and `upload-meta.v1.json` (the upload's `meta.json`). **Source of truth for all
   output.**
