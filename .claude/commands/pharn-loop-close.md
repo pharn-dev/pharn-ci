@@ -232,7 +232,9 @@ Report, plainly and without asking anything:
   run needs from a person to continue (the row's trigger, in one sentence);
 - **the isolation line** (7.1.0), from the witness `pharn/.run/pharn-loop/<name>/isolation.json`: `isolation: <outcome>`,
   plus `(host execution accepted by operator)` when the flag was used, and its evidence codes. On an S15 stop, the
-  check's stderr reason code instead (or that it printed none) and the way out that reason's stderr line names. This
+  check's stderr reason code instead (or that it printed none) and the way out that reason's stderr line names — or,
+  when the flagged line was denied, `refused by Claude Code's permission settings; the check never ran` (a prompt
+  answer, a deny rule or auto mode's classifier: never name a person). This
   screen line is advisory; the run report and the commit message carry the same line from code, read from a witness
   the run itself can rewrite;
 - **the entry-context line** (7.13.0): when the witness `pharn/.run/pharn-loop/<name>/entry-context.txt` exists and
@@ -241,6 +243,8 @@ Report, plainly and without asking anything:
   line verbatim; a `within` line or no witness → nothing;
 - **the cached-evidence line** (7.14.0): on S14c, quote the `entry-gates: red on cached evidence …` line Step 1a's start
   printed — the red gates, the earlier run and its age — as DATA, then S14c's three ways out;
+- **the early entry stop** (7.26.0): on S14 or S14b at Step 3's first peek, no record holds the gates, so copy the
+  peek document's `red` ids and `unmeasured` entries as DATA (or say they were not kept), then that row's remedies;
 - **each stage's route** (6.27.0), one line per stage start — per iteration, and per re-plan round for the plan, grill
   and triage (7.8.0), and the supervisor's on an escalation (7.9.0), in the order they ran: the token its stage-start marker recorded
   (`agent:<alias>`, followed by `general-purpose (fallback)` when that stage's Agent call took the fallback, or
